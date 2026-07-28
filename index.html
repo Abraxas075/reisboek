@@ -1,0 +1,2643 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0F3B46" />
+<title>Reisboek</title>
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230F3B46'/%3E%3Ctext y='68' x='50' font-size='56' text-anchor='middle' fill='%23E8A33D'%3ER%3C/text%3E%3C/svg%3E" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="config.js"></script>
+<script>
+/* ------------------------------------------------------------------
+   Opslaglaag. Twee standen:
+   - zonder Firebase-config: alles blijft op dit apparaat (localStorage)
+   - met Firebase-config: alles wordt gedeeld met de hele groep
+   ------------------------------------------------------------------ */
+(function () {
+  const cfg = (window.VAKANTIE_CONFIG || {});
+  const fb = cfg.firebase || {};
+  const tripId = cfg.tripId || "onze-reis";
+  const heeftFirebase = !!(fb.projectId && fb.apiKey);
+  let db = null;
+
+  if (heeftFirebase) {
+    try {
+      firebase.initializeApp(fb);
+      db = firebase.firestore();
+    } catch (e) {
+      console.error("Firebase start niet:", e);
+      db = null;
+    }
+  }
+  window.VAKANTIE_MODE = db ? "gedeeld" : "lokaal";
+
+  const docId = (key) => key.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const lsKey = (key, shared) => "vakantie:" + (shared ? "g:" : "p:") + key;
+
+  const local = {
+    async get(key, shared) {
+      const v = localStorage.getItem(lsKey(key, shared));
+      if (v === null) throw new Error("niet gevonden");
+      return { key, value: v, shared: !!shared };
+    },
+    async set(key, value, shared) {
+      localStorage.setItem(lsKey(key, shared), value);
+      return { key, value, shared: !!shared };
+    },
+    async delete(key, shared) {
+      localStorage.removeItem(lsKey(key, shared));
+      return { key, deleted: true, shared: !!shared };
+    },
+    async list(prefix, shared) {
+      const p = lsKey(prefix || "", shared);
+      const keys = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(p)) keys.push(k.slice(lsKey("", shared).length));
+      }
+      return { keys, prefix, shared: !!shared };
+    },
+  };
+
+  window.AppStore = {
+    async get(key, shared) {
+      if (!db || !shared) return local.get(key, shared);
+      const snap = await db.collection("trips").doc(tripId).collection("data").doc(docId(key)).get();
+      if (!snap.exists) throw new Error("niet gevonden");
+      return { key, value: snap.data().v, shared: true };
+    },
+    async set(key, value, shared) {
+      if (!db || !shared) return local.set(key, value, shared);
+      await db
+        .collection("trips")
+        .doc(tripId)
+        .collection("data")
+        .doc(docId(key))
+        .set({ v: value, key, at: Date.now() });
+      return { key, value, shared: true };
+    },
+    async delete(key, shared) {
+      if (!db || !shared) return local.delete(key, shared);
+      await db.collection("trips").doc(tripId).collection("data").doc(docId(key)).delete();
+      return { key, deleted: true, shared: true };
+    },
+    async list(prefix, shared) {
+      if (!db || !shared) return local.list(prefix, shared);
+      const snap = await db.collection("trips").doc(tripId).collection("data").get();
+      const keys = [];
+      snap.forEach((d) => {
+        const k = d.data().key;
+        if (k && (!prefix || k.startsWith(prefix))) keys.push(k);
+      });
+      return { keys, prefix, shared: true };
+    },
+  };
+})();
+</script>
+<style>
+  body { margin: 0; background: #0F3B46; }
+  #laden { color: #E8A33D; font-family: ui-monospace, monospace; padding: 2rem; text-align: center; }
+</style>
+</head>
+<body>
+<div id="root"><div id="laden">Reisboek wordt geladen…</div></div>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo, useRef } = React;
+
+/* ---------- palette: deep lagoon + bone + marigold ---------- */
+const C = {
+  bg: "#0F3B46",
+  deep: "#0A2A32",
+  bone: "#F2EFE6",
+  boneSoft: "#E4DFD0",
+  ink: "#122A30",
+  muted: "#6E7C7E",
+  marigold: "#E8A33D",
+  mint: "#7FBFA6",
+  ember: "#C9503E",
+  line: "#D3CDBC",
+};
+
+const TABS = [
+  { id: "dagen", label: "Dagen" },
+  { id: "reis", label: "Reis" },
+  { id: "agenda", label: "Agenda" },
+  { id: "buurt", label: "In de buurt" },
+  { id: "fotos", label: "Foto's" },
+  { id: "notities", label: "Notities" },
+  { id: "todo", label: "To-do" },
+  { id: "lijst", label: "Boodschappen" },
+];
+
+/* ---------- storage helpers ---------- */
+async function loadKey(key, fallback, shared = true) {
+  try {
+    const r = await AppStore.get(key, shared);
+    if (!r || !r.value) return fallback;
+    return JSON.parse(r.value);
+  } catch (e) {
+    return fallback;
+  }
+}
+async function saveKey(key, value, shared = true) {
+  for (let poging = 0; poging < 3; poging++) {
+    try {
+      const r = await AppStore.set(key, JSON.stringify(value), shared);
+      if (r) return true;
+    } catch (e) {
+      /* volgende poging */
+    }
+    await new Promise((r) => setTimeout(r, 350 * (poging + 1)));
+  }
+  return false;
+}
+
+/* Google Places (New) — adres-suggesties */
+async function autocompletePlaces(key, input) {
+  const res = await fetch("https://places.googleapis.com/v1/places:autocomplete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Goog-Api-Key": key },
+    body: JSON.stringify({ input, languageCode: "nl" }),
+  });
+  if (!res.ok) return [];
+  const data = await res.json().catch(() => ({}));
+  return (data.suggestions || [])
+    .map((s) => s.placePrediction)
+    .filter(Boolean)
+    .map((p) => ({
+      text: p.text?.text || "",
+      main: p.structuredFormat?.mainText?.text || p.text?.text || "",
+      secondary: p.structuredFormat?.secondaryText?.text || "",
+    }))
+    .filter((p) => p.text);
+}
+
+const mapsStatic = (q, key) =>
+  `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(
+    q
+  )}&zoom=14&size=640x320&scale=2&language=nl&markers=color:0xC9503E%7C${encodeURIComponent(
+    q
+  )}&key=${encodeURIComponent(key)}`;
+
+/* Kan de omgeving überhaupt een kaartafbeelding van Google laden? */
+function testImage(key) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const timer = setTimeout(() => resolve(false), 7000);
+    img.onload = () => {
+      clearTimeout(timer);
+      resolve(img.naturalWidth > 10);
+    };
+    img.onerror = () => {
+      clearTimeout(timer);
+      resolve(false);
+    };
+    img.src = mapsStatic("Amsterdam", key);
+  });
+}
+
+/* Kleine testaanroep om te zien wat Google van de key vindt */
+async function testKey(key) {
+  const imageOk = await testImage(key);
+  const imageLine = imageOk
+    ? " Kaartafbeeldingen laden wél."
+    : " Kaartafbeeldingen laden hier ook niet.";
+  try {
+    const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": key,
+        "X-Goog-FieldMask": "places.id",
+      },
+      body: JSON.stringify({ textQuery: "koffie Amsterdam", maxResultCount: 1 }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) return { ok: true, message: "De key werkt: Google antwoordt netjes." + imageLine };
+    return { ok: false, message: (data?.error?.message || `Google gaf status ${res.status}.`) + imageLine };
+  } catch (e) {
+    return {
+      ok: false,
+      message:
+        "De aanvraag kwam niet bij Google aan — deze omgeving laat geen verkeer naar Google toe." +
+        imageLine +
+        " Dit ligt niet aan je key.",
+    };
+  }
+}
+
+/* ---------- Google-tijdlijn uit Takeout lezen ---------- */
+const kortDatum = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+function leesTijdlijn(json) {
+  const uit = [];
+  const voegToe = (naam, adres, start) => {
+    if (!naam || !start) return;
+    const d = new Date(start);
+    if (isNaN(d.getTime())) return;
+    uit.push({
+      date: kortDatum(d),
+      time: `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+      title: naam,
+      place: adres || "",
+    });
+  };
+
+  // oude uitvoer: Semantic Location History
+  const objecten = json?.timelineObjects || [];
+  objecten.forEach((o) => {
+    if (o.placeVisit) {
+      const loc = o.placeVisit.location || {};
+      voegToe(loc.name || loc.address || "Bezoek", loc.address, o.placeVisit.duration?.startTimestamp);
+    } else if (o.activitySegment) {
+      const a = o.activitySegment;
+      const soort = (a.activityType || "verplaatsing").toLowerCase().replace(/_/g, " ");
+      voegToe(`Onderweg (${soort})`, "", a.duration?.startTimestamp);
+    }
+  });
+
+  // nieuwe uitvoer: timeline uit de telefoon
+  const segmenten = json?.semanticSegments || (Array.isArray(json) ? json : []);
+  segmenten.forEach((s) => {
+    const start = s.startTime || s.startTimestamp;
+    if (s.visit) {
+      const kand = s.visit.topCandidate || {};
+      const plek = kand.placeLocation?.latLng || kand.placeId || "";
+      voegToe(kand.semanticType && kand.semanticType !== "UNKNOWN" ? kand.semanticType : "Bezoek", String(plek), start);
+    } else if (s.activity) {
+      const soort = (s.activity.topCandidate?.type || "verplaatsing").toLowerCase().replace(/_/g, " ");
+      voegToe(`Onderweg (${soort})`, "", start);
+    }
+  });
+
+  return uit;
+}
+
+/* ---------- date helpers ---------- */
+const localToday = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+const asDate = (iso) => new Date(iso + "T12:00:00");
+const dayList = (start, end) => {
+  const out = [];
+  if (!start || !end) return out;
+  let d = asDate(start);
+  const e = asDate(end);
+  let guard = 0;
+  while (d <= e && guard < 400) {
+    out.push(
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+    );
+    d = new Date(d.getTime() + 86400000);
+    guard++;
+  }
+  return out;
+};
+const fmtShort = (iso) =>
+  asDate(iso).toLocaleDateString("nl-NL", { weekday: "short", day: "numeric" });
+const fmtLong = (iso) =>
+  asDate(iso).toLocaleDateString("nl-NL", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+const daysBetween = (a, b) =>
+  Math.round((asDate(b).getTime() - asDate(a).getTime()) / 86400000);
+
+/* ---------- google maps helpers ---------- */
+const MapsKeyContext = React.createContext("");
+
+const mapsEmbed = (q, key) =>
+  key
+    ? `https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(key)}&q=${encodeURIComponent(
+        q
+      )}&zoom=14&language=nl`
+    : `https://www.google.com/maps?q=${encodeURIComponent(q)}&hl=nl&z=13&output=embed`;
+const mapsLink = (q) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
+const mapsRoute = (to) =>
+  `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(to)}`;
+
+const PRICE = {
+  PRICE_LEVEL_FREE: "gratis",
+  PRICE_LEVEL_INEXPENSIVE: "€",
+  PRICE_LEVEL_MODERATE: "€€",
+  PRICE_LEVEL_EXPENSIVE: "€€€",
+  PRICE_LEVEL_VERY_EXPENSIVE: "€€€€",
+};
+
+/* Google Places (New) — Text Search, rechtstreeks vanuit de browser */
+async function searchPlacesApi({ key, area, category, extra }) {
+  const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": key,
+      "X-Goog-FieldMask":
+        "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.priceLevel,places.primaryTypeDisplayName,places.currentOpeningHours.openNow",
+    },
+    body: JSON.stringify({
+      textQuery: `${category} in ${area}${extra ? " " + extra : ""}`,
+      languageCode: "nl",
+      maxResultCount: 10,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(
+      data?.error?.message ||
+        "Google weigerde de zoekopdracht. Controleer de key, de Places API (New) en de websitebeperking."
+    );
+  }
+  const places = data.places || [];
+  if (!places.length) throw new Error("Google vond hier niets. Probeer een andere plaats of categorie.");
+  return places.map((p) => {
+    const name = p.displayName?.text || "Naamloos";
+    const bits = [];
+    if (p.rating) bits.push(`${String(p.rating).replace(".", ",")} ster${p.rating === 1 ? "" : "ren"}`);
+    if (p.userRatingCount) bits.push(`${p.userRatingCount} beoordelingen`);
+    if (PRICE[p.priceLevel]) bits.push(PRICE[p.priceLevel]);
+    if (p.currentOpeningHours?.openNow === true) bits.push("nu open");
+    if (p.currentOpeningHours?.openNow === false) bits.push("nu gesloten");
+    return {
+      name,
+      category: p.primaryTypeDisplayName?.text || category,
+      area: p.formattedAddress || area,
+      description: bits.join(" · "),
+      maps_query: p.id ? `place_id:${p.id}` : `${name} ${area}`,
+      mapsSearch: `${name} ${p.formattedAddress || area}`,
+      source: "google",
+    };
+  });
+}
+
+const CATEGORIES = [
+  "Bezienswaardigheden",
+  "Restaurants",
+  "Cafés",
+  "Winkels",
+  "Musea",
+  "Strand & natuur",
+  "Met kinderen",
+  "Markten",
+  "Uitgaan",
+  "Verborgen tips",
+];
+
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+const initials = (name, email) => {
+  const src = (name || email || "?").trim();
+  const parts = src.split(/[\s.@_-]+/).filter(Boolean);
+  return ((parts[0]?.[0] || "?") + (parts[1]?.[0] || "")).toUpperCase();
+};
+
+/* ---------- atoms ---------- */
+const Eyebrow = ({ children, color = C.muted }) => (
+  <div
+    className="font-mono uppercase text-xs tracking-widest"
+    style={{ color }}
+  >
+    {children}
+  </div>
+);
+
+const Card = ({ children, className = "", style = {} }) => (
+  <div
+    className={"rounded-xl p-4 " + className}
+    style={{ background: C.bone, color: C.ink, ...style }}
+  >
+    {children}
+  </div>
+);
+
+const Perforation = () => (
+  <div className="flex justify-between px-2 py-1" aria-hidden="true">
+    {Array.from({ length: 18 }).map((_, i) => (
+      <span
+        key={i}
+        className="block rounded-full"
+        style={{ width: 5, height: 5, background: C.bg, opacity: 0.35 }}
+      />
+    ))}
+  </div>
+);
+
+const Btn = ({ children, onClick, tone = "solid", disabled, className = "", type }) => {
+  const base =
+    "font-mono uppercase text-xs tracking-widest px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-1 transition-colors";
+  const styles =
+    tone === "solid"
+      ? { background: C.marigold, color: C.deep }
+      : tone === "dark"
+      ? { background: C.deep, color: C.bone }
+      : tone === "danger"
+      ? { background: "transparent", color: C.ember, border: `1px solid ${C.ember}` }
+      : { background: "transparent", color: C.ink, border: `1px solid ${C.line}` };
+  return (
+    <button
+      type={type || "button"}
+      onClick={onClick}
+      disabled={disabled}
+      className={base + " " + className}
+      style={{ ...styles, opacity: disabled ? 0.45 : 1 }}
+    >
+      {children}
+    </button>
+  );
+};
+
+const Field = ({ label, ...rest }) => (
+  <label className="block">
+    {label && <Eyebrow>{label}</Eyebrow>}
+    <input
+      {...rest}
+      className="w-full mt-1 px-3 py-2 rounded-md text-base focus:outline-none focus:ring-2"
+      style={{ background: "#FFFFFF", color: C.ink, border: `1px solid ${C.line}` }}
+    />
+  </label>
+);
+
+const AddressField = ({ label, value, onChange, placeholder }) => {
+  const key = React.useContext(MapsKeyContext);
+  const [suggestions, setSuggestions] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useState("");
+
+  useEffect(() => {
+    if (!key || !value || value.length < 3 || value === picked) {
+      setSuggestions([]);
+      return;
+    }
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      const found = await autocompletePlaces(key, value);
+      if (!cancelled) {
+        setSuggestions(found.slice(0, 5));
+        setOpen(true);
+      }
+    }, 450);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [value, key, picked]);
+
+  return (
+    <div className="relative">
+      <Field label={label} value={value} placeholder={placeholder} onChange={onChange} />
+      {key && open && suggestions.length > 0 && (
+        <ul
+          className="mt-1 rounded-md overflow-hidden"
+          style={{ border: `1px solid ${C.line}`, background: "#FFFFFF" }}
+        >
+          {suggestions.map((s) => (
+            <li key={s.text}>
+              <button
+                onClick={() => {
+                  setPicked(s.text);
+                  setOpen(false);
+                  setSuggestions([]);
+                  onChange({ target: { value: s.text } });
+                }}
+                className="block w-full text-left px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                style={{ color: C.ink, borderBottom: `1px solid ${C.line}` }}
+              >
+                <span className="block">{s.main}</span>
+                {s.secondary && (
+                  <span className="block font-mono text-xs" style={{ color: C.muted }}>
+                    {s.secondary}
+                  </span>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+const Empty = ({ children }) => (
+  <p className="text-sm py-6 text-center" style={{ color: C.muted }}>
+    {children}
+  </p>
+);
+
+const AvatarsContext = React.createContext({});
+
+const Avatar = ({ member, size = 30 }) => {
+  const fotos = React.useContext(AvatarsContext);
+  const src = fotos[member.email];
+  if (src)
+    return (
+      <img
+        src={src}
+        alt={member.name || member.email}
+        title={member.name || member.email}
+        className="inline-block rounded-full object-cover"
+        style={{ width: size, height: size, border: `1px solid ${C.deep}` }}
+      />
+    );
+  return (
+    <span
+      className="inline-flex items-center justify-center rounded-full font-mono text-xs"
+      title={member.name || member.email}
+      style={{
+        width: size,
+        height: size,
+        background: C.mint,
+        color: C.deep,
+        border: `1px solid ${C.deep}`,
+      }}
+    >
+      {initials(member.name, member.email)}
+    </span>
+  );
+};
+
+const MapFrame = ({ query, height = 200, label }) => {
+  const key = React.useContext(MapsKeyContext);
+  const [mode, setMode] = useState("static");
+  const [broken, setBroken] = useState(false);
+
+  useEffect(() => {
+    setBroken(false);
+    setMode("static");
+  }, [query, key]);
+
+  const Panel = ({ title }) => (
+    <a
+      href={mapsLink(query)}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex flex-col items-center justify-center rounded-lg p-4 text-center focus:outline-none focus:ring-2"
+      style={{ background: C.boneSoft, color: C.ink, height, border: `1px dashed ${C.line}` }}
+    >
+      <span className="font-mono uppercase text-xs tracking-widest" style={{ color: C.muted }}>
+        {title}
+      </span>
+      <span className="text-sm mt-2">{query}</span>
+      <span className="font-mono uppercase text-xs tracking-widest mt-3" style={{ color: C.ember }}>
+        Openen in Google Maps →
+      </span>
+    </a>
+  );
+
+  if (!key) return <Panel title="Kaart vraagt een API-key" />;
+  if (broken) return <Panel title="Google blokkeert de kaart" />;
+
+  return (
+    <div>
+      {mode === "static" ? (
+        <a href={mapsLink(query)} target="_blank" rel="noopener noreferrer" className="block">
+          <img
+            src={mapsStatic(query, key)}
+            alt={label || `Kaart van ${query}`}
+            onError={() => setMode("frame")}
+            className="w-full rounded-lg object-cover"
+            style={{ height, border: `1px solid ${C.line}` }}
+          />
+        </a>
+      ) : (
+        <iframe
+          title={label || `Kaart van ${query}`}
+          src={mapsEmbed(query, key)}
+          onError={() => setBroken(true)}
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          className="w-full rounded-lg"
+          style={{ height, border: `1px solid ${C.line}` }}
+        />
+      )}
+      <button
+        onClick={() => setMode(mode === "static" ? "frame" : "static")}
+        className="font-mono uppercase text-xs tracking-widest mt-2 focus:outline-none focus:ring-2"
+        style={{ color: C.muted }}
+      >
+        {mode === "static" ? "Interactieve kaart proberen" : "Terug naar afbeelding"}
+      </button>
+    </div>
+  );
+};
+
+/* ---------- image resize ---------- */
+function resizeImage(file, max = 1200, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Bestand kon niet gelezen worden"));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Dit bestand is geen afbeelding"));
+      img.onload = () => {
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ---------- day strip (the spine of the app) ---------- */
+const DayStrip = ({ days, selected, onSelect, counts = {} }) => {
+  const today = localToday();
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current?.querySelector('[data-active="true"]');
+    if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [selected]);
+  if (!days.length) return null;
+  return (
+    <div ref={ref} className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
+      {days.map((iso, i) => {
+        const active = iso === selected;
+        return (
+          <button
+            key={iso}
+            data-active={active}
+            onClick={() => onSelect(iso)}
+            className="shrink-0 rounded-lg px-3 py-2 text-left focus:outline-none focus:ring-2"
+            style={{
+              minWidth: 74,
+              background: active ? C.marigold : "rgba(242,239,230,0.12)",
+              color: active ? C.deep : C.bone,
+              border: `1px solid ${iso === today ? C.ember : "transparent"}`,
+            }}
+          >
+            <span className="block font-mono text-xs tracking-widest uppercase">
+              Dag {String(i + 1).padStart(2, "0")}
+            </span>
+            <span className="block text-sm capitalize">{fmtShort(iso)}</span>
+            {counts[iso] ? (
+              <span className="block font-mono text-xs" style={{ opacity: 0.8 }}>
+                {counts[iso]} item{counts[iso] > 1 ? "s" : ""}
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+/* ---------- login ---------- */
+function LoginView({ onLogin }) {
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [blijf, setBlijf] = useState(true);
+  const [error, setError] = useState("");
+
+  const submit = () => {
+    const mail = email.trim().toLowerCase();
+    if (!/^[^\s@]+@(gmail\.com|googlemail\.com)$/.test(mail)) {
+      setError("Vul een Gmail-adres in, bijvoorbeeld naam@gmail.com.");
+      return;
+    }
+    if (!name.trim()) {
+      setError("Vul je naam in, zo weten de anderen wie wat toevoegt.");
+      return;
+    }
+    onLogin({ email: mail, name: name.trim() }, blijf);
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-5" style={{ background: C.bg }}>
+      <div className="w-full max-w-sm">
+        <Eyebrow color={C.marigold}>Reisboek · gedeeld</Eyebrow>
+        <h1
+          className="font-serif text-4xl leading-tight mt-2 mb-6"
+          style={{ color: C.bone }}
+        >
+          Eén reis,
+          <br />
+          één plan.
+        </h1>
+        <Card>
+          <div className="space-y-3">
+            <Field
+              label="Gmail-adres"
+              type="email"
+              inputMode="email"
+              placeholder="naam@gmail.com"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setError("");
+              }}
+            />
+            <Field
+              label="Jouw naam"
+              placeholder="Sanne"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                setError("");
+              }}
+              onKeyDown={(e) => e.key === "Enter" && submit()}
+            />
+            {error && (
+              <p className="text-sm" style={{ color: C.ember }}>
+                {error}
+              </p>
+            )}
+            <label className="flex items-center gap-3 py-1">
+              <input
+                type="checkbox"
+                checked={blijf}
+                onChange={(e) => setBlijf(e.target.checked)}
+                className="w-5 h-5"
+              />
+              <span className="text-sm">Ingelogd blijven op dit apparaat</span>
+            </label>
+            <Btn onClick={submit} className="w-full">
+              Aanmelden
+            </Btn>
+          </div>
+        </Card>
+        <p className="text-xs mt-4 leading-relaxed" style={{ color: C.boneSoft }}>
+          Iedereen die deze app opent en zich aanmeldt, werkt in hetzelfde reisboek:
+          agenda, foto's, notities en lijstjes zijn voor de hele groep zichtbaar.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- profiel ---------- */
+function ProfileView({ me, photo, onSave, onSkip }) {
+  const [name, setName] = useState(me.name || "");
+  const [phone, setPhone] = useState(me.phone || "");
+  const [about, setAbout] = useState(me.about || "");
+  const [foto, setFoto] = useState(photo || "");
+  const [busy, setBusy] = useState("");
+
+  const kies = async (e) => {
+    const file = (e.target.files || [])[0];
+    if (!file) return;
+    setBusy("Foto wordt klaargezet…");
+    try {
+      setFoto(await resizeImage(file, 480, 0.75));
+      setBusy("");
+    } catch (err) {
+      setBusy(err.message || "Deze foto lukte niet.");
+    }
+  };
+
+  return (
+    <div className="p-5 max-w-lg mx-auto">
+      <Eyebrow color={C.marigold}>Stap 2 · jouw profiel</Eyebrow>
+      <h2 className="font-serif text-3xl mt-1 mb-4" style={{ color: C.bone }}>
+        Wie ben jij?
+      </h2>
+      <Card>
+        <div className="flex items-center gap-4">
+          <div
+            className="rounded-full overflow-hidden flex items-center justify-center shrink-0"
+            style={{ width: 76, height: 76, background: C.mint, border: `1px solid ${C.deep}` }}
+          >
+            {foto ? (
+              <img src={foto} alt="Jouw foto" className="w-full h-full object-cover" />
+            ) : (
+              <span className="font-mono text-xl" style={{ color: C.deep }}>
+                {initials(name, me.email)}
+              </span>
+            )}
+          </div>
+          <div className="flex-1">
+            <Eyebrow>Foto van jezelf</Eyebrow>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={kies}
+              className="block w-full text-sm mt-1"
+              style={{ color: C.muted }}
+            />
+            {foto && (
+              <button
+                onClick={() => setFoto("")}
+                className="font-mono uppercase text-xs tracking-widest mt-1 focus:outline-none focus:ring-2"
+                style={{ color: C.ember }}
+              >
+                Foto weghalen
+              </button>
+            )}
+          </div>
+        </div>
+        {busy && (
+          <p className="font-mono text-xs mt-2" style={{ color: C.muted }}>
+            {busy}
+          </p>
+        )}
+        <div className="space-y-3 mt-4">
+          <Field label="Naam" value={name} onChange={(e) => setName(e.target.value)} />
+          <Field
+            label="Telefoon (optioneel)"
+            type="tel"
+            placeholder="06 12345678"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+          <Field
+            label="Iets over jou (optioneel)"
+            placeholder="Kok van dienst, slaapt graag uit"
+            value={about}
+            onChange={(e) => setAbout(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <Btn
+              onClick={() => onSave({ ...me, name: name.trim() || me.name, phone: phone.trim(), about: about.trim() }, foto)}
+            >
+              Profiel opslaan
+            </Btn>
+            {onSkip && (
+              <Btn tone="ghost" onClick={onSkip}>
+                Later
+              </Btn>
+            )}
+          </div>
+        </div>
+      </Card>
+      <p className="text-xs mt-4" style={{ color: C.boneSoft }}>
+        Je foto en naam zijn zichtbaar voor je reisgenoten, zodat je bij elk plan en elke foto ziet
+        wie het heeft toegevoegd.
+      </p>
+    </div>
+  );
+}
+
+/* ---------- trip setup ---------- */
+function SetupView({ me, initial, onSave, onCancel, apiKey, setApiKey, onImportTimeline }) {
+  const [trip, setTrip] = useState(
+    initial || {
+      name: "",
+      destination: "",
+      base: "",
+      start: localToday(),
+      end: localToday(),
+      summary: "",
+    }
+  );
+  const [error, setError] = useState("");
+  const [preview, setPreview] = useState((initial && (initial.base || initial.destination)) || "");
+  useEffect(() => {
+    const t = setTimeout(() => setPreview(trip.base || trip.destination), 800);
+    return () => clearTimeout(t);
+  }, [trip.base, trip.destination]);
+  const set = (k) => (e) => setTrip({ ...trip, [k]: e.target.value });
+
+  const submit = () => {
+    if (!trip.name.trim() || !trip.destination.trim()) {
+      setError("Geef de reis een naam en een bestemming.");
+      return;
+    }
+    if (daysBetween(trip.start, trip.end) < 0) {
+      setError("De einddatum ligt voor de startdatum.");
+      return;
+    }
+    onSave({ ...trip, name: trip.name.trim(), destination: trip.destination.trim() });
+  };
+
+  return (
+    <div className="p-5 max-w-lg mx-auto">
+      <Eyebrow color={C.marigold}>{initial ? "Reis aanpassen" : "Nieuwe reis"}</Eyebrow>
+      <h2 className="font-serif text-3xl mt-1 mb-4" style={{ color: C.bone }}>
+        {initial ? "Gegevens bijwerken" : `Welkom, ${me.name.split(" ")[0]}`}
+      </h2>
+      <div className="mb-3">
+        <KeyCard apiKey={apiKey} setApiKey={setApiKey} />
+      </div>
+      <Card>
+        <div className="space-y-3">
+          <Field label="Naam van de reis" placeholder="Zomer in Puglia" value={trip.name} onChange={set("name")} />
+          <AddressField
+            label="Bestemming"
+            placeholder="Puglia, Italië"
+            value={trip.destination}
+            onChange={set("destination")}
+          />
+          <AddressField
+            label="Adres van je verblijf"
+            placeholder="Via Roma 12, Ostuni"
+            value={trip.base || ""}
+            onChange={set("base")}
+          />
+          {preview && (
+            <div>
+              <Eyebrow>Klopt dit?</Eyebrow>
+              <div className="mt-1">
+                <MapFrame query={preview} height={180} />
+              </div>
+              <a href={mapsLink(preview)} target="_blank" rel="noopener noreferrer">
+                <Btn tone="ghost" className="mt-2">
+                  Groter bekijken
+                </Btn>
+              </a>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Van" type="date" value={trip.start} onChange={set("start")} />
+            <Field label="Tot en met" type="date" value={trip.end} onChange={set("end")} />
+          </div>
+          <label className="block">
+            <Eyebrow>Korte omschrijving</Eyebrow>
+            <textarea
+              rows={3}
+              value={trip.summary}
+              onChange={set("summary")}
+              placeholder="Vlucht, huisje, wie er meegaat…"
+              className="w-full mt-1 px-3 py-2 rounded-md text-base focus:outline-none focus:ring-2"
+              style={{ background: "#FFFFFF", color: C.ink, border: `1px solid ${C.line}` }}
+            />
+          </label>
+        </div>
+      </Card>
+
+      <div className="mt-3">
+        <Card>
+          <Eyebrow color={C.ember}>De heenreis</Eyebrow>
+          <div className="space-y-3 mt-2">
+            <AddressField
+              label="Vertrek vanaf"
+              placeholder="Utrecht Centraal"
+              value={trip.travelFrom || ""}
+              onChange={set("travelFrom")}
+            />
+            <label className="block">
+              <Eyebrow>Hoe gaan jullie</Eyebrow>
+              <select
+                value={trip.travelMode || "auto"}
+                onChange={set("travelMode")}
+                className="w-full mt-1 px-3 py-2 rounded-md text-base focus:outline-none focus:ring-2"
+                style={{ background: "#FFFFFF", color: C.ink, border: `1px solid ${C.line}` }}
+              >
+                {["auto", "vliegtuig", "trein", "bus", "camper", "anders"].map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Vertrektijd" type="time" value={trip.travelDepart || ""} onChange={set("travelDepart")} />
+              <Field label="Aankomst" type="time" value={trip.travelArrive || ""} onChange={set("travelArrive")} />
+            </div>
+            <Field
+              label="Onderweg (optioneel)"
+              placeholder="Tanken bij Metz, lunch onderweg"
+              value={trip.travelNotes || ""}
+              onChange={set("travelNotes")}
+            />
+            {trip.travelFrom && (trip.base || trip.destination) && (
+              <a
+                href={mapsRoute(trip.base || trip.destination)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Btn tone="ghost">Route bekijken in Google Maps</Btn>
+              </a>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      <div className="mt-3">
+        <TijdlijnImport days={dayList(trip.start, trip.end)} onImport={onImportTimeline} />
+      </div>
+
+      <Card className="mt-3">
+        <div className="space-y-3">
+          {error && (
+            <p className="text-sm" style={{ color: C.ember }}>
+              {error}
+            </p>
+          )}
+          <div className="flex gap-2">
+            <Btn onClick={submit}>Reis opslaan</Btn>
+            {onCancel && (
+              <Btn tone="ghost" onClick={onCancel}>
+                Annuleren
+              </Btn>
+            )}
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function KeyCard({ apiKey, setApiKey }) {
+  const [value, setValue] = useState(apiKey || "");
+  const [open, setOpen] = useState(!apiKey);
+  const [testing, setTesting] = useState(false);
+  const [result, setResult] = useState(null);
+  return (
+    <Card>
+      <div className="flex items-center justify-between gap-2">
+        <Eyebrow color={apiKey ? C.mint : C.muted}>
+          Google Maps API-key {apiKey ? "· actief" : "· niet ingesteld"}
+        </Eyebrow>
+        <button
+          onClick={() => setOpen(!open)}
+          className="font-mono uppercase text-xs tracking-widest focus:outline-none focus:ring-2"
+          style={{ color: C.ink }}
+        >
+          {open ? "Verbergen" : "Instellen"}
+        </button>
+      </div>
+      {open && (
+        <div className="mt-3 space-y-2">
+          <Field
+            label="Key"
+            type="password"
+            placeholder="AIza…"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+          />
+          <div className="flex gap-2">
+            <Btn onClick={() => setApiKey(value.trim())} disabled={!value.trim()}>
+              Key opslaan
+            </Btn>
+            <Btn
+              tone="ghost"
+              disabled={!value.trim() || testing}
+              onClick={async () => {
+                setTesting(true);
+                setResult(null);
+                setResult(await testKey(value.trim()));
+                setTesting(false);
+              }}
+            >
+              {testing ? "Testen…" : "Key testen"}
+            </Btn>
+            {apiKey && (
+              <Btn
+                tone="danger"
+                onClick={() => {
+                  setValue("");
+                  setApiKey("");
+                }}
+              >
+                Wissen
+              </Btn>
+            )}
+          </div>
+          {result && (
+            <p className="text-sm" style={{ color: result.ok ? C.ink : C.ember }}>
+              {result.message}
+            </p>
+          )}
+          <div className="text-xs leading-relaxed" style={{ color: C.muted }}>
+            <p>
+              Nodig in Google Cloud: Maps Static API, Maps Embed API en Places API (New), met
+              facturering aan.
+            </p>
+            <p className="mt-1">
+              Beperk de key tot die drie API's en tot de websites waar de app draait. Een key in een
+              app als deze staat in de code van de pagina en is dus zichtbaar voor iedereen die de
+              app opent — zonder beperking kan iemand anders hem gebruiken op jouw rekening.
+            </p>
+          </div>
+        </div>
+      )}
+      {!open && apiKey && (
+        <p className="text-sm mt-2">Kaarten en zoekresultaten komen rechtstreeks van Google.</p>
+      )}
+    </Card>
+  );
+}
+
+/* ---------- tijdlijn importeren ---------- */
+function TijdlijnImport({ days, onImport }) {
+  const [gevonden, setGevonden] = useState(null);
+  const [melding, setMelding] = useState("");
+
+  const lees = (e) => {
+    const file = (e.target.files || [])[0];
+    if (!file) return;
+    setMelding("Bestand wordt gelezen…");
+    const reader = new FileReader();
+    reader.onerror = () => setMelding("Het bestand kon niet gelezen worden.");
+    reader.onload = () => {
+      try {
+        const json = JSON.parse(reader.result);
+        const alles = leesTijdlijn(json);
+        const binnen = days.length ? alles.filter((i) => days.includes(i.date)) : alles;
+        if (!binnen.length) {
+          setGevonden(null);
+          setMelding(
+            alles.length
+              ? `Er staan ${alles.length} momenten in het bestand, maar geen enkele valt binnen je reisdata.`
+              : "Geen herkenbare tijdlijn in dit bestand. Kies het JSON-bestand uit Takeout, niet de KML- of HTML-versie."
+          );
+          return;
+        }
+        setGevonden(binnen);
+        setMelding(`${binnen.length} momenten gevonden binnen je reis.`);
+      } catch (err) {
+        setGevonden(null);
+        setMelding("Dit is geen geldig JSON-bestand.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  return (
+    <Card>
+      <Eyebrow color={C.ember}>Google-tijdlijn overnemen</Eyebrow>
+      <p className="text-sm mt-2 leading-relaxed">
+        Google biedt geen koppeling meer aan waarmee een app rechtstreeks je tijdlijn kan uitlezen —
+        die staat sinds kort alleen nog op je telefoon. Exporteren kan wel: open in de Google
+        Maps-app je profielfoto → <span className="font-mono text-xs">Je tijdlijn</span> → de drie
+        puntjes → <span className="font-mono text-xs">Tijdlijn exporteren</span>. Kies het
+        JSON-bestand hieronder.
+      </p>
+      <input
+        type="file"
+        accept=".json,application/json"
+        onChange={lees}
+        className="block w-full text-sm mt-3"
+        style={{ color: C.muted }}
+      />
+      {melding && (
+        <p className="text-sm mt-2" style={{ color: gevonden ? C.ink : C.ember }}>
+          {melding}
+        </p>
+      )}
+      {gevonden && (
+        <div className="mt-3">
+          <ul className="text-sm space-y-1">
+            {gevonden.slice(0, 4).map((i, n) => (
+              <li key={n} style={{ color: C.muted }}>
+                <span className="font-mono text-xs">
+                  {fmtShort(i.date)} {i.time}
+                </span>{" "}
+                {i.title}
+              </li>
+            ))}
+            {gevonden.length > 4 && (
+              <li style={{ color: C.muted }}>…en nog {gevonden.length - 4}</li>
+            )}
+          </ul>
+          <Btn
+            className="mt-3"
+            onClick={() => {
+              onImport(gevonden);
+              setGevonden(null);
+              setMelding("Toegevoegd aan de agenda.");
+            }}
+          >
+            Aan de agenda toevoegen
+          </Btn>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+/* ---------- trip overview ---------- */
+function TripView({ trip, members, days, stats, onEdit, apiKey, setApiKey }) {
+  const today = localToday();
+  const untilStart = daysBetween(today, trip.start);
+  const status =
+    untilStart > 0
+      ? `Nog ${untilStart} ${untilStart === 1 ? "dag" : "dagen"}`
+      : daysBetween(today, trip.end) >= 0
+      ? `Dag ${days.indexOf(today) + 1} van ${days.length}`
+      : "Afgelopen reis";
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl overflow-hidden" style={{ background: C.bone }}>
+        <div className="p-4">
+          <Eyebrow color={C.ember}>{status}</Eyebrow>
+          <h2 className="font-serif text-3xl leading-tight mt-1">{trip.name}</h2>
+          <p className="text-sm mt-1" style={{ color: C.muted }}>
+            {trip.destination}
+          </p>
+        </div>
+        <Perforation />
+        <div className="p-4 grid grid-cols-3 gap-3">
+          {[
+            ["Vertrek", asDate(trip.start).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })],
+            ["Terug", asDate(trip.end).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })],
+            ["Dagen", String(days.length)],
+          ].map(([k, v]) => (
+            <div key={k}>
+              <Eyebrow>{k}</Eyebrow>
+              <div className="text-lg">{v}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Card>
+        <Eyebrow>Op de kaart</Eyebrow>
+        <p className="text-sm mt-1 mb-2">{trip.base || trip.destination}</p>
+        <MapFrame query={trip.base || trip.destination} height={220} />
+        <div className="flex flex-wrap gap-2 mt-3">
+          <a href={mapsLink(trip.base || trip.destination)} target="_blank" rel="noopener noreferrer">
+            <Btn>Open in Google Maps</Btn>
+          </a>
+          {trip.base && (
+            <a href={mapsRoute(trip.base)} target="_blank" rel="noopener noreferrer">
+              <Btn tone="ghost">Route naar verblijf</Btn>
+            </a>
+          )}
+        </div>
+      </Card>
+
+      <KeyCard apiKey={apiKey} setApiKey={setApiKey} />
+
+      {trip.summary ? (
+        <Card>
+          <Eyebrow>Over deze reis</Eyebrow>
+          <p className="text-sm mt-2 whitespace-pre-wrap leading-relaxed">{trip.summary}</p>
+        </Card>
+      ) : null}
+
+      <Card>
+        <Eyebrow>Reisgenoten ({members.length})</Eyebrow>
+        <ul className="mt-3 space-y-2">
+          {members.map((m) => (
+            <li key={m.email} className="flex items-center gap-3">
+              <Avatar member={m} />
+              <span className="text-sm">
+                {m.name}
+                <span className="block font-mono text-xs" style={{ color: C.muted }}>
+                  {m.email}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Card>
+
+      <Card>
+        <Eyebrow>Stand van zaken</Eyebrow>
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          {[
+            ["Agenda-items", stats.agenda],
+            ["Foto's", stats.photos],
+            ["Notities", stats.notes],
+            ["To-do open", stats.todosOpen],
+            ["Boodschappen open", stats.shopOpen],
+          ].map(([k, v]) => (
+            <div key={k}>
+              <div className="font-serif text-2xl">{v}</div>
+              <Eyebrow>{k}</Eyebrow>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Btn tone="ghost" onClick={onEdit} className="w-full">
+        Reisgegevens aanpassen
+      </Btn>
+    </div>
+  );
+}
+
+/* ---------- agenda ---------- */
+function AgendaView({ items, setItems, days, selected, setSelected, me }) {
+  const [draft, setDraft] = useState({ time: "", title: "", place: "" });
+  const dayItems = items
+    .filter((i) => i.date === selected)
+    .sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
+
+  const add = () => {
+    if (!draft.title.trim()) return;
+    setItems([
+      ...items,
+      { id: uid(), date: selected, time: draft.time, title: draft.title.trim(), place: draft.place.trim(), by: me.name },
+    ]);
+    setDraft({ time: "", title: "", place: "" });
+  };
+
+  const counts = useMemo(() => {
+    const c = {};
+    items.forEach((i) => (c[i.date] = (c[i.date] || 0) + 1));
+    return c;
+  }, [items]);
+
+  return (
+    <div className="space-y-4">
+      <DayStrip days={days} selected={selected} onSelect={setSelected} counts={counts} />
+      <Card>
+        <Eyebrow color={C.ember}>{fmtLong(selected)}</Eyebrow>
+        {dayItems.length === 0 ? (
+          <Empty>Nog niets gepland. Zet hieronder het eerste plan voor deze dag.</Empty>
+        ) : (
+          <ul className="mt-3 divide-y" style={{ borderColor: C.line }}>
+            {dayItems.map((i) => (
+              <li key={i.id} className="flex gap-3 py-3">
+                <span className="font-mono text-sm shrink-0 w-12" style={{ color: C.muted }}>
+                  {i.time || "—"}
+                </span>
+                <span className="flex-1">
+                  <span className="block text-base">{i.title}</span>
+                  {i.place && (
+                    <a
+                      href={mapsLink(i.place)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block text-sm underline focus:outline-none focus:ring-2"
+                      style={{ color: C.muted }}
+                    >
+                      {i.place}
+                    </a>
+                  )}
+                  <span className="block font-mono text-xs mt-1" style={{ color: C.muted }}>
+                    door {i.by}
+                  </span>
+                </span>
+                <button
+                  onClick={() => setItems(items.filter((x) => x.id !== i.id))}
+                  aria-label={`Verwijder ${i.title}`}
+                  className="font-mono text-sm px-2 rounded focus:outline-none focus:ring-2"
+                  style={{ color: C.ember }}
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+      <Card>
+        <Eyebrow>Plan toevoegen</Eyebrow>
+        <div className="mt-2 space-y-2">
+          <div className="grid grid-cols-3 gap-2">
+            <Field label="Tijd" type="time" value={draft.time} onChange={(e) => setDraft({ ...draft, time: e.target.value })} />
+            <div className="col-span-2">
+              <Field
+                label="Wat"
+                placeholder="Boottocht Polignano"
+                value={draft.title}
+                onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+                onKeyDown={(e) => e.key === "Enter" && add()}
+              />
+            </div>
+          </div>
+          <Field label="Waar" placeholder="Haven, om 09:45 aanwezig" value={draft.place} onChange={(e) => setDraft({ ...draft, place: e.target.value })} />
+          <Btn onClick={add} disabled={!draft.title.trim()}>
+            Aan deze dag toevoegen
+          </Btn>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* ---------- nearby search ---------- */
+async function findPlaces({ area, category, extra }) {
+  throw new Error(
+    "Zoeken zonder Google-key kan alleen in de Claude-app. Vul bij Reis een Google Maps API-key in."
+  );
+  const prompt = `Je bent een lokale gids in en rond ${area}. Zoek met web search actuele, bestaande plekken in de categorie "${category}".${
+    extra ? ` Extra wens van de reiziger: ${extra}.` : ""
+  }
+Geef zes plekken die er nu echt zijn en die door bezoekers goed beoordeeld worden.
+Antwoord UITSLUITEND met geldige JSON, zonder uitleg en zonder markdown:
+[{"name":"","category":"","area":"","description":"","maps_query":""}]
+Regels:
+- description: Nederlands, maximaal 18 woorden, concreet (specialiteit, prijsniveau of waarom bijzonder).
+- area: buurt, straat of plaats.
+- maps_query: naam plus plaats, geschikt om in Google Maps te zoeken.`;
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 1000,
+      messages: [{ role: "user", content: prompt }],
+      tools: [{ type: "web_search_20250305", name: "web_search" }],
+    }),
+  });
+  if (!res.ok) throw new Error("Zoeken lukte niet. Probeer het opnieuw.");
+  const data = await res.json();
+  const text = (data.content || [])
+    .map((b) => (b.type === "text" ? b.text : ""))
+    .filter(Boolean)
+    .join("\n");
+  const clean = text.replace(/```json|```/g, "").trim();
+  const start = clean.indexOf("[");
+  const end = clean.lastIndexOf("]");
+  if (start === -1 || end === -1) throw new Error("Geen plekken gevonden. Probeer een andere zoekopdracht.");
+  const parsed = JSON.parse(clean.slice(start, end + 1));
+  if (!Array.isArray(parsed) || !parsed.length) throw new Error("Geen plekken gevonden. Probeer een andere zoekopdracht.");
+  return parsed.filter((p) => p && p.name);
+}
+
+function NearbyView({ trip, days, selected, setSelected, saved, setSaved, onAddToAgenda, me }) {
+  const [category, setCategory] = useState("Bezienswaardigheden");
+  const [extra, setExtra] = useState("");
+  const [area, setArea] = useState(trip.base || trip.destination);
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [mapFor, setMapFor] = useState(null);
+  const [added, setAdded] = useState({});
+  const [source, setSource] = useState("");
+  const apiKey = React.useContext(MapsKeyContext);
+
+  const search = async (cat) => {
+    const useCat = cat || category;
+    setCategory(useCat);
+    setLoading(true);
+    setError("");
+    setResults([]);
+    setSource("");
+    const where = area || trip.destination;
+    if (apiKey) {
+      try {
+        const found = await searchPlacesApi({ key: apiKey, area: where, category: useCat, extra: extra.trim() });
+        setResults(found);
+        setSource("google");
+        setLoading(false);
+        return;
+      } catch (e) {
+        setError(`${e.message} Hieronder staan tips van de reisgids in plaats van Google.`);
+      }
+    }
+    try {
+      const found = await findPlaces({ area: where, category: useCat, extra: extra.trim() });
+      setResults(found);
+      setSource("gids");
+    } catch (e) {
+      setError(e.message || "Zoeken lukte niet.");
+    }
+    setLoading(false);
+  };
+
+  const save = (p) => {
+    if (saved.some((s) => s.name === p.name)) return;
+    setSaved([...saved, { ...p, id: uid(), by: me.name }]);
+  };
+
+  const toAgenda = (p) => {
+    onAddToAgenda({
+      id: uid(),
+      date: selected,
+      time: "",
+      title: p.name,
+      place: p.maps_query || p.area || "",
+      by: me.name,
+    });
+    setAdded({ ...added, [p.name]: true });
+  };
+
+  const PlaceCard = ({ p, isSaved }) => (
+    <Card className="mt-2">
+      <Eyebrow color={C.marigold}>{p.category || category}</Eyebrow>
+      <h3 className="font-serif text-xl mt-1">{p.name}</h3>
+      {p.area && (
+        <p className="font-mono text-xs mt-1" style={{ color: C.muted }}>
+          {p.area}
+        </p>
+      )}
+      {p.description && <p className="text-sm mt-2 leading-relaxed">{p.description}</p>}
+      {mapFor === p.name && <div className="mt-3">
+        <MapFrame query={p.maps_query || `${p.name} ${p.area || trip.destination}`} height={180} />
+      </div>}
+      <div className="flex flex-wrap gap-2 mt-3">
+        <Btn tone="ghost" onClick={() => setMapFor(mapFor === p.name ? null : p.name)}>
+          {mapFor === p.name ? "Kaart sluiten" : "Kaart"}
+        </Btn>
+        <a
+          href={mapsRoute(p.mapsSearch || p.maps_query || `${p.name} ${p.area || trip.destination}`)}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Btn tone="ghost">Route</Btn>
+        </a>
+        <Btn onClick={() => toAgenda(p)}>
+          {added[p.name] ? "Staat op agenda" : `Op dag ${days.indexOf(selected) + 1}`}
+        </Btn>
+        {isSaved ? (
+          <Btn tone="danger" onClick={() => setSaved(saved.filter((s) => s.id !== p.id))}>
+            Verwijderen
+          </Btn>
+        ) : (
+          <Btn tone="ghost" onClick={() => save(p)} disabled={saved.some((s) => s.name === p.name)}>
+            {saved.some((s) => s.name === p.name) ? "Bewaard" : "Bewaren"}
+          </Btn>
+        )}
+      </div>
+    </Card>
+  );
+
+  return (
+    <div className="space-y-4">
+      <DayStrip days={days} selected={selected} onSelect={setSelected} />
+      <Card>
+        <Eyebrow>Zoeken rond</Eyebrow>
+        <div className="mt-2 space-y-2">
+          <Field label="Plaats of adres" value={area} onChange={(e) => setArea(e.target.value)} />
+          <Field
+            label="Extra wens (optioneel)"
+            placeholder="Vegetarisch, kindvriendelijk, niet te duur"
+            value={extra}
+            onChange={(e) => setExtra(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && search()}
+          />
+        </div>
+        <div className="flex gap-2 overflow-x-auto mt-3 -mx-4 px-4 pb-1">
+          {CATEGORIES.map((c) => (
+            <button
+              key={c}
+              onClick={() => search(c)}
+              className="shrink-0 font-mono uppercase text-xs tracking-widest px-3 py-2 rounded-md focus:outline-none focus:ring-2"
+              style={{
+                background: c === category ? C.deep : "transparent",
+                color: c === category ? C.bone : C.ink,
+                border: `1px solid ${c === category ? C.deep : C.line}`,
+              }}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs mt-3" style={{ color: C.muted }}>
+          Tik op een categorie om te zoeken.{" "}
+          {apiKey
+            ? "Resultaten komen van Google Maps, met beoordeling en openingstijd."
+            : "Zonder API-key zoekt de reisgids op het web. Stel bij Reis een key in voor Google-resultaten."}{" "}
+          Wat je bewaart, ziet de hele groep.
+        </p>
+      </Card>
+
+      {loading && (
+        <Card>
+          <Eyebrow color={C.ember}>Bezig met zoeken</Eyebrow>
+          <p className="text-sm mt-1">{category} rond {area} worden opgezocht…</p>
+        </Card>
+      )}
+
+      {error && (
+        <Card>
+          <p className="text-sm" style={{ color: C.ember }}>
+            {error}
+          </p>
+          <div className="flex gap-2 mt-3">
+            <Btn onClick={() => search()}>Opnieuw zoeken</Btn>
+            <a href={mapsLink(`${category} ${area}`)} target="_blank" rel="noopener noreferrer">
+              <Btn tone="ghost">Zoek in Google Maps</Btn>
+            </a>
+          </div>
+        </Card>
+      )}
+
+      {results.length > 0 && (
+        <div>
+          <Eyebrow color={C.marigold}>
+            {results.length} plekken · {category} ·{" "}
+            {source === "google" ? "van Google Maps" : "van de reisgids"}
+          </Eyebrow>
+          {results.map((p) => (
+            <PlaceCard key={p.name} p={p} />
+          ))}
+        </div>
+      )}
+
+      {saved.length > 0 && (
+        <div className="pt-2">
+          <Eyebrow color={C.mint}>Bewaard door de groep ({saved.length})</Eyebrow>
+          {saved.map((p) => (
+            <PlaceCard key={p.id} p={p} isSaved />
+          ))}
+        </div>
+      )}
+
+      {!loading && !error && results.length === 0 && saved.length === 0 && (
+        <Empty>Nog niets gezocht. Kies hierboven een categorie.</Empty>
+      )}
+    </div>
+  );
+}
+
+/* ---------- hoofdscherm: dagen naast elkaar ---------- */
+function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, todos, photoIndex, images, loadImages, selected, setSelected, me, onGoTo }) {
+  const scroller = useRef(null);
+  const [snel, setSnel] = useState("");
+
+  useEffect(() => {
+    loadImages();
+  }, [photoIndex.length]);
+
+  useEffect(() => {
+    const el = scroller.current?.querySelector('[data-dag="true"]');
+    if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest", inline: "start" });
+  }, [selected]);
+
+  const voegToe = (iso) => {
+    if (!snel.trim()) return;
+    setAgenda([...agenda, { id: uid(), date: iso, time: "", title: snel.trim(), place: "", by: me.name }]);
+    setSnel("");
+  };
+
+  const index = days.indexOf(selected);
+  const today = localToday();
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <Eyebrow color={C.marigold}>
+          {days.length} dagen · veeg naar links voor later
+        </Eyebrow>
+        <div className="flex gap-1">
+          <button
+            onClick={() => index > 0 && setSelected(days[index - 1])}
+            disabled={index <= 0}
+            aria-label="Vorige dag"
+            className="font-mono px-2 py-1 rounded focus:outline-none focus:ring-2"
+            style={{ color: C.bone, opacity: index <= 0 ? 0.3 : 1 }}
+          >
+            ←
+          </button>
+          <button
+            onClick={() => index < days.length - 1 && setSelected(days[index + 1])}
+            disabled={index >= days.length - 1}
+            aria-label="Volgende dag"
+            className="font-mono px-2 py-1 rounded focus:outline-none focus:ring-2"
+            style={{ color: C.bone, opacity: index >= days.length - 1 ? 0.3 : 1 }}
+          >
+            →
+          </button>
+        </div>
+      </div>
+
+      <div
+        ref={scroller}
+        className="flex gap-3 overflow-x-auto snap-x snap-mandatory -mx-4 px-4 pb-2"
+      >
+        {days.map((iso, n) => {
+          const plannen = agenda
+            .filter((a) => a.date === iso)
+            .sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
+          const lijst = shopping.filter((s) => s.date === iso);
+          const kiekjes = photoIndex.filter((p) => p.date === iso);
+          const actief = iso === selected;
+          return (
+            <section
+              key={iso}
+              data-dag={actief}
+              onClick={() => !actief && setSelected(iso)}
+              className="snap-start shrink-0 rounded-xl p-4"
+              style={{
+                width: "88%",
+                maxWidth: 420,
+                background: C.bone,
+                color: C.ink,
+                opacity: actief ? 1 : 0.75,
+                border: `2px solid ${iso === today ? C.ember : "transparent"}`,
+              }}
+            >
+              <Eyebrow color={C.muted}>Dag {String(n + 1).padStart(2, "0")}</Eyebrow>
+              <h2 className="font-serif text-2xl capitalize leading-tight">{fmtLong(iso)}</h2>
+
+              <div className="mt-3">
+                <Eyebrow color={C.ember}>Gebeurtenissen</Eyebrow>
+                {plannen.length === 0 ? (
+                  <p className="text-sm py-2" style={{ color: C.muted }}>
+                    Nog niets gepland.
+                  </p>
+                ) : (
+                  <ul className="divide-y" style={{ borderColor: C.line }}>
+                    {plannen.map((a) => (
+                      <li key={a.id} className="flex gap-3 py-2">
+                        <span className="font-mono text-sm w-12 shrink-0" style={{ color: C.muted }}>
+                          {a.time || "—"}
+                        </span>
+                        <span className="flex-1">
+                          <span className="block text-sm">{a.title}</span>
+                          {a.place && (
+                            <a
+                              href={mapsLink(a.place)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block font-mono text-xs underline"
+                              style={{ color: C.muted }}
+                            >
+                              {a.place}
+                            </a>
+                          )}
+                        </span>
+                        <button
+                          onClick={() => setAgenda(agenda.filter((x) => x.id !== a.id))}
+                          aria-label={`Verwijder ${a.title}`}
+                          className="font-mono px-1 focus:outline-none focus:ring-2"
+                          style={{ color: C.ember }}
+                        >
+                          ×
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {actief && (
+                  <div className="flex gap-2 mt-2">
+                    <input
+                      value={snel}
+                      onChange={(e) => setSnel(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && voegToe(iso)}
+                      placeholder="Snel iets toevoegen"
+                      className="flex-1 px-3 py-2 rounded-md text-base focus:outline-none focus:ring-2"
+                      style={{ background: "#FFFFFF", color: C.ink, border: `1px solid ${C.line}` }}
+                    />
+                    <Btn onClick={() => voegToe(iso)} disabled={!snel.trim()}>
+                      +
+                    </Btn>
+                  </div>
+                )}
+              </div>
+
+              {kiekjes.length > 0 && (
+                <div className="mt-4">
+                  <Eyebrow>Foto's ({kiekjes.length})</Eyebrow>
+                  <div className="flex gap-2 overflow-x-auto mt-2">
+                    {kiekjes.slice(0, 6).map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => onGoTo("fotos")}
+                        className="shrink-0 rounded-lg overflow-hidden focus:outline-none focus:ring-2"
+                        style={{ width: 64, height: 64, background: C.boneSoft }}
+                      >
+                        {images[p.id] && (
+                          <img src={images[p.id]} alt={p.caption || "Foto"} className="w-full h-full object-cover" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {lijst.length > 0 && (
+                <div className="mt-4">
+                  <Eyebrow>Boodschappen</Eyebrow>
+                  <ul className="mt-1">
+                    {lijst.map((i) => (
+                      <li key={i.id} className="flex items-center gap-2 py-1">
+                        <input
+                          type="checkbox"
+                          checked={i.done}
+                          onChange={() =>
+                            setShopping(shopping.map((x) => (x.id === i.id ? { ...x, done: !x.done } : x)))
+                          }
+                          className="w-4 h-4"
+                          aria-label={i.text}
+                        />
+                        <span
+                          className="text-sm"
+                          style={{ textDecoration: i.done ? "line-through" : "none", color: i.done ? C.muted : C.ink }}
+                        >
+                          {i.text}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {n === 0 && trip.travelFrom && (
+                <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${C.line}` }}>
+                  <Eyebrow color={C.mint}>Heenreis</Eyebrow>
+                  <p className="text-sm mt-1">
+                    Vanaf {trip.travelFrom} met de {trip.travelMode || "auto"}
+                    {trip.travelDepart ? `, vertrek ${trip.travelDepart}` : ""}
+                    {trip.travelArrive ? `, aankomst ${trip.travelArrive}` : ""}.
+                  </p>
+                  {trip.travelNotes && (
+                    <p className="text-sm" style={{ color: C.muted }}>
+                      {trip.travelNotes}
+                    </p>
+                  )}
+                </div>
+              )}
+            </section>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-wrap gap-2 mt-3">
+        <Btn tone="dark" onClick={() => onGoTo("buurt")}>
+          Zoek iets in de buurt
+        </Btn>
+        <Btn tone="dark" onClick={() => onGoTo("fotos")}>
+          Foto toevoegen
+        </Btn>
+        <Btn tone="dark" onClick={() => onGoTo("lijst")}>
+          Boodschappen
+        </Btn>
+      </div>
+      {todos.filter((t) => !t.done).length > 0 && (
+        <p className="font-mono text-xs mt-3" style={{ color: C.boneSoft }}>
+          Nog {todos.filter((t) => !t.done).length} open taken op de to-do lijst.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/* ---------- photos ---------- */
+function PhotosView({ index, setIndex, images, loadImages, days, selected, setSelected, me, trip }) {
+  const [caption, setCaption] = useState("");
+  const [busy, setBusy] = useState("");
+  const [open, setOpen] = useState(null);
+  const fileRef = useRef(null);
+
+  useEffect(() => {
+    loadImages();
+  }, [index.length]);
+
+  const handleFiles = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    let added = [];
+    for (let n = 0; n < files.length; n++) {
+      setBusy(`Foto ${n + 1} van ${files.length} wordt klaargezet…`);
+      try {
+        const dataUrl = await resizeImage(files[n]);
+        const id = uid();
+        const ok = await saveKey(`photo:${id}`, dataUrl);
+        if (ok) {
+          added.push({
+            id,
+            date: selected,
+            caption: caption.trim(),
+            trip: trip.name,
+            by: me.name,
+            at: new Date().toISOString(),
+          });
+        }
+      } catch (err) {
+        setBusy(err.message || "Deze foto kon niet toegevoegd worden.");
+      }
+    }
+    if (added.length) {
+      setIndex([...index, ...added]);
+      setCaption("");
+      setBusy("");
+    }
+    if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const grouped = useMemo(() => {
+    const map = {};
+    index.forEach((p) => {
+      (map[p.date] = map[p.date] || []).push(p);
+    });
+    return map;
+  }, [index]);
+
+  const counts = useMemo(() => {
+    const c = {};
+    index.forEach((p) => (c[p.date] = (c[p.date] || 0) + 1));
+    return c;
+  }, [index]);
+
+  const remove = async (p) => {
+    setIndex(index.filter((x) => x.id !== p.id));
+    setOpen(null);
+    try {
+      await AppStore.delete(`photo:${p.id}`, true);
+    } catch (e) {
+      /* index is bijgewerkt; losse afbeelding blijft onbereikbaar achter */
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <DayStrip days={days} selected={selected} onSelect={setSelected} counts={counts} />
+      <Card>
+        <Eyebrow>Foto's bij {fmtLong(selected)}</Eyebrow>
+        <div className="mt-2 space-y-2">
+          <Field label="Omschrijving (optioneel)" placeholder="Ontbijt op het terras" value={caption} onChange={(e) => setCaption(e.target.value)} />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleFiles}
+            className="block w-full text-sm"
+            style={{ color: C.muted }}
+          />
+          {busy && (
+            <p className="font-mono text-xs" style={{ color: C.muted }}>
+              {busy}
+            </p>
+          )}
+          <p className="text-xs" style={{ color: C.muted }}>
+            Foto's worden verkleind opgeslagen en bij deze dag én bij {trip.name} gezet.
+          </p>
+        </div>
+      </Card>
+
+      {days
+        .filter((d) => grouped[d]?.length)
+        .map((d) => (
+          <div key={d}>
+            <Eyebrow color={C.marigold}>
+              Dag {String(days.indexOf(d) + 1).padStart(2, "0")} · {fmtShort(d)}
+            </Eyebrow>
+            <div className="grid grid-cols-3 gap-2 mt-2">
+              {grouped[d].map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => setOpen(p)}
+                  className="aspect-square rounded-lg overflow-hidden focus:outline-none focus:ring-2"
+                  style={{ background: C.boneSoft }}
+                >
+                  {images[p.id] ? (
+                    <img src={images[p.id]} alt={p.caption || "Reisfoto"} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="font-mono text-xs" style={{ color: C.muted }}>
+                      …
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+
+      {index.length === 0 && <Empty>Nog geen foto's in dit reisboek.</Empty>}
+
+      {open && (
+        <div
+          className="fixed inset-0 z-50 p-4 flex flex-col justify-center"
+          style={{ background: "rgba(10,42,50,0.94)" }}
+          role="dialog"
+        >
+          {images[open.id] && (
+            <img src={images[open.id]} alt={open.caption || "Reisfoto"} className="max-h-96 w-full object-contain rounded-lg" />
+          )}
+          <div className="mt-4" style={{ color: C.bone }}>
+            <Eyebrow color={C.marigold}>
+              {fmtLong(open.date)} · {open.trip || ""}
+            </Eyebrow>
+            <p className="text-base mt-1">{open.caption || "Geen omschrijving"}</p>
+            <p className="font-mono text-xs mt-1" style={{ color: C.boneSoft }}>
+              toegevoegd door {open.by}
+            </p>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <Btn onClick={() => setOpen(null)}>Sluiten</Btn>
+            <Btn tone="danger" onClick={() => remove(open)}>
+              Verwijderen
+            </Btn>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------- notes ---------- */
+function NotesView({ notes, setNotes, me }) {
+  const [draft, setDraft] = useState({ title: "", body: "" });
+
+  const add = () => {
+    if (!draft.title.trim() && !draft.body.trim()) return;
+    setNotes([
+      { id: uid(), title: draft.title.trim() || "Zonder titel", body: draft.body.trim(), by: me.name, at: new Date().toISOString() },
+      ...notes,
+    ]);
+    setDraft({ title: "", body: "" });
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <Eyebrow>Nieuwe notitie</Eyebrow>
+        <div className="mt-2 space-y-2">
+          <Field label="Titel" placeholder="Codes en gegevens" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
+          <label className="block">
+            <Eyebrow>Tekst</Eyebrow>
+            <textarea
+              rows={4}
+              value={draft.body}
+              onChange={(e) => setDraft({ ...draft, body: e.target.value })}
+              placeholder="Sleutelkluis, wifi, nummer van de verhuurder…"
+              className="w-full mt-1 px-3 py-2 rounded-md text-base focus:outline-none focus:ring-2"
+              style={{ background: "#FFFFFF", color: C.ink, border: `1px solid ${C.line}` }}
+            />
+          </label>
+          <Btn onClick={add}>Notitie opslaan</Btn>
+        </div>
+      </Card>
+
+      {notes.length === 0 ? (
+        <Empty>Nog geen notities. Handig voor codes, adressen en losse ideeën.</Empty>
+      ) : (
+        notes.map((n) => (
+          <Card key={n.id}>
+            <div className="flex items-start gap-2">
+              <div className="flex-1">
+                <h3 className="font-serif text-xl">{n.title}</h3>
+                <p className="text-sm mt-1 whitespace-pre-wrap leading-relaxed">{n.body}</p>
+                <p className="font-mono text-xs mt-2" style={{ color: C.muted }}>
+                  {n.by} · {new Date(n.at).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })}
+                </p>
+              </div>
+              <button
+                onClick={() => setNotes(notes.filter((x) => x.id !== n.id))}
+                aria-label={`Verwijder notitie ${n.title}`}
+                className="font-mono px-2 rounded focus:outline-none focus:ring-2"
+                style={{ color: C.ember }}
+              >
+                ×
+              </button>
+            </div>
+          </Card>
+        ))
+      )}
+    </div>
+  );
+}
+
+/* ---------- to-do ---------- */
+function TodoView({ todos, setTodos, members, me }) {
+  const [text, setText] = useState("");
+  const [who, setWho] = useState("");
+
+  const add = () => {
+    if (!text.trim()) return;
+    setTodos([...todos, { id: uid(), text: text.trim(), who, done: false, by: me.name }]);
+    setText("");
+  };
+  const toggle = (id) => setTodos(todos.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+
+  const open = todos.filter((t) => !t.done);
+  const done = todos.filter((t) => t.done);
+
+  const Row = ({ t }) => (
+    <li className="flex items-center gap-3 py-3">
+      <input
+        type="checkbox"
+        checked={t.done}
+        onChange={() => toggle(t.id)}
+        className="w-5 h-5 shrink-0"
+        aria-label={t.text}
+      />
+      <span className="flex-1">
+        <span className="block text-base" style={{ textDecoration: t.done ? "line-through" : "none", color: t.done ? C.muted : C.ink }}>
+          {t.text}
+        </span>
+        {t.who && (
+          <span className="block font-mono text-xs" style={{ color: C.muted }}>
+            {t.who}
+          </span>
+        )}
+      </span>
+      <button
+        onClick={() => setTodos(todos.filter((x) => x.id !== t.id))}
+        aria-label={`Verwijder ${t.text}`}
+        className="font-mono px-2 rounded focus:outline-none focus:ring-2"
+        style={{ color: C.ember }}
+      >
+        ×
+      </button>
+    </li>
+  );
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <Eyebrow>Nog te doen ({open.length})</Eyebrow>
+        {open.length === 0 ? (
+          <Empty>Niets meer op de lijst. Mooi.</Empty>
+        ) : (
+          <ul className="divide-y" style={{ borderColor: C.line }}>
+            {open.map((t) => (
+              <Row key={t.id} t={t} />
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      <Card>
+        <Eyebrow>Taak toevoegen</Eyebrow>
+        <div className="mt-2 space-y-2">
+          <Field label="Wat moet er gebeuren" placeholder="Paspoorten controleren" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
+          <label className="block">
+            <Eyebrow>Wie pakt het op</Eyebrow>
+            <select
+              value={who}
+              onChange={(e) => setWho(e.target.value)}
+              className="w-full mt-1 px-3 py-2 rounded-md text-base focus:outline-none focus:ring-2"
+              style={{ background: "#FFFFFF", color: C.ink, border: `1px solid ${C.line}` }}
+            >
+              <option value="">Iedereen</option>
+              {members.map((m) => (
+                <option key={m.email} value={m.name}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Btn onClick={add} disabled={!text.trim()}>
+            Taak toevoegen
+          </Btn>
+        </div>
+      </Card>
+
+      {done.length > 0 && (
+        <Card>
+          <Eyebrow color={C.mint}>Afgerond ({done.length})</Eyebrow>
+          <ul className="divide-y" style={{ borderColor: C.line }}>
+            {done.map((t) => (
+              <Row key={t.id} t={t} />
+            ))}
+          </ul>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/* ---------- shopping per day ---------- */
+function ShoppingView({ list, setList, days, selected, setSelected, me }) {
+  const [text, setText] = useState("");
+  const dayList_ = list.filter((i) => i.date === selected);
+  const openCount = dayList_.filter((i) => !i.done).length;
+
+  const add = () => {
+    if (!text.trim()) return;
+    setList([...list, { id: uid(), date: selected, text: text.trim(), done: false, by: me.name }]);
+    setText("");
+  };
+  const toggle = (id) => setList(list.map((i) => (i.id === id ? { ...i, done: !i.done } : i)));
+
+  const counts = useMemo(() => {
+    const c = {};
+    list.filter((i) => !i.done).forEach((i) => (c[i.date] = (c[i.date] || 0) + 1));
+    return c;
+  }, [list]);
+
+  return (
+    <div className="space-y-4">
+      <DayStrip days={days} selected={selected} onSelect={setSelected} counts={counts} />
+      <Card>
+        <div className="flex items-baseline justify-between">
+          <Eyebrow color={C.ember}>{fmtLong(selected)}</Eyebrow>
+          <span className="font-mono text-xs" style={{ color: C.muted }}>
+            {openCount} te halen
+          </span>
+        </div>
+        {dayList_.length === 0 ? (
+          <Empty>Nog geen boodschappen voor deze dag.</Empty>
+        ) : (
+          <ul className="divide-y mt-2" style={{ borderColor: C.line }}>
+            {dayList_.map((i) => (
+              <li key={i.id} className="flex items-center gap-3 py-3">
+                <input type="checkbox" checked={i.done} onChange={() => toggle(i.id)} className="w-5 h-5 shrink-0" aria-label={i.text} />
+                <span className="flex-1 text-base" style={{ textDecoration: i.done ? "line-through" : "none", color: i.done ? C.muted : C.ink }}>
+                  {i.text}
+                </span>
+                <button
+                  onClick={() => setList(list.filter((x) => x.id !== i.id))}
+                  aria-label={`Verwijder ${i.text}`}
+                  className="font-mono px-2 rounded focus:outline-none focus:ring-2"
+                  style={{ color: C.ember }}
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="mt-3 space-y-2">
+          <Field label="Toevoegen" placeholder="Brood, tomaten, ijs" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} />
+          <div className="flex gap-2">
+            <Btn onClick={add} disabled={!text.trim()}>
+              Op de lijst
+            </Btn>
+            {dayList_.some((i) => i.done) && (
+              <Btn tone="ghost" onClick={() => setList(list.filter((i) => !(i.date === selected && i.done)))}>
+                Afgevinkte wissen
+              </Btn>
+            )}
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/* ---------- app ---------- */
+function VakantieApp() {
+  const [phase, setPhase] = useState("loading"); // loading | login | setup | app
+  const [me, setMe] = useState(null);
+  const [trip, setTrip] = useState(null);
+  const [members, setMembers] = useState([]);
+  const [agenda, setAgenda] = useState([]);
+  const [photoIndex, setPhotoIndex] = useState([]);
+  const [images, setImages] = useState({});
+  const [notes, setNotes] = useState([]);
+  const [todos, setTodos] = useState([]);
+  const [shopping, setShopping] = useState([]);
+  const [places, setPlaces] = useState([]);
+  const [apiKey, setApiKeyState] = useState("");
+  const [tab, setTab] = useState("dagen");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [avatars, setAvatars] = useState({});
+  const [selected, setSelected] = useState(localToday());
+  const [editingTrip, setEditingTrip] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [notice, setNotice] = useState("");
+
+  const days = useMemo(() => (trip ? dayList(trip.start, trip.end) : []), [trip]);
+
+  const pullAll = async () => {
+    setSyncing(true);
+    const core = await loadKey("trip-core", null);
+    const [a, n, t, s, pi, pl, mk] = await Promise.all([
+      loadKey("agenda", []),
+      loadKey("notes", []),
+      loadKey("todos", []),
+      loadKey("shopping", []),
+      loadKey("photos-index", []),
+      loadKey("places", []),
+      loadKey("maps-key", ""),
+    ]);
+    if (core) {
+      setTrip(core.trip);
+      setMembers(core.members || []);
+    }
+    setAgenda(a);
+    setNotes(n);
+    setTodos(t);
+    setShopping(s);
+    setPhotoIndex(pi);
+    setPlaces(pl);
+    setApiKeyState(typeof mk === "string" ? mk : "");
+    setSyncing(false);
+    return core;
+  };
+
+  /* first load */
+  useEffect(() => {
+    (async () => {
+      const stored = await loadKey("me", null, false);
+      const core = await pullAll();
+      if (!stored) {
+        setPhase("login");
+      } else {
+        setMe(stored);
+        setPhase(core ? "app" : "setup");
+      }
+    })();
+  }, []);
+
+  /* keep the selected day inside the trip */
+  useEffect(() => {
+    if (days.length && !days.includes(selected)) {
+      const today = localToday();
+      setSelected(days.includes(today) ? today : days[0]);
+    }
+  }, [days]);
+
+  const login = async (person, blijfIngelogd) => {
+    setMe(person);
+    if (blijfIngelogd) await saveKey("me", person, false);
+    const core = await loadKey("trip-core", null);
+    const existing = core?.members || [];
+    const bestaand = existing.find((m) => m.email === person.email);
+    const samen = bestaand ? { ...bestaand, ...person } : person;
+    const nextMembers = bestaand
+      ? existing.map((m) => (m.email === person.email ? samen : m))
+      : [...existing, samen];
+    setMembers(nextMembers);
+    if (core) {
+      await saveKey("trip-core", { ...core, members: nextMembers });
+      setTrip(core.trip);
+    }
+    setMe(samen);
+    if (!bestaand?.profileDone) {
+      setPhase("profiel");
+    } else {
+      setPhase(core ? "app" : "setup");
+    }
+  };
+
+  const saveProfile = async (person, foto) => {
+    const compleet = { ...person, profileDone: true };
+    setMe(compleet);
+    const stored = await loadKey("me", null, false);
+    if (stored) await saveKey("me", compleet, false);
+    if (foto) {
+      await saveKey(`avatar:${compleet.email}`, foto);
+      setAvatars((prev) => ({ ...prev, [compleet.email]: foto }));
+    }
+    const core = await loadKey("trip-core", null);
+    const lijst = core?.members || members;
+    const nextMembers = lijst.some((m) => m.email === compleet.email)
+      ? lijst.map((m) => (m.email === compleet.email ? compleet : m))
+      : [...lijst, compleet];
+    setMembers(nextMembers);
+    if (core) await saveKey("trip-core", { ...core, members: nextMembers });
+    setEditingProfile(false);
+    setPhase(core ? "app" : "setup");
+  };
+
+  const logout = async () => {
+    try {
+      await AppStore.delete("me", false);
+    } catch (e) {
+      /* stond er al niet */
+    }
+    setMe(null);
+    setMenuOpen(false);
+    setPhase("login");
+  };
+
+  const laadAvatars = async (lijst) => {
+    for (const m of lijst) {
+      if (avatars[m.email]) continue;
+      const foto = await loadKey(`avatar:${m.email}`, null);
+      if (foto) setAvatars((prev) => ({ ...prev, [m.email]: foto }));
+    }
+  };
+
+  useEffect(() => {
+    if (members.length) laadAvatars(members);
+  }, [members.length]);
+
+  const saveTrip = async (t) => {
+    const nextMembers = members.some((m) => m.email === me.email) ? members : [...members, me];
+    setTrip(t);
+    setMembers(nextMembers);
+    const ok = await saveKey("trip-core", { trip: t, members: nextMembers });
+    setNotice(ok ? "" : "Opslaan lukte niet. Probeer het opnieuw.");
+    setEditingTrip(false);
+    setPhase("app");
+  };
+
+  /* write-through setters */
+  const persist = (key, setter) => async (value) => {
+    setter(value);
+    const ok = await saveKey(key, value);
+    if (!ok) setNotice("Opslaan lukte niet. Tik op Vernieuwen en probeer het opnieuw.");
+  };
+
+  const setApiKey = async (k) => {
+    setApiKeyState(k);
+    const ok = await saveKey("maps-key", k);
+    setNotice(ok ? "" : "De key kon niet opgeslagen worden. Probeer het opnieuw.");
+  };
+
+  const addAgendaItem = (item) => persist("agenda", setAgenda)([...agenda, item]);
+
+  const loadImages = async () => {
+    const missing = photoIndex.filter((p) => !images[p.id]).slice(0, 24);
+    for (const p of missing) {
+      try {
+        const r = await AppStore.get(`photo:${p.id}`, true);
+        if (r?.value) setImages((prev) => ({ ...prev, [p.id]: r.value }));
+      } catch (e) {
+        /* foto niet meer aanwezig */
+      }
+    }
+  };
+
+  if (phase === "loading") {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: C.bg }}>
+        <Eyebrow color={C.marigold}>Reisboek wordt geopend…</Eyebrow>
+      </div>
+    );
+  }
+
+  if (phase === "login") return <LoginView onLogin={login} />;
+
+  if (phase === "profiel" || editingProfile) {
+    return (
+      <AvatarsContext.Provider value={avatars}>
+        <div className="min-h-screen" style={{ background: C.bg }}>
+          <ProfileView
+            me={me}
+            photo={avatars[me.email]}
+            onSave={saveProfile}
+            onSkip={
+              editingProfile
+                ? () => setEditingProfile(false)
+                : () => setPhase(trip ? "app" : "setup")
+            }
+          />
+        </div>
+      </AvatarsContext.Provider>
+    );
+  }
+
+  if (phase === "setup" || editingTrip) {
+    return (
+      <MapsKeyContext.Provider value={apiKey}>
+        <div className="min-h-screen" style={{ background: C.bg }}>
+          <SetupView
+            me={me}
+            initial={editingTrip ? trip : null}
+            onSave={saveTrip}
+            onCancel={editingTrip ? () => setEditingTrip(false) : null}
+            apiKey={apiKey}
+            setApiKey={setApiKey}
+            onImportTimeline={(items) =>
+              persist("agenda", setAgenda)([
+                ...agenda,
+                ...items.map((i) => ({ ...i, id: uid(), by: `${me.name} · tijdlijn` })),
+              ])
+            }
+          />
+        </div>
+      </MapsKeyContext.Provider>
+    );
+  }
+
+  const stats = {
+    agenda: agenda.length,
+    photos: photoIndex.length,
+    notes: notes.length,
+    todosOpen: todos.filter((t) => !t.done).length,
+    shopOpen: shopping.filter((s) => !s.done).length,
+  };
+
+  return (
+    <MapsKeyContext.Provider value={apiKey}>
+    <AvatarsContext.Provider value={avatars}>
+    <div className="min-h-screen" style={{ background: C.bg }}>
+      <header className="px-4 pt-5 pb-3 sticky top-0 z-40" style={{ background: C.deep }}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="relative">
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                aria-label="Menu"
+                className="rounded-md px-3 py-2 focus:outline-none focus:ring-2"
+                style={{ background: C.bone, color: C.deep }}
+              >
+                <span className="font-mono uppercase text-xs tracking-widest">
+                  {TABS.find((t) => t.id === tab)?.label || "Menu"} ▾
+                </span>
+              </button>
+              {menuOpen && (
+                <div
+                  className="absolute left-0 mt-2 rounded-lg overflow-hidden z-50"
+                  style={{ background: C.bone, minWidth: 200, border: `1px solid ${C.line}` }}
+                >
+                  {TABS.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => {
+                        setTab(t.id);
+                        setMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-3 font-mono uppercase text-xs tracking-widest focus:outline-none focus:ring-2"
+                      style={{
+                        color: tab === t.id ? C.deep : C.ink,
+                        background: tab === t.id ? C.marigold : "transparent",
+                        borderBottom: `1px solid ${C.line}`,
+                      }}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setEditingProfile(true);
+                    }}
+                    className="block w-full text-left px-4 py-3 font-mono uppercase text-xs tracking-widest focus:outline-none focus:ring-2"
+                    style={{ color: C.ink, borderBottom: `1px solid ${C.line}` }}
+                  >
+                    Mijn profiel
+                  </button>
+                  <button
+                    onClick={logout}
+                    className="block w-full text-left px-4 py-3 font-mono uppercase text-xs tracking-widest focus:outline-none focus:ring-2"
+                    style={{ color: C.ember }}
+                  >
+                    Uitloggen
+                  </button>
+                </div>
+              )}
+            </div>
+            <div>
+              <Eyebrow color={C.marigold}>{members.length} reisgenoten</Eyebrow>
+              <h1 className="font-serif text-xl mt-1" style={{ color: C.bone }}>
+                {trip.name}
+              </h1>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex -space-x-2">
+              {members.slice(0, 4).map((m) => (
+                <Avatar key={m.email} member={m} size={26} />
+              ))}
+            </div>
+            <Btn tone="dark" onClick={pullAll} disabled={syncing} className="shrink-0">
+              {syncing ? "…" : "Vernieuw"}
+            </Btn>
+          </div>
+        </div>
+      </header>
+
+      <main className="p-4 pb-10 max-w-lg mx-auto">
+        {notice && (
+          <p className="text-sm mb-3" style={{ color: C.marigold }}>
+            {notice}
+          </p>
+        )}
+        {tab === "dagen" && (
+          <DayBoardView
+            trip={trip}
+            days={days}
+            agenda={agenda}
+            setAgenda={persist("agenda", setAgenda)}
+            shopping={shopping}
+            setShopping={persist("shopping", setShopping)}
+            todos={todos}
+            photoIndex={photoIndex}
+            images={images}
+            loadImages={loadImages}
+            selected={selected}
+            setSelected={setSelected}
+            me={me}
+            onGoTo={setTab}
+          />
+        )}
+        {tab === "reis" && (
+          <TripView
+            trip={trip}
+            members={members}
+            days={days}
+            stats={stats}
+            onEdit={() => setEditingTrip(true)}
+            apiKey={apiKey}
+            setApiKey={setApiKey}
+          />
+        )}
+        {tab === "agenda" && (
+          <AgendaView items={agenda} setItems={persist("agenda", setAgenda)} days={days} selected={selected} setSelected={setSelected} me={me} />
+        )}
+        {tab === "buurt" && (
+          <NearbyView
+            trip={trip}
+            days={days}
+            selected={selected}
+            setSelected={setSelected}
+            saved={places}
+            setSaved={persist("places", setPlaces)}
+            onAddToAgenda={addAgendaItem}
+            me={me}
+          />
+        )}
+        {tab === "fotos" && (
+          <PhotosView
+            index={photoIndex}
+            setIndex={persist("photos-index", setPhotoIndex)}
+            images={images}
+            loadImages={loadImages}
+            days={days}
+            selected={selected}
+            setSelected={setSelected}
+            me={me}
+            trip={trip}
+          />
+        )}
+        {tab === "notities" && <NotesView notes={notes} setNotes={persist("notes", setNotes)} me={me} />}
+        {tab === "todo" && <TodoView todos={todos} setTodos={persist("todos", setTodos)} members={members} me={me} />}
+        {tab === "lijst" && (
+          <ShoppingView list={shopping} setList={persist("shopping", setShopping)} days={days} selected={selected} setSelected={setSelected} me={me} />
+        )}
+        <p className="font-mono text-xs mt-8 text-center" style={{ color: "rgba(242,239,230,0.5)" }}>
+          Aangemeld als {me.name} · tik op Vernieuw voor wat anderen toevoegden
+        </p>
+      </main>
+    </div>
+    </AvatarsContext.Provider>
+    </MapsKeyContext.Provider>
+  );
+}
+
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<VakantieApp />);
+
+</script>
+</body>
+</html>
