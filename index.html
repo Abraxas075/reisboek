@@ -106,7 +106,7 @@
 </style>
 </head>
 <body>
-<div id="root"><div id="laden">Reisboek wordt geladen…</div></div>
+<div id="root"><div id="laden">Reisboek wordt geladen...</div></div>
 <script type="text/babel" data-presets="react">
 const { useState, useEffect, useMemo, useRef } = React;
 
@@ -158,7 +158,7 @@ async function saveKey(key, value, shared = true) {
   return false;
 }
 
-/* Google Places (New) — adres-suggesties */
+/* Google Places (New) - adres-suggesties */
 async function autocompletePlaces(key, input) {
   const res = await fetch("https://places.googleapis.com/v1/places:autocomplete", {
     method: "POST",
@@ -185,7 +185,7 @@ const mapsStatic = (q, key) =>
     q
   )}&key=${encodeURIComponent(key)}`;
 
-/* Kan de omgeving überhaupt een kaartafbeelding van Google laden? */
+/* Kan de omgeving uberhaupt een kaartafbeelding van Google laden? */
 function testImage(key) {
   return new Promise((resolve) => {
     const img = new Image();
@@ -206,7 +206,7 @@ function testImage(key) {
 async function testKey(key) {
   const imageOk = await testImage(key);
   const imageLine = imageOk
-    ? " Kaartafbeeldingen laden wél."
+    ? " Kaartafbeeldingen laden wel."
     : " Kaartafbeeldingen laden hier ook niet.";
   try {
     const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
@@ -225,7 +225,7 @@ async function testKey(key) {
     return {
       ok: false,
       message:
-        "De aanvraag kwam niet bij Google aan — deze omgeving laat geen verkeer naar Google toe." +
+        "De aanvraag kwam niet bij Google aan - deze omgeving laat geen verkeer naar Google toe." +
         imageLine +
         " Dit ligt niet aan je key.",
     };
@@ -327,13 +327,13 @@ const mapsRoute = (to) =>
 
 const PRICE = {
   PRICE_LEVEL_FREE: "gratis",
-  PRICE_LEVEL_INEXPENSIVE: "€",
-  PRICE_LEVEL_MODERATE: "€€",
-  PRICE_LEVEL_EXPENSIVE: "€€€",
-  PRICE_LEVEL_VERY_EXPENSIVE: "€€€€",
+  PRICE_LEVEL_INEXPENSIVE: "EUR",
+  PRICE_LEVEL_MODERATE: "EUREUR",
+  PRICE_LEVEL_EXPENSIVE: "EUREUREUR",
+  PRICE_LEVEL_VERY_EXPENSIVE: "EUREUREUREUR",
 };
 
-/* Google Places (New) — Text Search, rechtstreeks vanuit de browser */
+/* Google Places (New) - Text Search, rechtstreeks vanuit de browser */
 async function searchPlacesApi({ key, area, category, extra }) {
   const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
     method: "POST",
@@ -370,7 +370,7 @@ async function searchPlacesApi({ key, area, category, extra }) {
       name,
       category: p.primaryTypeDisplayName?.text || category,
       area: p.formattedAddress || area,
-      description: bits.join(" · "),
+      description: bits.join(" | "),
       maps_query: p.id ? `place_id:${p.id}` : `${name} ${area}`,
       mapsSearch: `${name} ${p.formattedAddress || area}`,
       source: "google",
@@ -381,7 +381,7 @@ async function searchPlacesApi({ key, area, category, extra }) {
 const CATEGORIES = [
   "Bezienswaardigheden",
   "Restaurants",
-  "Cafés",
+  "Cafes",
   "Winkels",
   "Musea",
   "Strand & natuur",
@@ -585,7 +585,7 @@ const MapFrame = ({ query, height = 200, label }) => {
       </span>
       <span className="text-sm mt-2">{query}</span>
       <span className="font-mono uppercase text-xs tracking-widest mt-3" style={{ color: C.ember }}>
-        Openen in Google Maps →
+        Openen in Google Maps ->
       </span>
     </a>
   );
@@ -717,14 +717,14 @@ function LoginView({ onLogin }) {
   return (
     <div className="min-h-screen flex items-center justify-center p-5" style={{ background: C.bg }}>
       <div className="w-full max-w-sm">
-        <Eyebrow color={C.marigold}>Reisboek · gedeeld</Eyebrow>
+        <Eyebrow color={C.marigold}>Reisboek | gedeeld</Eyebrow>
         <h1
           className="font-serif text-4xl leading-tight mt-2 mb-6"
           style={{ color: C.bone }}
         >
-          Eén reis,
+          Een reis,
           <br />
-          één plan.
+          een plan.
         </h1>
         <Card>
           <div className="space-y-3">
@@ -788,7 +788,7 @@ function ProfileView({ me, photo, onSave, onSkip }) {
   const kies = async (e) => {
     const file = (e.target.files || [])[0];
     if (!file) return;
-    setBusy("Foto wordt klaargezet…");
+    setBusy("Foto wordt klaargezet...");
     try {
       setFoto(await resizeImage(file, 480, 0.75));
       setBusy("");
@@ -799,7 +799,7 @@ function ProfileView({ me, photo, onSave, onSkip }) {
 
   return (
     <div className="p-5 max-w-lg mx-auto">
-      <Eyebrow color={C.marigold}>Stap 2 · jouw profiel</Eyebrow>
+      <Eyebrow color={C.marigold}>Stap 2 | jouw profiel</Eyebrow>
       <h2 className="font-serif text-3xl mt-1 mb-4" style={{ color: C.bone }}>
         Wie ben jij?
       </h2>
@@ -925,7 +925,7 @@ function SetupView({ me, initial, onSave, onCancel, apiKey, setApiKey, onImportT
           <Field label="Naam van de reis" placeholder="Zomer in Puglia" value={trip.name} onChange={set("name")} />
           <AddressField
             label="Bestemming"
-            placeholder="Puglia, Italië"
+            placeholder="Puglia, Italie"
             value={trip.destination}
             onChange={set("destination")}
           />
@@ -958,7 +958,7 @@ function SetupView({ me, initial, onSave, onCancel, apiKey, setApiKey, onImportT
               rows={3}
               value={trip.summary}
               onChange={set("summary")}
-              placeholder="Vlucht, huisje, wie er meegaat…"
+              placeholder="Vlucht, huisje, wie er meegaat..."
               className="w-full mt-1 px-3 py-2 rounded-md text-base focus:outline-none focus:ring-2"
               style={{ background: "#FFFFFF", color: C.ink, border: `1px solid ${C.line}` }}
             />
@@ -1048,7 +1048,7 @@ function KeyCard({ apiKey, setApiKey }) {
     <Card>
       <div className="flex items-center justify-between gap-2">
         <Eyebrow color={apiKey ? C.mint : C.muted}>
-          Google Maps API-key {apiKey ? "· actief" : "· niet ingesteld"}
+          Google Maps API-key {apiKey ? "| actief" : "| niet ingesteld"}
         </Eyebrow>
         <button
           onClick={() => setOpen(!open)}
@@ -1063,7 +1063,7 @@ function KeyCard({ apiKey, setApiKey }) {
           <Field
             label="Key"
             type="password"
-            placeholder="AIza…"
+            placeholder="AIza..."
             value={value}
             onChange={(e) => setValue(e.target.value)}
           />
@@ -1081,7 +1081,7 @@ function KeyCard({ apiKey, setApiKey }) {
                 setTesting(false);
               }}
             >
-              {testing ? "Testen…" : "Key testen"}
+              {testing ? "Testen..." : "Key testen"}
             </Btn>
             {apiKey && (
               <Btn
@@ -1108,7 +1108,7 @@ function KeyCard({ apiKey, setApiKey }) {
             <p className="mt-1">
               Beperk de key tot die drie API's en tot de websites waar de app draait. Een key in een
               app als deze staat in de code van de pagina en is dus zichtbaar voor iedereen die de
-              app opent — zonder beperking kan iemand anders hem gebruiken op jouw rekening.
+              app opent - zonder beperking kan iemand anders hem gebruiken op jouw rekening.
             </p>
           </div>
         </div>
@@ -1128,7 +1128,7 @@ function TijdlijnImport({ days, onImport }) {
   const lees = (e) => {
     const file = (e.target.files || [])[0];
     if (!file) return;
-    setMelding("Bestand wordt gelezen…");
+    setMelding("Bestand wordt gelezen...");
     const reader = new FileReader();
     reader.onerror = () => setMelding("Het bestand kon niet gelezen worden.");
     reader.onload = () => {
@@ -1159,10 +1159,10 @@ function TijdlijnImport({ days, onImport }) {
     <Card>
       <Eyebrow color={C.ember}>Google-tijdlijn overnemen</Eyebrow>
       <p className="text-sm mt-2 leading-relaxed">
-        Google biedt geen koppeling meer aan waarmee een app rechtstreeks je tijdlijn kan uitlezen —
+        Google biedt geen koppeling meer aan waarmee een app rechtstreeks je tijdlijn kan uitlezen -
         die staat sinds kort alleen nog op je telefoon. Exporteren kan wel: open in de Google
-        Maps-app je profielfoto → <span className="font-mono text-xs">Je tijdlijn</span> → de drie
-        puntjes → <span className="font-mono text-xs">Tijdlijn exporteren</span>. Kies het
+        Maps-app je profielfoto -> <span className="font-mono text-xs">Je tijdlijn</span> -> de drie
+        puntjes -> <span className="font-mono text-xs">Tijdlijn exporteren</span>. Kies het
         JSON-bestand hieronder.
       </p>
       <input
@@ -1189,7 +1189,7 @@ function TijdlijnImport({ days, onImport }) {
               </li>
             ))}
             {gevonden.length > 4 && (
-              <li style={{ color: C.muted }}>…en nog {gevonden.length - 4}</li>
+              <li style={{ color: C.muted }}>...en nog {gevonden.length - 4}</li>
             )}
           </ul>
           <Btn
@@ -1345,7 +1345,7 @@ function AgendaView({ items, setItems, days, selected, setSelected, me }) {
             {dayItems.map((i) => (
               <li key={i.id} className="flex gap-3 py-3">
                 <span className="font-mono text-sm shrink-0 w-12" style={{ color: C.muted }}>
-                  {i.time || "—"}
+                  {i.time || "-"}
                 </span>
                 <span className="flex-1">
                   <span className="block text-base">{i.title}</span>
@@ -1370,7 +1370,7 @@ function AgendaView({ items, setItems, days, selected, setSelected, me }) {
                   className="font-mono text-sm px-2 rounded focus:outline-none focus:ring-2"
                   style={{ color: C.ember }}
                 >
-                  ×
+                  x
                 </button>
               </li>
             ))}
@@ -1584,7 +1584,7 @@ function NearbyView({ trip, days, selected, setSelected, saved, setSaved, onAddT
       {loading && (
         <Card>
           <Eyebrow color={C.ember}>Bezig met zoeken</Eyebrow>
-          <p className="text-sm mt-1">{category} rond {area} worden opgezocht…</p>
+          <p className="text-sm mt-1">{category} rond {area} worden opgezocht...</p>
         </Card>
       )}
 
@@ -1605,7 +1605,7 @@ function NearbyView({ trip, days, selected, setSelected, saved, setSaved, onAddT
       {results.length > 0 && (
         <div>
           <Eyebrow color={C.marigold}>
-            {results.length} plekken · {category} ·{" "}
+            {results.length} plekken | {category} |{" "}
             {source === "google" ? "van Google Maps" : "van de reisgids"}
           </Eyebrow>
           {results.map((p) => (
@@ -1657,7 +1657,7 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
     <div>
       <div className="flex items-center justify-between mb-2">
         <Eyebrow color={C.marigold}>
-          {days.length} dagen · veeg naar links voor later
+          {days.length} dagen | veeg naar links voor later
         </Eyebrow>
         <div className="flex gap-1">
           <button
@@ -1667,7 +1667,7 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
             className="font-mono px-2 py-1 rounded focus:outline-none focus:ring-2"
             style={{ color: C.bone, opacity: index <= 0 ? 0.3 : 1 }}
           >
-            ←
+            <-
           </button>
           <button
             onClick={() => index < days.length - 1 && setSelected(days[index + 1])}
@@ -1676,7 +1676,7 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
             className="font-mono px-2 py-1 rounded focus:outline-none focus:ring-2"
             style={{ color: C.bone, opacity: index >= days.length - 1 ? 0.3 : 1 }}
           >
-            →
+            ->
           </button>
         </div>
       </div>
@@ -1721,7 +1721,7 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
                     {plannen.map((a) => (
                       <li key={a.id} className="flex gap-3 py-2">
                         <span className="font-mono text-sm w-12 shrink-0" style={{ color: C.muted }}>
-                          {a.time || "—"}
+                          {a.time || "-"}
                         </span>
                         <span className="flex-1">
                           <span className="block text-sm">{a.title}</span>
@@ -1743,7 +1743,7 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
                           className="font-mono px-1 focus:outline-none focus:ring-2"
                           style={{ color: C.ember }}
                         >
-                          ×
+                          x
                         </button>
                       </li>
                     ))}
@@ -1869,7 +1869,7 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
     if (!files.length) return;
     let added = [];
     for (let n = 0; n < files.length; n++) {
-      setBusy(`Foto ${n + 1} van ${files.length} wordt klaargezet…`);
+      setBusy(`Foto ${n + 1} van ${files.length} wordt klaargezet...`);
       try {
         const dataUrl = await resizeImage(files[n]);
         const id = uid();
@@ -1942,7 +1942,7 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
             </p>
           )}
           <p className="text-xs" style={{ color: C.muted }}>
-            Foto's worden verkleind opgeslagen en bij deze dag én bij {trip.name} gezet.
+            Foto's worden verkleind opgeslagen en bij deze dag en bij {trip.name} gezet.
           </p>
         </div>
       </Card>
@@ -1952,7 +1952,7 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
         .map((d) => (
           <div key={d}>
             <Eyebrow color={C.marigold}>
-              Dag {String(days.indexOf(d) + 1).padStart(2, "0")} · {fmtShort(d)}
+              Dag {String(days.indexOf(d) + 1).padStart(2, "0")} | {fmtShort(d)}
             </Eyebrow>
             <div className="grid grid-cols-3 gap-2 mt-2">
               {grouped[d].map((p) => (
@@ -1966,7 +1966,7 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
                     <img src={images[p.id]} alt={p.caption || "Reisfoto"} className="w-full h-full object-cover" />
                   ) : (
                     <span className="font-mono text-xs" style={{ color: C.muted }}>
-                      …
+                      ...
                     </span>
                   )}
                 </button>
@@ -1988,7 +1988,7 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
           )}
           <div className="mt-4" style={{ color: C.bone }}>
             <Eyebrow color={C.marigold}>
-              {fmtLong(open.date)} · {open.trip || ""}
+              {fmtLong(open.date)} | {open.trip || ""}
             </Eyebrow>
             <p className="text-base mt-1">{open.caption || "Geen omschrijving"}</p>
             <p className="font-mono text-xs mt-1" style={{ color: C.boneSoft }}>
@@ -2032,7 +2032,7 @@ function NotesView({ notes, setNotes, me }) {
               rows={4}
               value={draft.body}
               onChange={(e) => setDraft({ ...draft, body: e.target.value })}
-              placeholder="Sleutelkluis, wifi, nummer van de verhuurder…"
+              placeholder="Sleutelkluis, wifi, nummer van de verhuurder..."
               className="w-full mt-1 px-3 py-2 rounded-md text-base focus:outline-none focus:ring-2"
               style={{ background: "#FFFFFF", color: C.ink, border: `1px solid ${C.line}` }}
             />
@@ -2042,7 +2042,7 @@ function NotesView({ notes, setNotes, me }) {
       </Card>
 
       {notes.length === 0 ? (
-        <Empty>Nog geen notities. Handig voor codes, adressen en losse ideeën.</Empty>
+        <Empty>Nog geen notities. Handig voor codes, adressen en losse ideeen.</Empty>
       ) : (
         notes.map((n) => (
           <Card key={n.id}>
@@ -2051,7 +2051,7 @@ function NotesView({ notes, setNotes, me }) {
                 <h3 className="font-serif text-xl">{n.title}</h3>
                 <p className="text-sm mt-1 whitespace-pre-wrap leading-relaxed">{n.body}</p>
                 <p className="font-mono text-xs mt-2" style={{ color: C.muted }}>
-                  {n.by} · {new Date(n.at).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })}
+                  {n.by} | {new Date(n.at).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })}
                 </p>
               </div>
               <button
@@ -2060,7 +2060,7 @@ function NotesView({ notes, setNotes, me }) {
                 className="font-mono px-2 rounded focus:outline-none focus:ring-2"
                 style={{ color: C.ember }}
               >
-                ×
+                x
               </button>
             </div>
           </Card>
@@ -2110,7 +2110,7 @@ function TodoView({ todos, setTodos, members, me }) {
         className="font-mono px-2 rounded focus:outline-none focus:ring-2"
         style={{ color: C.ember }}
       >
-        ×
+        x
       </button>
     </li>
   );
@@ -2215,7 +2215,7 @@ function ShoppingView({ list, setList, days, selected, setSelected, me }) {
                   className="font-mono px-2 rounded focus:outline-none focus:ring-2"
                   style={{ color: C.ember }}
                 >
-                  ×
+                  x
                 </button>
               </li>
             ))}
@@ -2419,7 +2419,7 @@ function VakantieApp() {
   if (phase === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: C.bg }}>
-        <Eyebrow color={C.marigold}>Reisboek wordt geopend…</Eyebrow>
+        <Eyebrow color={C.marigold}>Reisboek wordt geopend...</Eyebrow>
       </div>
     );
   }
@@ -2459,7 +2459,7 @@ function VakantieApp() {
             onImportTimeline={(items) =>
               persist("agenda", setAgenda)([
                 ...agenda,
-                ...items.map((i) => ({ ...i, id: uid(), by: `${me.name} · tijdlijn` })),
+                ...items.map((i) => ({ ...i, id: uid(), by: `${me.name} | tijdlijn` })),
               ])
             }
           />
@@ -2491,7 +2491,7 @@ function VakantieApp() {
                 style={{ background: C.bone, color: C.deep }}
               >
                 <span className="font-mono uppercase text-xs tracking-widest">
-                  {TABS.find((t) => t.id === tab)?.label || "Menu"} ▾
+                  {TABS.find((t) => t.id === tab)?.label || "Menu"} v
                 </span>
               </button>
               {menuOpen && (
@@ -2550,7 +2550,7 @@ function VakantieApp() {
               ))}
             </div>
             <Btn tone="dark" onClick={pullAll} disabled={syncing} className="shrink-0">
-              {syncing ? "…" : "Vernieuw"}
+              {syncing ? "..." : "Vernieuw"}
             </Btn>
           </div>
         </div>
@@ -2625,7 +2625,7 @@ function VakantieApp() {
           <ShoppingView list={shopping} setList={persist("shopping", setShopping)} days={days} selected={selected} setSelected={setSelected} me={me} />
         )}
         <p className="font-mono text-xs mt-8 text-center" style={{ color: "rgba(242,239,230,0.5)" }}>
-          Aangemeld als {me.name} · tik op Vernieuw voor wat anderen toevoegden
+          Aangemeld als {me.name} | tik op Vernieuw voor wat anderen toevoegden
         </p>
       </main>
     </div>

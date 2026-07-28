@@ -1,6 +1,6 @@
-# Reisboek — een gedeelde vakantie-app
+# Reisboek - een gedeelde vakantie-app
 
-E�n reisboek voor de hele groep: inloggen, een profiel met foto, de reis plannen
+Een reisboek voor de hele groep: inloggen, een profiel met foto, de reis plannen
 inclusief de heenreis, en daarna een hoofdscherm waar je per dag door de vakantie
 scrollt. Met agenda, zoeken naar plekken in de buurt, fotoalbum per datum,
 notities, to-do's en een boodschappenlijst per dag.
@@ -34,21 +34,21 @@ website van GitHub is genoeg.
 
 ---
 
-## Stap 1 — Zet de bestanden op GitHub
+## Stap 1 - Zet de bestanden op GitHub
 
 1. Maak een account op https://github.com/signup als je die nog niet hebt.
 2. Ga naar https://github.com/new
-3. *Repository name*: `reisboek`. Laat hem op **Public** staan — GitHub Pages is
+3. *Repository name*: `reisboek`. Laat hem op **Public** staan - GitHub Pages is
    alleen gratis bij openbare repositories.
 4. **Create repository**.
-5. **Add file** → **Upload files** → sleep `index.html`, `config.js` en
-   `README.md` erin → onderaan **Commit changes**.
+5. **Add file** -> **Upload files** -> sleep `index.html`, `config.js` en
+   `README.md` erin -> onderaan **Commit changes**.
 
-## Stap 2 — Zet GitHub Pages aan
+## Stap 2 - Zet GitHub Pages aan
 
-1. In je repository: **Settings** → **Pages** (linkermenu).
+1. In je repository: **Settings** -> **Pages** (linkermenu).
 2. *Source*: **Deploy from a branch**.
-3. *Branch*: **main**, map **/ (root)** → **Save**.
+3. *Branch*: **main**, map **/ (root)** -> **Save**.
 4. Wacht een minuut of twee, ververs de pagina. Bovenaan staat je adres:
 
        https://JOUWNAAM.github.io/reisboek/
@@ -56,7 +56,7 @@ website van GitHub is genoeg.
 Open dat op je telefoon en zet het via het browsermenu op je beginscherm. Hij
 gedraagt zich dan als een app.
 
-## Stap 3 — Google Maps aanzetten
+## Stap 3 - Google Maps aanzetten
 
 Zonder key werkt de app, maar zie je geen kaarten en kun je niet zoeken naar
 plekken in de buurt.
@@ -67,15 +67,15 @@ plekken in de buurt.
    binnen het gratis maandtegoed.
 3. Zet deze drie API's aan via
    https://console.cloud.google.com/google/maps-apis/api-list
-   - **Maps Static API** — de kaartafbeeldingen
-   - **Maps Embed API** — de interactieve kaart
-   - **Places API (New)** — zoeken en adres-suggesties
+   - **Maps Static API** - de kaartafbeeldingen
+   - **Maps Embed API** - de interactieve kaart
+   - **Places API (New)** - zoeken en adres-suggesties
 4. Maak een key aan: https://console.cloud.google.com/apis/credentials
 5. **Beperk de key meteen.** Open hem en stel in:
-   - *Application restrictions* → **Websites** → toevoegen:
+   - *Application restrictions* -> **Websites** -> toevoegen:
      `https://JOUWNAAM.github.io/*`
-   - *API restrictions* → **Restrict key** → alleen die drie API's
-6. Open je app → menu → **Reis** → *Google Maps API-key* → plakken →
+   - *API restrictions* -> **Restrict key** -> alleen die drie API's
+6. Open je app -> menu -> **Reis** -> *Google Maps API-key* -> plakken ->
    **Key opslaan**. Met **Key testen** zie je meteen wat Google ervan vindt.
 7. Zet een budgetwaarschuwing op een laag bedrag:
    https://console.cloud.google.com/billing/budgets
@@ -84,20 +84,20 @@ plekken in de buurt.
 > website-beperking uit stap 5 is wat hem beschermt: vanaf een ander adres
 > weigert Google de aanvraag. Sla die stap niet over.
 
-## Stap 4 — Delen met de groep (optioneel)
+## Stap 4 - Delen met de groep (optioneel)
 
 Zonder deze stap werkt alles, maar houdt iedereen zijn eigen reisboek op zijn
 eigen telefoon. Met een gratis Firebase-project ziet de hele groep hetzelfde.
 
-1. https://console.firebase.google.com/ → **Project toevoegen**. Je mag hetzelfde
+1. https://console.firebase.google.com/ -> **Project toevoegen**. Je mag hetzelfde
    Google-project kiezen als hierboven. Analytics kun je uitzetten.
-2. Linkermenu → **Firestore Database** → **Database maken** → *productiemodus*,
+2. Linkermenu -> **Firestore Database** -> **Database maken** -> *productiemodus*,
    locatie in Europa.
-3. **Projectinstellingen** (tandwiel) → onderaan bij *Jouw apps* → web-icoon
-   `</>` → app registreren.
+3. **Projectinstellingen** (tandwiel) -> onderaan bij *Jouw apps* -> web-icoon
+   `</>` -> app registreren.
 4. Je krijgt een blokje met `apiKey`, `authDomain`, `projectId` enzovoort. Neem
    die over in `config.js`, en verzin bij `tripId` iets dat niemand raadt.
-5. Firestore → **Regels** → zet dit neer en publiceer:
+5. Firestore -> **Regels** -> zet dit neer en publiceer:
 
        rules_version = '2';
        service cloud.firestore {
@@ -108,15 +108,15 @@ eigen telefoon. Met een gratis Firebase-project ziet de hele groep hetzelfde.
          }
        }
 
-6. Upload het aangepaste `config.js` opnieuw: klik in GitHub op het bestand →
-   potloodje → plakken → **Commit changes**.
+6. Upload het aangepaste `config.js` opnieuw: klik in GitHub op het bestand ->
+   potloodje -> plakken -> **Commit changes**.
 
 > Wat die regels betekenen: iedereen die je `tripId` kent kan meelezen en
 > meeschrijven. Voor een vakantie met vrienden is dat meestal prima, mits je een
 > moeilijk te raden `tripId` kiest. Zet er geen paspoortnummers of bankgegevens
 > in.
 
-## Stap 5 — Aanmelden
+## Stap 5 - Aanmelden
 
 Iedereen opent hetzelfde adres en vult zijn Gmail-adres en naam in. Dat is een
 naamplaatje, geen echte Google-login: er wordt geen wachtwoord gecontroleerd. Het
@@ -131,14 +131,14 @@ die koppeling voor apps afgeschaft; de tijdlijn staat sinds 2024 alleen nog op j
 eigen telefoon en er is geen API meer om hem uit te lezen.
 
 Wat wel kan, en wat in het planscherm zit onder *Google-tijdlijn overnemen*:
-open in de Google Maps-app je profielfoto → **Je tijdlijn** → de drie puntjes →
+open in de Google Maps-app je profielfoto -> **Je tijdlijn** -> de drie puntjes ->
 **Tijdlijn exporteren**. Kies het JSON-bestand in de app; de momenten die binnen
 je reisdata vallen komen dan in de agenda. Handig om achteraf je route terug te
 zien.
 
 ## Veelvoorkomende problemen
 
-**De pagina blijft op "Reisboek wordt geladen…" staan.**
+**De pagina blijft op "Reisboek wordt geladen..." staan.**
 Open hem op een computer, druk F12 en kijk in *Console* wat er rood staat.
 Meestal ontbreekt `config.js` of staat er een komma te veel in.
 
