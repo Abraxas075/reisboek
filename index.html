@@ -5,14 +5,43 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#0F3B46" />
 <title>Reisboek</title>
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230F3B46'/%3E%3Ctext y='68' x='50' font-size='56' text-anchor='middle' fill='%23E8A33D'%3ER%3C/text%3E%3C/svg%3E" />
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="config.js"></script>
+<style>
+  body { margin: 0; background: #0F3B46; }
+  #laden { color: #E8A33D; font-family: ui-monospace, monospace; padding: 1.5rem; line-height: 1.6; }
+  #laden b { color: #ffffff; }
+  #laden code { color: #F2EFE6; word-break: break-all; font-size: 0.8rem; }
+</style>
+<script>
+/* Meldingen op het scherm, want op een telefoon is er geen console. */
+window.__fouten = [];
+function __toon(titel) {
+  var el = document.getElementById("laden");
+  if (!el) return;
+  el.innerHTML =
+    "<b>" + titel + "</b><br><br>" +
+    "React: " + (window.React ? "ok" : "ONTBREEKT") + "<br>" +
+    "ReactDOM: " + (window.ReactDOM ? "ok" : "ONTBREEKT") + "<br>" +
+    "Babel: " + (window.Babel ? "ok" : "ONTBREEKT") + "<br>" +
+    "Tailwind: " + (window.tailwind ? "ok" : "ONTBREEKT") + "<br>" +
+    "Instellingen: " + (window.VAKANTIE_CONFIG ? "ok" : "ONTBREEKT") + "<br>" +
+    "Opslag: " + (window.AppStore ? "ok" : "ONTBREEKT") + "<br><br>" +
+    (window.__fouten.length
+      ? window.__fouten.map(function (t) { return "<code>" + t + "</code>"; }).join("<br><br>")
+      : "Geen foutmelding opgevangen.") +
+    "<br><br>Staat er ONTBREEKT bij React, ReactDOM of Babel? Zet dan de schilden van je browser uit voor deze site. In Brave: tik op het leeuwtje in de adresbalk en zet Shields uit.";
+}
+window.addEventListener("error", function (e) {
+  window.__fouten.push((e.message || "fout") + (e.filename ? " | " + e.filename : "") + (e.lineno ? ":" + e.lineno : ""));
+  __toon("Er ging iets mis bij het laden.");
+});
+window.addEventListener("unhandledrejection", function (e) {
+  window.__fouten.push("promise: " + ((e.reason && e.reason.message) || e.reason));
+});
+setTimeout(function () {
+  if (document.getElementById("laden")) __toon("Het laden duurt te lang.");
+}, 12000);
+</script>
+<script src="config.js" onerror="window.__fouten.push('config.js kon niet geladen worden')"></script>
 <script>
 /* ------------------------------------------------------------------
    Opslaglaag. Twee standen:
@@ -100,14 +129,11 @@
   };
 })();
 </script>
-<style>
-  body { margin: 0; background: #0F3B46; }
-  #laden { color: #E8A33D; font-family: ui-monospace, monospace; padding: 2rem; text-align: center; }
-</style>
 </head>
 <body>
 <div id="root"><div id="laden">Reisboek wordt geladen...</div></div>
-<script type="text/babel" data-presets="react">
+
+<script type="text/babel" data-presets="react" id="app-code">
 const { useState, useEffect, useMemo, useRef } = React;
 
 /* ---------- palette: deep lagoon + bone + marigold ---------- */
@@ -585,7 +611,7 @@ const MapFrame = ({ query, height = 200, label }) => {
       </span>
       <span className="text-sm mt-2">{query}</span>
       <span className="font-mono uppercase text-xs tracking-widest mt-3" style={{ color: C.ember }}>
-        Openen in Google Maps ->
+        Openen in Google Maps &gt;
       </span>
     </a>
   );
@@ -1161,8 +1187,8 @@ function TijdlijnImport({ days, onImport }) {
       <p className="text-sm mt-2 leading-relaxed">
         Google biedt geen koppeling meer aan waarmee een app rechtstreeks je tijdlijn kan uitlezen -
         die staat sinds kort alleen nog op je telefoon. Exporteren kan wel: open in de Google
-        Maps-app je profielfoto -> <span className="font-mono text-xs">Je tijdlijn</span> -> de drie
-        puntjes -> <span className="font-mono text-xs">Tijdlijn exporteren</span>. Kies het
+        Maps-app je profielfoto &gt; <span className="font-mono text-xs">Je tijdlijn</span> &gt; de drie
+        puntjes &gt; <span className="font-mono text-xs">Tijdlijn exporteren</span>. Kies het
         JSON-bestand hieronder.
       </p>
       <input
@@ -1667,7 +1693,7 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
             className="font-mono px-2 py-1 rounded focus:outline-none focus:ring-2"
             style={{ color: C.bone, opacity: index <= 0 ? 0.3 : 1 }}
           >
-            <-
+            &lt;
           </button>
           <button
             onClick={() => index < days.length - 1 && setSelected(days[index + 1])}
@@ -1676,7 +1702,7 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
             className="font-mono px-2 py-1 rounded focus:outline-none focus:ring-2"
             style={{ color: C.bone, opacity: index >= days.length - 1 ? 0.3 : 1 }}
           >
-            ->
+            &gt;
           </button>
         </div>
       </div>
@@ -2638,6 +2664,62 @@ function VakantieApp() {
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(<VakantieApp />);
 
+</script>
+
+<script>
+/* Bibliotheken laden, met een tweede bron als de eerste niet werkt. */
+(function () {
+  function laadEen(url) {
+    return new Promise(function (klaar, mis) {
+      var s = document.createElement("script");
+      s.src = url;
+      s.onload = klaar;
+      s.onerror = function () { mis(new Error("niet geladen: " + url)); };
+      document.head.appendChild(s);
+    });
+  }
+  function laad(urls, naam) {
+    return urls
+      .reduce(function (p, url) {
+        return p.catch(function () { return laadEen(url); });
+      }, Promise.reject(new Error("start")))
+      .catch(function () {
+        window.__fouten.push(naam + " kon van geen enkele bron geladen worden");
+        throw new Error(naam);
+      });
+  }
+
+  laad(
+    ["https://unpkg.com/react@18/umd/react.production.min.js",
+     "https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"], "React")
+    .then(function () {
+      return laad(
+        ["https://unpkg.com/react-dom@18/umd/react-dom.production.min.js",
+         "https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"], "ReactDOM");
+    })
+    .then(function () {
+      return laad(
+        ["https://cdn.jsdelivr.net/npm/@babel/standalone@7/babel.min.js",
+         "https://unpkg.com/@babel/standalone/babel.min.js"], "Babel");
+    })
+    .then(function () {
+      return laad(["https://cdn.tailwindcss.com"], "Tailwind").catch(function () {
+        /* zonder Tailwind is de app lelijk, maar wel bruikbaar */
+      });
+    })
+    .then(function () {
+      try {
+        /* Alleen starten als Babel het niet al zelf gedaan heeft. */
+        if (document.getElementById("laden")) Babel.transformScriptTags();
+      } catch (e) {
+        window.__fouten.push("Babel: " + e.message);
+        __toon("De app kon niet gestart worden.");
+      }
+    })
+    .catch(function () {
+      __toon("Een onderdeel kon niet geladen worden.");
+    });
+})();
 </script>
 </body>
 </html>
