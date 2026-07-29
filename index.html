@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#22406B" />
-<meta name="reisboek-versie" content="familytrip-1" />
+<meta name="theme-color" content="#F8C9A4" />
+<meta name="reisboek-versie" content="familytrip-2" />
 <title>Reisboek</title>
 <style>
-  body { margin: 0; background: #22406B; }
-  #laden { color: #F0A98E; font-family: ui-monospace, monospace; padding: 1.5rem; line-height: 1.6; }
-  #laden b { color: #ffffff; }
-  #laden code { color: #F2EFE6; word-break: break-all; font-size: 0.8rem; }
+  body { margin: 0; background: #F8C9A4; }
+  #laden { color: #22406B; font-family: ui-monospace, monospace; padding: 1.5rem; line-height: 1.6; }
+  #laden b { color: #C75B45; }
+  #laden code { color: #22406B; word-break: break-all; font-size: 0.8rem; }
 </style>
 <script>
 /* Meldingen op het scherm, want op een telefoon is er geen console. */
@@ -139,21 +139,38 @@ const { useState, useEffect, useMemo, useRef } = React;
 
 /* ---------- palet en letters, afgeleid uit het Family Trip-logo ---------- */
 const C = {
-  bg: "#22406B", // inkt, het blauw van FAMILY
-  deep: "#1B3457",
-  bone: "#FDF7F0", // creme
-  boneSoft: "#EADFD2",
-  ink: "#22406B",
+  bg: "#F8C9A4", // perzik: de achtergrond van de app
+  deep: "#F2B58C", // diepperzik: de kopregel
+  bone: "#FFFBF5", // creme: de kaarten
+  boneSoft: "#F3E7DA",
+  ink: "#22406B", // inkt: alle tekst
   muted: "#5B7BA6",
-  marigold: "#F0A98E", // perzik
-  mint: "#A5D6B7",
-  ember: "#C75B45", // koraal, donker genoeg voor tekst
+  marigold: "#C75B45", // accenttekst, leesbaar op perzik en op creme
+  mint: "#8CC9A8",
+  ember: "#C75B45",
   line: "#EADFD2",
   perzik: "#F8C9A4",
   roze: "#F2A9A5",
   koraal: "#E98D7E",
   lucht: "#A9CDE8",
   munt: "#A5D6B7",
+};
+
+/* Iedere vakantiedag zijn eigen kleur; na zes begint de reeks opnieuw. */
+const DAGKLEUREN = [
+  { rand: "#F0A98E", tint: "#FCE6D6", schaduw: "rgba(240,169,142,0.40)" },
+  { rand: "#F2A9A5", tint: "#FBDFDD", schaduw: "rgba(242,169,165,0.40)" },
+  { rand: "#8FBCDF", tint: "#DFEDF8", schaduw: "rgba(143,188,223,0.40)" },
+  { rand: "#8CC9A8", tint: "#DFF0E7", schaduw: "rgba(140,201,168,0.40)" },
+  { rand: "#E0B978", tint: "#F7EBD5", schaduw: "rgba(224,185,120,0.40)" },
+  { rand: "#E98D7E", tint: "#FBDDD5", schaduw: "rgba(233,141,126,0.40)" },
+];
+const dagKleur = (i) => DAGKLEUREN[((i % DAGKLEUREN.length) + DAGKLEUREN.length) % DAGKLEUREN.length];
+
+const SCHADUW = {
+  kaart: "0 8px 22px rgba(34,64,107,0.14)",
+  knop: "0 5px 14px rgba(233,141,126,0.40)",
+  kop: "0 4px 18px rgba(34,64,107,0.16)",
 };
 
 const FONT_KOP =
@@ -556,8 +573,14 @@ const Eyebrow = ({ children, color = C.muted }) => (
 
 const Card = ({ children, className = "", style = {} }) => (
   <div
-    className={"rounded-xl p-4 " + className}
-    style={{ background: C.bone, color: C.ink, ...style }}
+    className={"rounded-3xl p-4 " + className}
+    style={{
+      background: C.bone,
+      color: C.ink,
+      border: `2px solid ${C.line}`,
+      boxShadow: SCHADUW.kaart,
+      ...style,
+    }}
   >
     {children}
   </div>
@@ -577,15 +600,15 @@ const Perforation = () => (
 
 const Btn = ({ children, onClick, tone = "solid", disabled, className = "", type }) => {
   const base =
-    "font-mono uppercase text-xs tracking-widest px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-1 transition-colors";
+    "font-mono uppercase text-xs tracking-widest px-4 py-2 rounded-2xl focus:outline-none focus:ring-2 focus:ring-offset-1 transition-colors";
   const styles =
     tone === "solid"
-      ? { background: C.marigold, color: C.deep }
+      ? { background: C.koraal, color: C.ink, boxShadow: SCHADUW.knop }
       : tone === "dark"
-      ? { background: C.deep, color: C.bone }
+      ? { background: C.ink, color: "#FFFFFF" }
       : tone === "danger"
-      ? { background: "transparent", color: C.ember, border: `1px solid ${C.ember}` }
-      : { background: "transparent", color: C.ink, border: `1px solid ${C.line}` };
+      ? { background: "#FFFFFF", color: C.ember, border: `2px solid ${C.ember}` }
+      : { background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` };
   return (
     <button
       type={type || "button"}
@@ -604,8 +627,8 @@ const Field = ({ label, ...rest }) => (
     {label && <Eyebrow>{label}</Eyebrow>}
     <input
       {...rest}
-      className="w-full mt-1 px-3 py-2 rounded-md text-base focus:outline-none focus:ring-2"
-      style={{ background: "#FFFFFF", color: C.ink, border: `1px solid ${C.line}` }}
+      className="w-full mt-1 px-4 py-3 rounded-2xl text-base focus:outline-none focus:ring-2"
+      style={{ background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}
     />
   </label>
 );
@@ -855,12 +878,13 @@ const DayStrip = ({ days, selected, onSelect, counts = {} }) => {
             key={iso}
             data-active={active}
             onClick={() => onSelect(iso)}
-            className="shrink-0 rounded-lg px-3 py-2 text-left focus:outline-none focus:ring-2"
+            className="shrink-0 rounded-2xl px-3 py-2 text-left focus:outline-none focus:ring-2"
             style={{
               minWidth: 74,
-              background: active ? C.marigold : "rgba(242,239,230,0.12)",
-              color: active ? C.deep : C.bone,
-              border: `1px solid ${iso === today ? C.ember : "transparent"}`,
+              background: active ? dagKleur(i).rand : "rgba(255,255,255,0.70)",
+              color: active ? "#FFFFFF" : C.ink,
+              border: `2px solid ${iso === today ? C.ember : dagKleur(i).rand}`,
+              boxShadow: active ? `0 5px 14px ${dagKleur(i).schaduw}` : "none",
             }}
           >
             <span className="block font-mono text-xs tracking-widest uppercase">
@@ -1008,7 +1032,7 @@ function ProfileView({ me, photo, onSave, onSkip }) {
   return (
     <div className="p-5 max-w-lg mx-auto">
       <Eyebrow color={C.marigold}>Stap 2 | jouw profiel</Eyebrow>
-      <h2 className="font-serif text-3xl mt-1 mb-4" style={{ color: C.bone }}>
+      <h2 className="font-serif text-3xl mt-1 mb-4" style={{ color: C.ink }}>
         Wie ben jij?
       </h2>
       <Card>
@@ -1079,7 +1103,7 @@ function ProfileView({ me, photo, onSave, onSkip }) {
           </div>
         </div>
       </Card>
-      <p className="text-xs mt-4" style={{ color: C.boneSoft }}>
+      <p className="text-xs mt-4" style={{ color: C.muted }}>
         Je foto en naam zijn zichtbaar voor je reisgenoten, zodat je bij elk plan en elke foto ziet
         wie het heeft toegevoegd.
       </p>
@@ -1135,7 +1159,7 @@ function SetupView({ me, initial, onSave, onCancel, apiKey, setApiKey, onImportT
   return (
     <div className="p-5 max-w-lg mx-auto">
       <Eyebrow color={C.marigold}>{initial ? "Reis aanpassen" : "Nieuwe reis"}</Eyebrow>
-      <h2 className="font-serif text-3xl mt-1 mb-4" style={{ color: C.bone }}>
+      <h2 className="font-serif text-3xl mt-1 mb-4" style={{ color: C.ink }}>
         {initial ? "Gegevens bijwerken" : `Welkom, ${me.name.split(" ")[0]}`}
       </h2>
       <div className="mb-3">
@@ -1180,8 +1204,8 @@ function SetupView({ me, initial, onSave, onCancel, apiKey, setApiKey, onImportT
               value={trip.summary}
               onChange={set("summary")}
               placeholder="Vlucht, huisje, wie er meegaat..."
-              className="w-full mt-1 px-3 py-2 rounded-md text-base focus:outline-none focus:ring-2"
-              style={{ background: "#FFFFFF", color: C.ink, border: `1px solid ${C.line}` }}
+              className="w-full mt-1 px-4 py-3 rounded-2xl text-base focus:outline-none focus:ring-2"
+              style={{ background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}
             />
           </label>
         </div>
@@ -1202,8 +1226,8 @@ function SetupView({ me, initial, onSave, onCancel, apiKey, setApiKey, onImportT
               <select
                 value={trip.travelMode || "auto"}
                 onChange={set("travelMode")}
-                className="w-full mt-1 px-3 py-2 rounded-md text-base focus:outline-none focus:ring-2"
-                style={{ background: "#FFFFFF", color: C.ink, border: `1px solid ${C.line}` }}
+                className="w-full mt-1 px-4 py-3 rounded-2xl text-base focus:outline-none focus:ring-2"
+                style={{ background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}
               >
                 {["auto", "vliegtuig", "trein", "bus", "camper", "anders"].map((m) => (
                   <option key={m} value={m}>
@@ -1646,8 +1670,14 @@ function AgendaView({ items, setItems, days, selected, setSelected, me }) {
   return (
     <div className="space-y-4">
       <DayStrip days={days} selected={selected} onSelect={setSelected} counts={counts} />
-      <Card>
-        <Eyebrow color={C.ember}>{fmtLong(selected)}</Eyebrow>
+      <Card
+        style={{
+          background: dagKleur(days.indexOf(selected)).tint,
+          border: `3px solid ${dagKleur(days.indexOf(selected)).rand}`,
+          boxShadow: `0 10px 26px ${dagKleur(days.indexOf(selected)).schaduw}`,
+        }}
+      >
+        <Eyebrow color={C.ink}>{fmtLong(selected)}</Eyebrow>
         {dayItems.length === 0 ? (
           <Empty>Nog niets gepland. Zet hieronder het eerste plan voor deze dag.</Empty>
         ) : (
@@ -1975,7 +2005,7 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
             disabled={index <= 0}
             aria-label="Vorige dag"
             className="font-mono px-2 py-1 rounded focus:outline-none focus:ring-2"
-            style={{ color: C.bone, opacity: index <= 0 ? 0.3 : 1 }}
+            style={{ color: C.ink, opacity: index <= 0 ? 0.3 : 1 }}
           >
             &lt;
           </button>
@@ -1984,7 +2014,7 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
             disabled={index >= days.length - 1}
             aria-label="Volgende dag"
             className="font-mono px-2 py-1 rounded focus:outline-none focus:ring-2"
-            style={{ color: C.bone, opacity: index >= days.length - 1 ? 0.3 : 1 }}
+            style={{ color: C.ink, opacity: index >= days.length - 1 ? 0.3 : 1 }}
           >
             &gt;
           </button>
@@ -2007,17 +2037,18 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
               key={iso}
               data-dag={actief}
               onClick={() => !actief && setSelected(iso)}
-              className="snap-start shrink-0 rounded-xl p-4"
+              className="snap-start shrink-0 rounded-3xl p-4"
               style={{
                 width: "88%",
                 maxWidth: 420,
-                background: C.bone,
+                background: dagKleur(n).tint,
                 color: C.ink,
-                opacity: actief ? 1 : 0.75,
-                border: `2px solid ${iso === today ? C.ember : "transparent"}`,
+                opacity: actief ? 1 : 0.8,
+                border: `3px solid ${iso === today ? C.ember : dagKleur(n).rand}`,
+                boxShadow: actief ? `0 10px 26px ${dagKleur(n).schaduw}` : "none",
               }}
             >
-              <Eyebrow color={C.muted}>Dag {String(n + 1).padStart(2, "0")}</Eyebrow>
+              <Eyebrow color={C.ink}>Dag {String(n + 1).padStart(2, "0")}</Eyebrow>
               <h2 className="font-serif text-2xl capitalize leading-tight">{fmtLong(iso)}</h2>
 
               <div className="mt-3">
@@ -2027,9 +2058,13 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
                     Nog niets gepland.
                   </p>
                 ) : (
-                  <ul className="divide-y" style={{ borderColor: C.line }}>
+                  <ul className="space-y-2">
                     {plannen.map((a) => (
-                      <li key={a.id} className="flex gap-3 py-2">
+                      <li
+                        key={a.id}
+                        className="flex gap-3 px-3 py-2 rounded-2xl"
+                        style={{ background: "rgba(255,255,255,0.75)", border: "1.5px solid rgba(255,255,255,0.9)" }}
+                      >
                         <span className="font-mono text-sm w-12 shrink-0" style={{ color: C.muted }}>
                           {a.time || "-"}
                         </span>
@@ -2195,7 +2230,7 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
         </Btn>
       </div>
       {todos.filter((t) => !t.done).length > 0 && (
-        <p className="font-mono text-xs mt-3" style={{ color: C.boneSoft }}>
+        <p className="font-mono text-xs mt-3" style={{ color: C.ink }}>
           Nog {todos.filter((t) => !t.done).length} open taken op de to-do lijst.
         </p>
       )}
@@ -2301,7 +2336,7 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
         .filter((d) => grouped[d]?.length)
         .map((d) => (
           <div key={d}>
-            <Eyebrow color={C.marigold}>
+            <Eyebrow color={dagKleur(days.indexOf(d)).rand}>
               Dag {String(days.indexOf(d) + 1).padStart(2, "0")} | {fmtShort(d)}
             </Eyebrow>
             <div className="grid grid-cols-3 gap-2 mt-2">
@@ -2383,8 +2418,8 @@ function NotesView({ notes, setNotes, me }) {
               value={draft.body}
               onChange={(e) => setDraft({ ...draft, body: e.target.value })}
               placeholder="Sleutelkluis, wifi, nummer van de verhuurder..."
-              className="w-full mt-1 px-3 py-2 rounded-md text-base focus:outline-none focus:ring-2"
-              style={{ background: "#FFFFFF", color: C.ink, border: `1px solid ${C.line}` }}
+              className="w-full mt-1 px-4 py-3 rounded-2xl text-base focus:outline-none focus:ring-2"
+              style={{ background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}
             />
           </label>
           <Btn onClick={add}>Notitie opslaan</Btn>
@@ -2489,8 +2524,8 @@ function TodoView({ todos, setTodos, members, me }) {
             <select
               value={who}
               onChange={(e) => setWho(e.target.value)}
-              className="w-full mt-1 px-3 py-2 rounded-md text-base focus:outline-none focus:ring-2"
-              style={{ background: "#FFFFFF", color: C.ink, border: `1px solid ${C.line}` }}
+              className="w-full mt-1 px-4 py-3 rounded-2xl text-base focus:outline-none focus:ring-2"
+              style={{ background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}
             >
               <option value="">Iedereen</option>
               {members.map((m) => (
@@ -2542,9 +2577,15 @@ function ShoppingView({ list, setList, days, selected, setSelected, me }) {
   return (
     <div className="space-y-4">
       <DayStrip days={days} selected={selected} onSelect={setSelected} counts={counts} />
-      <Card>
+      <Card
+        style={{
+          background: dagKleur(days.indexOf(selected)).tint,
+          border: `3px solid ${dagKleur(days.indexOf(selected)).rand}`,
+          boxShadow: `0 10px 26px ${dagKleur(days.indexOf(selected)).schaduw}`,
+        }}
+      >
         <div className="flex items-baseline justify-between">
-          <Eyebrow color={C.ember}>{fmtLong(selected)}</Eyebrow>
+          <Eyebrow color={C.ink}>{fmtLong(selected)}</Eyebrow>
           <span className="font-mono text-xs" style={{ color: C.muted }}>
             {openCount} te halen
           </span>
@@ -2833,7 +2874,14 @@ function VakantieApp() {
     <AvatarsContext.Provider value={avatars}>
     <div className="min-h-screen" style={{ background: C.bg }}>
       <Letters />
-      <header className="px-4 pt-5 pb-3 sticky top-0 z-40" style={{ background: C.deep }}>
+      <header
+        className="px-4 pt-5 pb-3 sticky top-0 z-40"
+        style={{
+          background: C.deep,
+          borderBottom: "2px solid rgba(255,255,255,0.65)",
+          boxShadow: SCHADUW.kop,
+        }}
+      >
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3">
             <div className="relative">
@@ -2894,7 +2942,7 @@ function VakantieApp() {
                 <Logo size={26} tekst={false} />
                 <Eyebrow color={C.marigold}>{members.length} reisgenoten</Eyebrow>
               </div>
-              <h1 className="font-serif text-xl mt-1" style={{ color: C.bone }}>
+              <h1 className="font-serif text-xl mt-1" style={{ color: C.ink }}>
                 {trip.name}
               </h1>
             </div>
@@ -2980,7 +3028,7 @@ function VakantieApp() {
         {tab === "lijst" && (
           <ShoppingView list={shopping} setList={persist("shopping", setShopping)} days={days} selected={selected} setSelected={setSelected} me={me} />
         )}
-        <p className="font-mono text-xs mt-8 text-center" style={{ color: "rgba(242,239,230,0.5)" }}>
+        <p className="font-mono text-xs mt-8 text-center" style={{ color: C.muted }}>
           Aangemeld als {me.name} | tik op Vernieuw voor wat anderen toevoegden
         </p>
       </main>
