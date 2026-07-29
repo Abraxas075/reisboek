@@ -1,13 +1,16 @@
 /* ------------------------------------------------------------------
    Instellingen voor het reisboek.
 
-   Laat dit bestand zoals het is en de app werkt meteen, maar dan blijft
-   alles op het apparaat waar je het invult. Iedereen heeft dan zijn
-   eigen lijstjes.
+   Laat je dit bestand zoals het is, dan werkt de app meteen, maar
+   blijft alles op het apparaat waar je het invult. Iedereen heeft dan
+   zijn eigen lijstjes.
 
-   Wil je dat de hele groep hetzelfde reisboek ziet? Maak dan een gratis
-   Firebase-project aan en vul de gegevens hieronder in. Zie README.md,
-   stap 4.
+   Vul je de Firebase-gegevens in, dan krijg je:
+   - een gedeeld reisboek voor de hele groep
+   - echt inloggen met je Google-account
+   - eventueel video-opslag (zie hieronder)
+
+   Zie README.md, stap 4.
    ------------------------------------------------------------------ */
 
 window.VAKANTIE_CONFIG = {
@@ -25,4 +28,10 @@ window.VAKANTIE_CONFIG = {
     messagingSenderId: "",
     appId: "",
   },
+
+  // Zet op true als je lange video's in Firebase Storage wilt bewaren.
+  // Let op: dit kost geld zodra er veel gekeken wordt, en Google vraagt
+  // hiervoor een betaalmethode. Voor een enkele lange video is een link
+  // naar Google Foto's of YouTube goedkoper en net zo handig.
+  opslag: false,
 };

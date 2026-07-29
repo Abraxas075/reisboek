@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-4" />
+<meta name="reisboek-versie" content="familytrip-6" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
@@ -25,7 +25,8 @@ function __toon(titel) {
     "Babel: " + (window.Babel ? "ok" : "ONTBREEKT") + "<br>" +
     "Tailwind: " + (window.tailwind ? "ok" : "ONTBREEKT") + "<br>" +
     "Instellingen: " + (window.VAKANTIE_CONFIG ? "ok" : "ONTBREEKT") + "<br>" +
-    "Opslag: " + (window.AppStore ? "ok" : "ONTBREEKT") + "<br><br>" +
+    "Opslag: " + (window.AppStore ? "ok" : "ONTBREEKT") + "<br>" +
+    "Stand: " + (window.VAKANTIE_MODE || "nog niet bepaald") + "<br><br>" +
     (window.__fouten.length
       ? window.__fouten.map(function (t) { return "<code>" + t + "</code>"; }).join("<br><br>")
       : "Geen foutmelding opgevangen.") +
@@ -45,25 +46,32 @@ setTimeout(function () {
 <script src="config.js" onerror="window.__fouten.push('config.js kon niet geladen worden')"></script>
 <script>
 /* ------------------------------------------------------------------
-   Opslaglaag. Twee standen:
-   - zonder Firebase-config: alles blijft op dit apparaat (localStorage)
-   - met Firebase-config: alles wordt gedeeld met de hele groep
+   Opslag, inloggen en bestanden. Drie standen:
+   - zonder Firebase-config: alles blijft op dit apparaat
+   - met Firebase-config: gedeeld met de groep, plus inloggen met Google
+   - met opslag: true erbij: video's gaan naar Firebase Storage
    ------------------------------------------------------------------ */
-(function () {
-  const cfg = (window.VAKANTIE_CONFIG || {});
+window.__initOpslag = function () {
+  const cfg = window.VAKANTIE_CONFIG || {};
   const fb = cfg.firebase || {};
   const tripId = cfg.tripId || "onze-reis";
-  const heeftFirebase = !!(fb.projectId && fb.apiKey);
+  const wilFirebase = !!(fb.projectId && fb.apiKey);
   let db = null;
+  let auth = null;
+  let opslag = null;
 
-  if (heeftFirebase) {
+  if (wilFirebase && window.firebase) {
     try {
       firebase.initializeApp(fb);
       db = firebase.firestore();
+      if (firebase.auth) auth = firebase.auth();
+      if (cfg.opslag && firebase.storage) opslag = firebase.storage();
     } catch (e) {
-      console.error("Firebase start niet:", e);
+      window.__fouten.push("Firebase start niet: " + e.message);
       db = null;
     }
+  } else if (wilFirebase) {
+    window.__fouten.push("De Firebase-bibliotheek kon niet geladen worden; de app werkt nu alleen op dit apparaat.");
   }
   window.VAKANTIE_MODE = db ? "gedeeld" : "lokaal";
 
@@ -128,7 +136,62 @@ setTimeout(function () {
       return { keys, prefix, shared: true };
     },
   };
-})();
+
+  /* Echt inloggen met je Google-account */
+  window.AppAuth = {
+    beschikbaar: !!auth,
+    async inloggenMetGoogle() {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      const res = await auth.signInWithPopup(provider);
+      const u = res.user;
+      return { email: u.email, name: u.displayName || u.email, foto: u.photoURL || "" };
+    },
+    async uitloggen() {
+      if (auth) {
+        try {
+          await auth.signOut();
+        } catch (e) {
+          /* was al uitgelogd */
+        }
+      }
+    },
+    huidige() {
+      const u = auth && auth.currentUser;
+      return u ? { email: u.email, name: u.displayName || u.email, foto: u.photoURL || "" } : null;
+    },
+  };
+
+  /* Grote bestanden, zoals video's */
+  window.AppFiles = {
+    beschikbaar: !!opslag,
+    async upload(pad, file, bijWerken) {
+      const verwijzing = opslag.ref().child(tripId + "/" + pad);
+      const taak = verwijzing.put(file);
+      if (bijWerken) {
+        taak.on("state_changed", (stand) =>
+          bijWerken(Math.round((stand.bytesTransferred / stand.totalBytes) * 100))
+        );
+      }
+      await taak;
+      return await verwijzing.getDownloadURL();
+    },
+    async verwijder(pad) {
+      try {
+        await opslag.ref().child(tripId + "/" + pad).delete();
+      } catch (e) {
+        /* stond er al niet */
+      }
+    },
+  };
+};
+
+</script>
+<script>
+window.__firebaseNodig = function () {
+  var c = window.VAKANTIE_CONFIG || {};
+  var f = c.firebase || {};
+  return !!(f.projectId && f.apiKey);
+};
 </script>
 </head>
 <body>
@@ -269,7 +332,7 @@ const TABS = [
   { id: "reis", label: "Reis" },
   { id: "agenda", label: "Agenda" },
   { id: "buurt", label: "In de buurt" },
-  { id: "fotos", label: "Foto's" },
+  { id: "fotos", label: "Foto's en video" },
   { id: "notities", label: "Notities" },
   { id: "todo", label: "To-do" },
   { id: "lijst", label: "Boodschappen" },
@@ -961,6 +1024,64 @@ const PlaatsBeeld = ({ place, hoogte = 92 }) => {
   );
 };
 
+/* ---------- video: hoeveel past er in de opslag, en wat is het beeldje ---------- */
+const VIDEO_MAX = 2.5 * 1024 * 1024; // ruwe bestandsgrootte
+
+const youtubeId = (u) => {
+  const m = String(u || "").match(/(?:youtu\.be\/|[?&]v=|shorts\/|embed\/)([A-Za-z0-9_-]{6,})/);
+  return m ? m[1] : null;
+};
+
+/* Pakt een stilstaand beeldje uit een videobestand, als voorvertoning. */
+function videoBeeldje(file, max = 800) {
+  return new Promise((klaar, mis) => {
+    const bron = URL.createObjectURL(file);
+    const v = document.createElement("video");
+    v.preload = "metadata";
+    v.muted = true;
+    v.playsInline = true;
+    let gedaan = false;
+    const opruimen = () => URL.revokeObjectURL(bron);
+    v.onloadeddata = () => {
+      try {
+        v.currentTime = Math.min(1, (v.duration || 2) / 3);
+      } catch (e) {
+        /* sommige browsers springen niet */
+      }
+    };
+    v.onseeked = () => {
+      if (gedaan) return;
+      gedaan = true;
+      try {
+        const schaal = Math.min(1, max / Math.max(v.videoWidth || max, v.videoHeight || max));
+        const c = document.createElement("canvas");
+        c.width = Math.round((v.videoWidth || max) * schaal);
+        c.height = Math.round((v.videoHeight || max) * schaal);
+        c.getContext("2d").drawImage(v, 0, 0, c.width, c.height);
+        opruimen();
+        klaar(c.toDataURL("image/jpeg", 0.7));
+      } catch (e) {
+        opruimen();
+        mis(new Error("Van deze video lukte geen voorvertoning."));
+      }
+    };
+    v.onerror = () => {
+      opruimen();
+      mis(new Error("Dit videobestand kon niet gelezen worden."));
+    };
+    v.src = bron;
+  });
+}
+
+function bestandNaarTekst(file) {
+  return new Promise((klaar, mis) => {
+    const r = new FileReader();
+    r.onload = () => klaar(r.result);
+    r.onerror = () => mis(new Error("Het bestand kon niet gelezen worden."));
+    r.readAsDataURL(file);
+  });
+}
+
 /* ---------- image resize ---------- */
 function resizeImage(file, max = 1200, quality = 0.72) {
   return new Promise((resolve, reject) => {
@@ -1035,6 +1156,24 @@ function LoginView({ onLogin }) {
   const [name, setName] = useState("");
   const [blijf, setBlijf] = useState(true);
   const [error, setError] = useState("");
+  const [bezig, setBezig] = useState(false);
+  const metGoogle =
+    typeof window !== "undefined" && window.AppAuth && window.AppAuth.beschikbaar;
+
+  const googleAanmelden = async () => {
+    setError("");
+    setBezig(true);
+    try {
+      const p = await window.AppAuth.inloggenMetGoogle();
+      onLogin({ email: p.email, name: p.name }, blijf, p.foto);
+    } catch (e) {
+      setError(
+        (e && e.message) ||
+          "Inloggen met Google lukte niet. Staat dit adres bij de toegestane domeinen in Firebase?"
+      );
+    }
+    setBezig(false);
+  };
 
   const submit = () => {
     const mail = email.trim().toLowerCase();
@@ -1072,6 +1211,33 @@ function LoginView({ onLogin }) {
         </div>
 
         <div className="rounded-3xl p-5" style={{ background: "rgba(255,255,255,0.96)" }}>
+          {metGoogle && (
+            <div className="mb-4">
+              <button
+                onClick={googleAanmelden}
+                disabled={bezig}
+                className="w-full py-3 rounded-2xl flex items-center justify-center gap-2 focus:outline-none focus:ring-2"
+                style={{
+                  background: "#FFFFFF",
+                  color: C.ink,
+                  border: `2px solid ${C.line}`,
+                  fontFamily: FONT_KOP,
+                  fontWeight: 700,
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+                  <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.7 9.5 24 9.5z" />
+                  <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9.1h12.4c-.5 2.9-2.2 5.4-4.7 7l7.6 5.9c4.4-4.1 6.8-10.1 6.8-17.4z" />
+                  <path fill="#FBBC05" d="M10.4 28.7c-.5-1.4-.8-2.9-.8-4.7s.3-3.3.8-4.7l-7.8-6.1C1 16.4 0 20.1 0 24s1 7.6 2.6 10.8l7.8-6.1z" />
+                  <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.8 2.3-8.3 2.3-6.3 0-11.7-3.7-13.6-9.8l-7.8 6.1C6.5 42.6 14.6 48 24 48z" />
+                </svg>
+                {bezig ? "Bezig\u2026" : "Inloggen met Google"}
+              </button>
+              <p className="text-xs text-center mt-3" style={{ color: C.muted }}>
+                of vul hieronder zelf je gegevens in
+              </p>
+            </div>
+          )}
           <div className="space-y-3">
             <Field
               label="Gmail-adres"
@@ -2393,44 +2559,122 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
 /* ---------- photos ---------- */
 function PhotosView({ index, setIndex, images, loadImages, days, selected, setSelected, me, trip }) {
   const [caption, setCaption] = useState("");
+  const [link, setLink] = useState("");
   const [busy, setBusy] = useState("");
   const [open, setOpen] = useState(null);
   const fileRef = useRef(null);
+
+  const [videos, setVideos] = useState({});
 
   useEffect(() => {
     loadImages();
   }, [index.length]);
 
+  useEffect(() => {
+    if (!open || open.type !== "video" || !open.inline || videos[open.id]) return;
+    let stop = false;
+    (async () => {
+      try {
+        const r = await AppStore.get(`video:${open.id}`, true);
+        if (!stop && r?.value) setVideos((v) => ({ ...v, [open.id]: r.value }));
+      } catch (e) {
+        /* video staat er niet meer */
+      }
+    })();
+    return () => {
+      stop = true;
+    };
+  }, [open]);
+
   const handleFiles = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     let added = [];
+    let klachten = [];
     for (let n = 0; n < files.length; n++) {
-      setBusy(`Foto ${n + 1} van ${files.length} wordt klaargezet...`);
+      const file = files[n];
+      const isVideo = (file.type || "").startsWith("video/");
+      setBusy(`${isVideo ? "Video" : "Foto"} ${n + 1} van ${files.length} wordt klaargezet...`);
       try {
-        const dataUrl = await resizeImage(files[n]);
         const id = uid();
-        const ok = await saveKey(`photo:${id}`, dataUrl);
-        if (ok) {
-          added.push({
-            id,
-            date: selected,
-            caption: caption.trim(),
-            trip: trip.name,
-            by: me.name,
-            at: new Date().toISOString(),
-          });
+        if (isVideo) {
+          const beeldje = await videoBeeldje(file);
+          const past = file.size <= VIDEO_MAX;
+          const okBeeld = await saveKey(`photo:${id}`, beeldje);
+          const naarWolk = !past && window.AppFiles && window.AppFiles.beschikbaar;
+          let url = "";
+          if (naarWolk) {
+            try {
+              url = await window.AppFiles.upload(`video-${id}`, file, (pct) =>
+                setBusy(`Video wordt geupload: ${pct}%`)
+              );
+            } catch (e) {
+              klachten.push("De video kon niet geupload worden: " + (e.message || ""));
+            }
+          }
+          const okVideo = past ? await saveKey(`video:${id}`, await bestandNaarTekst(file)) : false;
+          if (okBeeld) {
+            added.push({
+              id,
+              date: selected,
+              caption: caption.trim(),
+              trip: trip.name,
+              by: me.name,
+              at: new Date().toISOString(),
+              type: "video",
+              inline: okVideo,
+              url: url || undefined,
+            });
+            if (!okVideo && !url)
+              klachten.push(
+                "Die video is te groot om hier te bewaren. Het beeldje staat er wel; zet de video ergens online en plak de link erbij."
+              );
+          }
+        } else {
+          const dataUrl = await resizeImage(file);
+          const ok = await saveKey(`photo:${id}`, dataUrl);
+          if (ok) {
+            added.push({
+              id,
+              date: selected,
+              caption: caption.trim(),
+              trip: trip.name,
+              by: me.name,
+              at: new Date().toISOString(),
+              type: "foto",
+            });
+          }
         }
       } catch (err) {
-        setBusy(err.message || "Deze foto kon niet toegevoegd worden.");
+        klachten.push(err.message || "Dit bestand kon niet toegevoegd worden.");
       }
     }
     if (added.length) {
       setIndex([...index, ...added]);
       setCaption("");
-      setBusy("");
     }
+    setBusy(klachten.join(" "));
     if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const voegLinkToe = () => {
+    const url = link.trim();
+    if (!url) return;
+    setIndex([
+      ...index,
+      {
+        id: uid(),
+        date: selected,
+        caption: caption.trim(),
+        trip: trip.name,
+        by: me.name,
+        at: new Date().toISOString(),
+        type: "link",
+        url,
+      },
+    ]);
+    setCaption("");
+    setLink("");
   };
 
   const grouped = useMemo(() => {
@@ -2452,6 +2696,9 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
     setOpen(null);
     try {
       await AppStore.delete(`photo:${p.id}`, true);
+      if (p.type === "video" && p.inline) await AppStore.delete(`video:${p.id}`, true);
+      if (p.type === "video" && p.url && window.AppFiles && window.AppFiles.beschikbaar)
+        await window.AppFiles.verwijder(`video-${p.id}`);
     } catch (e) {
       /* index is bijgewerkt; losse afbeelding blijft onbereikbaar achter */
     }
@@ -2461,13 +2708,13 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
     <div className="space-y-4">
       <DayStrip days={days} selected={selected} onSelect={setSelected} counts={counts} />
       <Card>
-        <Eyebrow>Foto's bij {fmtLong(selected)}</Eyebrow>
+        <Eyebrow>Foto's en video bij {fmtLong(selected)}</Eyebrow>
         <div className="mt-2 space-y-2">
           <Field label="Omschrijving (optioneel)" placeholder="Ontbijt op het terras" value={caption} onChange={(e) => setCaption(e.target.value)} />
           <input
             ref={fileRef}
             type="file"
-            accept="image/*"
+            accept="image/*,video/*"
             multiple
             onChange={handleFiles}
             className="block w-full text-sm"
@@ -2478,8 +2725,23 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
               {busy}
             </p>
           )}
+          <div className="flex gap-2 items-end">
+            <div className="flex-1">
+              <Field
+                label="Of een videolink (YouTube, Google Foto's, Drive)"
+                placeholder="https://youtu.be/..."
+                value={link}
+                onChange={(e) => setLink(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && voegLinkToe()}
+              />
+            </div>
+            <Btn onClick={voegLinkToe} disabled={!link.trim()}>
+              Erbij
+            </Btn>
+          </div>
           <p className="text-xs" style={{ color: C.muted }}>
-            Foto's worden verkleind opgeslagen en bij deze dag en bij {trip.name} gezet.
+            Korte video's worden in de app bewaard; langere kun je beter online zetten en als link
+            toevoegen. Foto's worden verkleind opgeslagen en bij deze dag en bij {trip.name} gezet.
           </p>
         </div>
       </Card>
@@ -2499,13 +2761,42 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
                   className="aspect-square rounded-lg overflow-hidden focus:outline-none focus:ring-2"
                   style={{ background: C.boneSoft }}
                 >
-                  {images[p.id] ? (
-                    <img src={images[p.id]} alt={p.caption || "Reisfoto"} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="font-mono text-xs" style={{ color: C.muted }}>
-                      ...
-                    </span>
-                  )}
+                  <span className="block w-full h-full relative">
+                    {images[p.id] ? (
+                      <img
+                        src={images[p.id]}
+                        alt={p.caption || "Reisbeeld"}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : p.type === "link" ? (
+                      <span
+                        className="flex w-full h-full items-center justify-center font-mono text-xs"
+                        style={{ background: C.boneSoft, color: C.muted }}
+                      >
+                        video
+                      </span>
+                    ) : (
+                      <span className="font-mono text-xs" style={{ color: C.muted }}>
+                        ...
+                      </span>
+                    )}
+                    {p.type !== "foto" && p.type && (
+                      <span
+                        className="absolute flex items-center justify-center rounded-full"
+                        style={{
+                          width: 26,
+                          height: 26,
+                          right: 5,
+                          bottom: 5,
+                          background: "rgba(34,64,107,0.85)",
+                          color: "#FFFFFF",
+                          fontSize: 12,
+                        }}
+                      >
+                        &gt;
+                      </span>
+                    )}
+                  </span>
                 </button>
               ))}
             </div>
@@ -2520,8 +2811,54 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
           style={{ background: "rgba(10,42,50,0.94)" }}
           role="dialog"
         >
-          {images[open.id] && (
-            <img src={images[open.id]} alt={open.caption || "Reisfoto"} className="max-h-96 w-full object-contain rounded-lg" />
+          {open.type === "link" ? (
+            youtubeId(open.url) ? (
+              <iframe
+                title={open.caption || "Video"}
+                src={`https://www.youtube.com/embed/${youtubeId(open.url)}`}
+                allow="accelerometer; autoplay; encrypted-media; picture-in-picture"
+                allowFullScreen
+                className="w-full rounded-2xl"
+                style={{ height: 220, border: "none" }}
+              />
+            ) : (
+              <a
+                href={open.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block rounded-2xl p-6 text-center"
+                style={{ background: "rgba(255,255,255,0.12)", color: "#FFFFFF" }}
+              >
+                Video openen in een nieuw tabblad
+              </a>
+            )
+          ) : open.type === "video" && open.url ? (
+            <video
+              src={open.url}
+              controls
+              playsInline
+              className="max-h-96 w-full rounded-2xl"
+              style={{ background: "#000" }}
+            />
+          ) : open.type === "video" && open.inline && videos[open.id] ? (
+            <video
+              src={videos[open.id]}
+              controls
+              playsInline
+              className="max-h-96 w-full rounded-2xl"
+              style={{ background: "#000" }}
+            />
+          ) : images[open.id] ? (
+            <img
+              src={images[open.id]}
+              alt={open.caption || "Reisbeeld"}
+              className="max-h-96 w-full object-contain rounded-2xl"
+            />
+          ) : null}
+          {open.type === "video" && !open.inline && !open.url && (
+            <p className="text-sm mt-3" style={{ color: "#FFFFFF" }}>
+              Van deze video is alleen het beeldje bewaard; hij was te groot voor de opslag.
+            </p>
           )}
           <div className="mt-4" style={{ color: C.bone }}>
             <Eyebrow color={C.marigold}>
@@ -2856,7 +3193,7 @@ function VakantieApp() {
     }
   }, [days]);
 
-  const login = async (person, blijfIngelogd) => {
+  const login = async (person, blijfIngelogd, googleFoto) => {
     setMe(person);
     if (blijfIngelogd) await saveKey("me", person, false);
     const core = await loadKey("trip-core", null);
@@ -2870,6 +3207,10 @@ function VakantieApp() {
     if (core) {
       await saveKey("trip-core", { ...core, members: nextMembers });
       setTrip(core.trip);
+    }
+    if (googleFoto && !avatars[person.email]) {
+      setAvatars((prev) => ({ ...prev, [person.email]: googleFoto }));
+      await saveKey(`avatar:${person.email}`, googleFoto);
     }
     setMe(samen);
     if (!bestaand?.profileDone) {
@@ -2900,6 +3241,11 @@ function VakantieApp() {
   };
 
   const logout = async () => {
+    try {
+      if (window.AppAuth && window.AppAuth.beschikbaar) await window.AppAuth.uitloggen();
+    } catch (e) {
+      /* was al afgemeld */
+    }
     try {
       await AppStore.delete("me", false);
     } catch (e) {
@@ -3219,9 +3565,30 @@ root.render(<VakantieApp />);
       });
   }
 
-  laad(
-    ["https://unpkg.com/react@18/umd/react.production.min.js",
-     "https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"], "React")
+  var FB = "https://www.gstatic.com/firebasejs/10.12.2/";
+  function firebaseLaden() {
+    if (!window.__firebaseNodig()) return Promise.resolve();
+    var c = window.VAKANTIE_CONFIG || {};
+    var lijst = [FB + "firebase-app-compat.js", FB + "firebase-firestore-compat.js", FB + "firebase-auth-compat.js"];
+    if (c.opslag) lijst.push(FB + "firebase-storage-compat.js");
+    return lijst
+      .reduce(function (p, url) {
+        return p.then(function () { return laadEen(url); });
+      }, Promise.resolve())
+      .catch(function () {
+        window.__fouten.push("Firebase kon niet geladen worden; de app werkt nu alleen op dit apparaat.");
+      });
+  }
+
+  firebaseLaden()
+    .then(function () {
+      window.__initOpslag();
+    })
+    .then(function () {
+      return laad(
+        ["https://unpkg.com/react@18/umd/react.production.min.js",
+         "https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"], "React");
+    })
     .then(function () {
       return laad(
         ["https://unpkg.com/react-dom@18/umd/react-dom.production.min.js",

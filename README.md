@@ -84,42 +84,61 @@ plekken in de buurt.
 > website-beperking uit stap 5 is wat hem beschermt: vanaf een ander adres
 > weigert Google de aanvraag. Sla die stap niet over.
 
-## Stap 4 - Delen met de groep (optioneel)
+## Stap 4 - Firebase: delen en echt inloggen (optioneel)
 
 Zonder deze stap werkt alles, maar houdt iedereen zijn eigen reisboek op zijn
-eigen telefoon. Met een gratis Firebase-project ziet de hele groep hetzelfde.
+eigen telefoon, en is het aanmelden alleen een naamplaatje. Met een gratis
+Firebase-project krijg je een gedeeld reisboek en een echte
+"Inloggen met Google"-knop.
 
 1. https://console.firebase.google.com/ -> **Project toevoegen**. Je mag hetzelfde
-   Google-project kiezen als hierboven. Analytics kun je uitzetten.
+   Google-project kiezen als in stap 3. Analytics kun je uitzetten.
 2. Linkermenu -> **Firestore Database** -> **Database maken** -> *productiemodus*,
    locatie in Europa.
-3. **Projectinstellingen** (tandwiel) -> onderaan bij *Jouw apps* -> web-icoon
+3. Linkermenu -> **Authentication** -> **Aan de slag** -> kies **Google** als
+   aanmeldmethode en zet die aan. Ga daarna naar het tabblad *Settings* ->
+   **Authorized domains** en voeg toe: `abraxas075.github.io`
+4. **Projectinstellingen** (tandwiel) -> onderaan bij *Jouw apps* -> web-icoon
    `</>` -> app registreren.
-4. Je krijgt een blokje met `apiKey`, `authDomain`, `projectId` enzovoort. Neem
+5. Je krijgt een blokje met `apiKey`, `authDomain`, `projectId` enzovoort. Neem
    die over in `config.js`, en verzin bij `tripId` iets dat niemand raadt.
-5. Firestore -> **Regels** -> zet dit neer en publiceer:
+6. Firestore -> **Regels** -> zet dit neer en publiceer:
 
        rules_version = '2';
        service cloud.firestore {
          match /databases/{database}/documents {
            match /trips/{tripId}/data/{doc} {
-             allow read, write: if true;
+             allow read, write: if request.auth != null;
            }
          }
        }
 
-6. Upload het aangepaste `config.js` opnieuw: klik in GitHub op het bestand ->
+   Deze regel betekent: alleen wie is ingelogd mag lezen en schrijven. Gebruik je
+   Authentication niet, dan moet er `if true` staan, maar dan kan iedereen die je
+   tripId kent meelezen.
+7. Upload het aangepaste `config.js` opnieuw naar GitHub: klik op het bestand ->
    potloodje -> plakken -> **Commit changes**.
 
-> Wat die regels betekenen: iedereen die je `tripId` kent kan meelezen en
-> meeschrijven. Voor een vakantie met vrienden is dat meestal prima, mits je een
-> moeilijk te raden `tripId` kiest. Zet er geen paspoortnummers of bankgegevens
-> in.
+### Video-opslag (alleen als je het echt wil)
+
+Zet je in `config.js` `opslag: true`, dan gaan lange video's naar Firebase
+Storage in plaats van dat alleen het beeldje bewaard wordt. Zet daarvoor in de
+Firebase-console **Storage** aan.
+
+Reken even mee voordat je dit doet. Bewaren is goedkoop: 20 GB kost ongeveer 40
+cent per maand. Kijken is de kostenpost: boven 1 GB per dag rekent Google $0,12
+per GB. Kijkt een gezin van vijf de hele 20 GB een keer terug, dan ben je acht
+tot twaalf euro kwijt. Een verborgen YouTube-video of een link naar Google Foto's
+kost niets en werkt in de app net zo goed. Zet je het toch aan, stel dan een
+uitgavenlimiet in Google Cloud in.
 
 ## Stap 5 - Aanmelden
 
-Iedereen opent hetzelfde adres en vult zijn Gmail-adres en naam in. Dat is een
-naamplaatje, geen echte Google-login: er wordt geen wachtwoord gecontroleerd. Het
+Heb je stap 4 gedaan, dan staat er een **Inloggen met Google**-knop op het
+startscherm. Naam en profielfoto komen dan uit je Google-account.
+
+Sla je stap 4 over, dan vult iedereen zelf zijn Gmail-adres en naam in. Dat is
+een naamplaatje, geen echte login: er wordt geen wachtwoord gecontroleerd. Het
 zorgt ervoor dat de groep ziet wie wat heeft toegevoegd.
 
 ---
