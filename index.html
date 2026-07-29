@@ -136,19 +136,115 @@ setTimeout(function () {
 <script type="text/babel" data-presets="react" id="app-code">
 const { useState, useEffect, useMemo, useRef } = React;
 
-/* ---------- palette: deep lagoon + bone + marigold ---------- */
+/* ---------- palet en letters, afgeleid uit het Family Trip-logo ---------- */
 const C = {
-  bg: "#0F3B46",
-  deep: "#0A2A32",
-  bone: "#F2EFE6",
-  boneSoft: "#E4DFD0",
-  ink: "#122A30",
-  muted: "#6E7C7E",
-  marigold: "#E8A33D",
-  mint: "#7FBFA6",
-  ember: "#C9503E",
-  line: "#D3CDBC",
+  bg: "#22406B", // inkt, het blauw van FAMILY
+  deep: "#1B3457",
+  bone: "#FDF7F0", // creme
+  boneSoft: "#EADFD2",
+  ink: "#22406B",
+  muted: "#5B7BA6",
+  marigold: "#F0A98E", // perzik
+  mint: "#A5D6B7",
+  ember: "#C75B45", // koraal, donker genoeg voor tekst
+  line: "#EADFD2",
+  perzik: "#F8C9A4",
+  roze: "#F2A9A5",
+  koraal: "#E98D7E",
+  lucht: "#A9CDE8",
+  munt: "#A5D6B7",
 };
+
+const FONT_KOP =
+  "'Baloo 2','Nunito','Quicksand',ui-rounded,'Segoe UI Rounded','Hiragino Maru Gothic ProN',system-ui,sans-serif";
+const FONT_TEKST = "'Nunito','Quicksand',ui-rounded,system-ui,sans-serif";
+const VERLOOP = `linear-gradient(160deg, ${"#F8C9A4"} 0%, ${"#F2A9A5"} 35%, ${"#A9CDE8"} 75%, ${"#A5D6B7"} 100%)`;
+
+/* Laadt de letters en laat font-serif de ronde kopletter gebruiken. */
+function Letters() {
+  useEffect(() => {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href =
+      "https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700&display=swap";
+    document.head.appendChild(link);
+    const stijl = document.createElement("style");
+    stijl.textContent = `
+      body, input, select, textarea, button, a { font-family: ${FONT_TEKST}; }
+      .font-serif { font-family: ${FONT_KOP}; font-weight: 800; letter-spacing: 0.2px; }
+      .font-mono { font-family: ${FONT_TEKST}; font-weight: 700; }
+    `;
+    document.head.appendChild(stijl);
+    return () => {
+      [link, stijl].forEach((el) => el.parentNode && el.parentNode.removeChild(el));
+    };
+  }, []);
+  return null;
+}
+
+/* ---------- het logo, nagetekend als SVG ---------- */
+function Logo({ size = 104, tekst = true, kleur = C.ink }) {
+  const id = React.useId();
+  return (
+    <svg
+      width={size}
+      height={tekst ? size * 1.42 : size}
+      viewBox={tekst ? "0 0 100 142" : "0 0 100 100"}
+      role="img"
+      aria-label="Family Trip"
+    >
+      <defs>
+        <linearGradient id={`lucht-${id}`} x1="0" y1="0" x2="0.4" y2="1">
+          <stop offset="0%" stopColor={C.perzik} />
+          <stop offset="45%" stopColor={C.roze} />
+          <stop offset="100%" stopColor="#FBE3D6" />
+        </linearGradient>
+        <clipPath id={`pin-${id}`}>
+          <path d="M50 4 C29 4 12 21 12 42 C12 66 50 96 50 96 C50 96 88 66 88 42 C88 21 71 4 50 4 Z" />
+        </clipPath>
+      </defs>
+      <g clipPath={`url(#pin-${id})`}>
+        <rect x="0" y="0" width="100" height="100" fill={`url(#lucht-${id})`} />
+        <path d="M-5 74 C15 58 34 62 48 72 C62 82 80 84 105 72 L105 100 L-5 100 Z" fill={C.lucht} opacity="0.85" />
+        <path d="M-5 82 C18 68 38 74 54 84 C68 92 88 92 105 84 L105 100 L-5 100 Z" fill={C.munt} />
+        <path d="M-5 90 C20 80 40 86 58 92 C72 96 90 96 105 92 L105 100 L-5 100 Z" fill="#6FB894" opacity="0.75" />
+        <path
+          d="M50 62 C42 52 30 47 30 36 C30 29 36 24 42 24 C46 24 49 26 50 29 C51 26 54 24 58 24 C64 24 70 29 70 36 C70 47 58 52 50 62 Z"
+          fill="#FFFFFF"
+          opacity="0.95"
+        />
+      </g>
+      <path
+        d="M50 4 C29 4 12 21 12 42 C12 66 50 96 50 96 C50 96 88 66 88 42 C88 21 71 4 50 4 Z"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth="3.5"
+      />
+      {tekst && (
+        <>
+          <text
+            x="50"
+            y="122"
+            textAnchor="middle"
+            fill={kleur}
+            style={{ font: `800 24px ${FONT_KOP}` }}
+          >
+            FAMILY
+          </text>
+          <text
+            x="50"
+            y="137"
+            textAnchor="middle"
+            fill={kleur}
+            style={{ font: `600 11px ${FONT_TEKST}`, letterSpacing: "6px" }}
+          >
+            TRIP
+          </text>
+        </>
+      )}
+    </svg>
+  );
+}
 
 const TABS = [
   { id: "dagen", label: "Dagen" },
@@ -803,18 +899,28 @@ function LoginView({ onLogin }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-5" style={{ background: C.bg }}>
-      <div className="w-full max-w-sm">
-        <Eyebrow color={C.marigold}>Reisboek | gedeeld</Eyebrow>
-        <h1
-          className="font-serif text-4xl leading-tight mt-2 mb-6"
-          style={{ color: C.bone }}
-        >
-          Een reis,
-          <br />
-          een plan.
-        </h1>
-        <Card>
+    <div className="min-h-screen flex items-center justify-center p-5" style={{ background: VERLOOP }}>
+      <Letters />
+      <div className="w-full" style={{ maxWidth: 380 }}>
+        <div className="flex flex-col items-center">
+          <div
+            className="rounded-3xl p-4 mb-5"
+            style={{ background: "#FFFFFF", boxShadow: "0 8px 28px rgba(34,64,107,0.20)" }}
+          >
+            <Logo size={104} />
+          </div>
+          <h1
+            className="font-serif text-3xl text-center leading-tight"
+            style={{ color: "#FFFFFF", textShadow: "0 1px 8px rgba(34,64,107,0.25)" }}
+          >
+            Family Trip
+          </h1>
+          <p className="text-sm text-center mt-1 mb-5" style={{ color: "rgba(255,255,255,0.95)" }}>
+            Een reisboek voor het hele gezelschap.
+          </p>
+        </div>
+
+        <div className="rounded-3xl p-5" style={{ background: "rgba(255,255,255,0.96)" }}>
           <div className="space-y-3">
             <Field
               label="Gmail-adres"
@@ -848,17 +954,30 @@ function LoginView({ onLogin }) {
                 checked={blijf}
                 onChange={(e) => setBlijf(e.target.checked)}
                 className="w-5 h-5"
+                style={{ accentColor: C.koraal }}
               />
-              <span className="text-sm">Ingelogd blijven op dit apparaat</span>
+              <span className="text-sm" style={{ color: C.ink }}>
+                Ingelogd blijven op dit apparaat
+              </span>
             </label>
-            <Btn onClick={submit} className="w-full">
+            <button
+              onClick={submit}
+              className="w-full py-3 rounded-2xl focus:outline-none focus:ring-2"
+              style={{
+                background: C.ink,
+                color: "#FFFFFF",
+                fontFamily: FONT_KOP,
+                fontWeight: 700,
+                boxShadow: "0 6px 16px rgba(34,64,107,0.30)",
+              }}
+            >
               Aanmelden
-            </Btn>
+            </button>
           </div>
-        </Card>
-        <p className="text-xs mt-4 leading-relaxed" style={{ color: C.boneSoft }}>
-          Iedereen die deze app opent en zich aanmeldt, werkt in hetzelfde reisboek:
-          agenda, foto's, notities en lijstjes zijn voor de hele groep zichtbaar.
+        </div>
+        <p className="text-xs mt-5 leading-relaxed text-center" style={{ color: "rgba(255,255,255,0.95)" }}>
+          Iedereen die zich aanmeldt werkt in hetzelfde reisboek: agenda, foto's, notities en
+          lijstjes zijn voor de hele groep zichtbaar.
         </p>
       </div>
     </div>
@@ -2660,6 +2779,7 @@ function VakantieApp() {
     return (
       <AvatarsContext.Provider value={avatars}>
         <div className="min-h-screen" style={{ background: C.bg }}>
+          <Letters />
           <ProfileView
             me={me}
             photo={avatars[me.email]}
@@ -2679,6 +2799,7 @@ function VakantieApp() {
     return (
       <MapsKeyContext.Provider value={apiKey}>
         <div className="min-h-screen" style={{ background: C.bg }}>
+          <Letters />
           <SetupView
             me={me}
             initial={editingTrip ? trip : null}
@@ -2710,6 +2831,7 @@ function VakantieApp() {
     <MapsKeyContext.Provider value={apiKey}>
     <AvatarsContext.Provider value={avatars}>
     <div className="min-h-screen" style={{ background: C.bg }}>
+      <Letters />
       <header className="px-4 pt-5 pb-3 sticky top-0 z-40" style={{ background: C.deep }}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3">
@@ -2767,7 +2889,10 @@ function VakantieApp() {
               )}
             </div>
             <div>
-              <Eyebrow color={C.marigold}>{members.length} reisgenoten</Eyebrow>
+              <div className="flex items-center gap-2">
+                <Logo size={26} tekst={false} />
+                <Eyebrow color={C.marigold}>{members.length} reisgenoten</Eyebrow>
+              </div>
               <h1 className="font-serif text-xl mt-1" style={{ color: C.bone }}>
                 {trip.name}
               </h1>
