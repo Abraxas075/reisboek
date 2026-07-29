@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-2" />
+<meta name="reisboek-versie" content="familytrip-3" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
@@ -318,12 +318,25 @@ async function autocompletePlaces(key, input) {
     .filter((p) => p.text);
 }
 
-const mapsStatic = (q, key) =>
-  `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(
-    q
-  )}&zoom=14&size=640x320&scale=2&language=nl&markers=color:0xC9503E%7C${encodeURIComponent(
-    q
-  )}&key=${encodeURIComponent(key)}`;
+const mapsStatic = (q, key, opties = {}) => {
+  const breedte = opties.breedte || 640;
+  const hoogte = opties.hoogte || 320;
+  const zoom = opties.zoom || 14;
+  const schaal = opties.schaal || 2;
+  return (
+    `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(q)}` +
+    `&zoom=${zoom}&size=${breedte}x${hoogte}&scale=${schaal}&language=nl` +
+    `&markers=color:0xE98D7E%7C${encodeURIComponent(q)}&key=${encodeURIComponent(key)}`
+  );
+};
+
+/* Herkent "52.09,5.12" of "geo:52.09,5.12" - dat willen we niet als tekst tonen. */
+const alsCoordinaat = (tekst) => {
+  if (!tekst) return null;
+  const t = String(tekst).replace(/^geo:/i, "").trim();
+  const m = t.match(/^(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)$/);
+  return m ? `${m[1]},${m[2]}` : null;
+};
 
 /* Kan de omgeving uberhaupt een kaartafbeelding van Google laden? */
 function testImage(key) {
@@ -409,7 +422,13 @@ function leesTijdlijn(json) {
     const start = s.startTime || s.startTimestamp;
     if (s.visit) {
       const kand = s.visit.topCandidate || {};
-      const plek = kand.placeLocation?.latLng || kand.placeId || "";
+      const ll = kand.placeLocation?.latLng;
+      const plek =
+        typeof ll === "string"
+          ? ll
+          : ll && ll.latitude != null
+          ? `${ll.latitude},${ll.longitude}`
+          : kand.placeId || "";
       voegToe(kand.semanticType && kand.semanticType !== "UNKNOWN" ? kand.semanticType : "Bezoek", String(plek), start);
     } else if (s.activity) {
       const soort = (s.activity.topCandidate?.type || "verplaatsing").toLowerCase().replace(/_/g, " ");
@@ -832,6 +851,54 @@ const RouteFrame = ({ from, to, stops = [], mode, height = 240 }) => {
       className="w-full rounded-lg"
       style={{ height, border: `1px solid ${C.line}` }}
     />
+  );
+};
+
+/* Toont een plek als kaartje in plaats van als kale coordinaten. */
+const PlaatsBeeld = ({ place, hoogte = 92 }) => {
+  const key = React.useContext(MapsKeyContext);
+  const [stuk, setStuk] = useState(false);
+  if (!place) return null;
+  const coord = alsCoordinaat(place);
+  const zoek = coord || place;
+  const beeld = key && !stuk;
+
+  return (
+    <span className="block mt-1">
+      {!coord && (
+        <a
+          href={mapsLink(zoek)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-sm underline"
+          style={{ color: C.muted }}
+        >
+          {place}
+        </a>
+      )}
+      {beeld ? (
+        <a href={mapsLink(zoek)} target="_blank" rel="noopener noreferrer" className="block mt-1">
+          <img
+            src={mapsStatic(zoek, key, { breedte: 320, hoogte: 110, zoom: coord ? 15 : 14, schaal: 2 })}
+            alt={coord ? "Plek op de kaart" : place}
+            onError={() => setStuk(true)}
+            loading="lazy"
+            className="w-full rounded-2xl object-cover"
+            style={{ height: hoogte, border: `2px solid ${C.line}` }}
+          />
+        </a>
+      ) : coord ? (
+        <a
+          href={mapsLink(zoek)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-sm underline"
+          style={{ color: C.muted }}
+        >
+          Bekijk deze plek op de kaart
+        </a>
+      ) : null}
+    </span>
   );
 };
 
@@ -1689,17 +1756,7 @@ function AgendaView({ items, setItems, days, selected, setSelected, me }) {
                 </span>
                 <span className="flex-1">
                   <span className="block text-base">{i.title}</span>
-                  {i.place && (
-                    <a
-                      href={mapsLink(i.place)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block text-sm underline focus:outline-none focus:ring-2"
-                      style={{ color: C.muted }}
-                    >
-                      {i.place}
-                    </a>
-                  )}
+                  <PlaatsBeeld place={i.place} />
                   <span className="block font-mono text-xs mt-1" style={{ color: C.muted }}>
                     door {i.by}
                   </span>
@@ -2070,17 +2127,7 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
                         </span>
                         <span className="flex-1">
                           <span className="block text-sm">{a.title}</span>
-                          {a.place && (
-                            <a
-                              href={mapsLink(a.place)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block font-mono text-xs underline"
-                              style={{ color: C.muted }}
-                            >
-                              {a.place}
-                            </a>
-                          )}
+                          <PlaatsBeeld place={a.place} hoogte={84} />
                         </span>
                         <button
                           onClick={() => setAgenda(agenda.filter((x) => x.id !== a.id))}
@@ -2180,18 +2227,11 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
                             <span className="font-mono text-xs" style={{ color: C.muted }}>
                               {s.time || `${i + 1}.`}
                             </span>
-                            <span>
-                              <a
-                                href={mapsLink(s.place)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="underline"
-                              >
-                                {s.place}
-                              </a>
+                            <span className="flex-1">
                               {s.note && (
-                                <span style={{ color: C.muted }}> - {s.note}</span>
+                                <span className="block text-sm">{s.note}</span>
                               )}
+                              <PlaatsBeeld place={s.place} hoogte={80} />
                             </span>
                           </li>
                         ))}
