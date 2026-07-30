@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-18" />
+<meta name="reisboek-versie" content="familytrip-19" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
@@ -2036,7 +2036,7 @@ function TijdlijnImport({ days, onImport }) {
 }
 
 /* ---------- trip overview ---------- */
-function TripView({ trip, members, days, stats, onEdit, apiKey, setApiKey }) {
+function TripView({ trip, members, days, stats, onEdit, apiKey, setApiKey, onGaNaar }) {
   const today = localToday();
   const untilStart = daysBetween(today, trip.start);
   const status =
@@ -2115,18 +2115,37 @@ function TripView({ trip, members, days, stats, onEdit, apiKey, setApiKey }) {
 
       <Card>
         <Eyebrow>Stand van zaken</Eyebrow>
-        <div className="grid grid-cols-2 gap-3 mt-3">
+        <p className="text-xs mt-1 mb-3" style={{ color: C.muted }}>
+          Tik op een vak om het hele overzicht te openen.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
           {[
-            ["Agenda-items", stats.agenda],
-            ["Foto's", stats.photos],
-            ["Notities", stats.notes],
-            ["To-do open", stats.todosOpen],
-            ["Boodschappen open", stats.shopOpen],
-          ].map(([k, v]) => (
-            <div key={k}>
-              <div className="font-serif text-2xl">{v}</div>
-              <Eyebrow>{k}</Eyebrow>
-            </div>
+            ["agenda", "Agenda-items", stats.agenda, "#E0B978"],
+            ["fotos", "Foto's en video", stats.photos, "#8FBCDF"],
+            ["notities", "Notities", stats.notes, "#F2A9A5"],
+            ["todo", "To-do open", stats.todosOpen, "#5B7BA6"],
+            ["lijst", "Boodschappen open", stats.shopOpen, "#6FB894"],
+            ["buurt", "In de buurt", stats.plekken, "#8CC9A8"],
+          ].map(([id, label, aantal, kleur]) => (
+            <button
+              key={id}
+              onClick={() => onGaNaar(id)}
+              className="flex items-center gap-3 rounded-2xl p-3 text-left focus:outline-none focus:ring-2"
+              style={{ background: "#FFFFFF", border: `2px solid ${C.line}` }}
+            >
+              <Tegel naam={id} kleur={kleur} maat={40} />
+              <span>
+                <span className="block font-serif text-2xl" style={{ color: C.ink }}>
+                  {aantal}
+                </span>
+                <span
+                  className="block font-mono uppercase text-xs tracking-widest"
+                  style={{ color: C.muted, lineHeight: 1.2 }}
+                >
+                  {label}
+                </span>
+              </span>
+            </button>
           ))}
         </div>
       </Card>
@@ -4387,6 +4406,7 @@ function VakantieApp() {
     notes: notes.length,
     todosOpen: todos.filter((t) => !t.done).length,
     shopOpen: shopping.filter((s) => !s.done).length,
+    plekken: places.length,
   };
 
   return (
@@ -4533,6 +4553,7 @@ function VakantieApp() {
             onEdit={() => setEditingTrip(true)}
             apiKey={apiKey}
             setApiKey={setApiKey}
+            onGaNaar={setTab}
           />
         )}
         {tab === "agenda" && (
