@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-13" />
+<meta name="reisboek-versie" content="familytrip-16" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
@@ -615,7 +615,7 @@ const vervoerNaam = (soort) => {
 
 function leesTijdlijn(json) {
   const uit = [];
-  const voegToe = (naam, adres, start) => {
+  const voegToe = (naam, adres, start, extra = {}) => {
     if (!naam || !start) return;
     const d = new Date(start);
     if (isNaN(d.getTime())) return;
@@ -624,7 +624,16 @@ function leesTijdlijn(json) {
       time: `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
       title: naam,
       place: adres || "",
+      ...extra,
     });
+  };
+  const uitE7 = (l) =>
+    l && l.latitudeE7 != null ? `${l.latitudeE7 / 1e7},${l.longitudeE7 / 1e7}` : "";
+  const uitGeo = (v) => {
+    if (!v) return "";
+    if (typeof v === "string") return alsCoordinaat(v) || "";
+    if (v.latLng) return alsCoordinaat(v.latLng) || "";
+    return "";
   };
 
   // oude uitvoer: Semantic Location History
@@ -635,7 +644,11 @@ function leesTijdlijn(json) {
       voegToe(loc.name || loc.address || "Bezoek", loc.address, o.placeVisit.duration?.startTimestamp);
     } else if (o.activitySegment) {
       const a = o.activitySegment;
-      voegToe(`Onderweg ${vervoerNaam(a.activityType)}`, "", a.duration?.startTimestamp);
+      voegToe(`Onderweg ${vervoerNaam(a.activityType)}`, "", a.duration?.startTimestamp, {
+        soort: "onderweg",
+        vanPunt: uitE7(a.startLocation),
+        naarPunt: uitE7(a.endLocation),
+      });
     }
   });
 
@@ -654,7 +667,11 @@ function leesTijdlijn(json) {
           : kand.placeId || "";
       voegToe(kand.semanticType && kand.semanticType !== "UNKNOWN" ? kand.semanticType : "Bezoek", String(plek), start);
     } else if (s.activity) {
-      voegToe(`Onderweg ${vervoerNaam(s.activity.topCandidate?.type)}`, "", start);
+      voegToe(`Onderweg ${vervoerNaam(s.activity.topCandidate?.type)}`, "", start, {
+        soort: "onderweg",
+        vanPunt: uitGeo(s.activity.start),
+        naarPunt: uitGeo(s.activity.end),
+      });
     }
   });
 
@@ -2121,6 +2138,155 @@ function TripView({ trip, members, days, stats, onEdit, apiKey, setApiKey }) {
   );
 }
 
+/* ---------- een regel in de agenda ---------- */
+const BESTEMMINGEN = [
+  "Vakantiehuisje",
+  "Strand",
+  "Uit eten",
+  "Winkelen",
+  "Supermarkt",
+  "Zwembad",
+  "Wandeling",
+  "Plaats bezoeken",
+  "Haven",
+  "Terug naar huisje",
+];
+
+function AgendaRegel({ item, items, setItems, compact }) {
+  const [bewerken, setBewerken] = useState(false);
+  const [concept, setConcept] = useState(item);
+  useEffect(() => setConcept(item), [item.id]);
+
+  const bewaar = () => {
+    const schoon = {
+      ...concept,
+      van: (concept.van || "").trim(),
+      naar: (concept.naar || "").trim(),
+      title: (concept.title || "").trim(),
+    };
+    setItems(items.map((x) => (x.id === item.id ? schoon : x)));
+    setBewerken(false);
+  };
+
+  const heenEnWeer = item.van || item.naar;
+  const kop = heenEnWeer
+    ? `${item.van || "Onbekend"} \u2192 ${item.naar || "Onbekend"}`
+    : item.title;
+
+  if (bewerken) {
+    return (
+      <li
+        className="px-3 py-3 rounded-2xl"
+        style={{ background: "rgba(255,255,255,0.9)", border: `2px solid ${C.koraal}` }}
+      >
+        <div className="grid grid-cols-3 gap-2">
+          <Field
+            label="Tijd"
+            type="time"
+            value={concept.time || ""}
+            onChange={(e) => setConcept({ ...concept, time: e.target.value })}
+          />
+          <div className="col-span-2">
+            <Field
+              label="Wat"
+              value={concept.title || ""}
+              onChange={(e) => setConcept({ ...concept, title: e.target.value })}
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <Field
+            label="Van"
+            placeholder="Vakantiehuisje"
+            value={concept.van || ""}
+            onChange={(e) => setConcept({ ...concept, van: e.target.value })}
+          />
+          <Field
+            label="Naar"
+            placeholder="Strand"
+            value={concept.naar || ""}
+            onChange={(e) => setConcept({ ...concept, naar: e.target.value })}
+          />
+        </div>
+        <div className="mt-2">
+          <Eyebrow>Snel invullen</Eyebrow>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {BESTEMMINGEN.map((b) => (
+              <button
+                key={b}
+                onClick={() =>
+                  setConcept(
+                    concept.van ? { ...concept, naar: b } : { ...concept, van: b }
+                  )
+                }
+                className="rounded-full px-3 py-1 text-xs focus:outline-none focus:ring-2"
+                style={{ background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}
+              >
+                {b}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs mt-1" style={{ color: C.muted }}>
+            Het eerste tikje vult Van, het volgende Naar.
+          </p>
+        </div>
+        <div className="flex gap-2 mt-3">
+          <Btn onClick={bewaar}>Bewaren</Btn>
+          <Btn tone="ghost" onClick={() => setBewerken(false)}>
+            Annuleren
+          </Btn>
+          <Btn tone="ghost" onClick={() => setConcept({ ...concept, van: "", naar: "" })}>
+            Wissen
+          </Btn>
+        </div>
+      </li>
+    );
+  }
+
+  return (
+    <li
+      className="flex gap-3 px-3 py-2 rounded-2xl"
+      style={{
+        background: compact ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.85)",
+        border: "1.5px solid rgba(255,255,255,0.9)",
+      }}
+    >
+      <span className="font-mono text-sm w-12 shrink-0" style={{ color: C.muted }}>
+        {item.time || "\u2014"}
+      </span>
+      <span className="flex-1">
+        <button
+          onClick={() => setBewerken(true)}
+          className="block text-left w-full focus:outline-none focus:ring-2 rounded"
+        >
+          <span className="block text-sm" style={{ color: C.ink }}>
+            {kop}
+          </span>
+          {heenEnWeer && item.title && item.title !== kop && (
+            <span className="block font-mono text-xs" style={{ color: C.muted }}>
+              {item.title}
+            </span>
+          )}
+          {!heenEnWeer && item.soort === "onderweg" && (
+            <span className="block font-mono text-xs" style={{ color: C.ember }}>
+              tik om begin- en eindpunt in te vullen
+            </span>
+          )}
+        </button>
+        <PlaatsBeeld place={item.place} hoogte={compact ? 84 : 92} />
+      </span>
+      <button
+        onClick={() => setItems(items.filter((x) => x.id !== item.id))}
+        aria-label={`Verwijder ${kop}`}
+        className="font-mono px-1 focus:outline-none focus:ring-2"
+        style={{ color: C.ember }}
+      >
+        \u00d7
+      </button>
+    </li>
+  );
+}
+
 /* ---------- agenda ---------- */
 function AgendaView({ items, setItems, days, selected, setSelected, me }) {
   const [draft, setDraft] = useState({ time: "", title: "", place: "" });
@@ -2158,28 +2324,9 @@ function AgendaView({ items, setItems, days, selected, setSelected, me }) {
         {dayItems.length === 0 ? (
           <Empty>Nog niets gepland. Zet hieronder het eerste plan voor deze dag.</Empty>
         ) : (
-          <ul className="mt-3 divide-y" style={{ borderColor: C.line }}>
+          <ul className="mt-3 space-y-2">
             {dayItems.map((i) => (
-              <li key={i.id} className="flex gap-3 py-3">
-                <span className="font-mono text-sm shrink-0 w-12" style={{ color: C.muted }}>
-                  {i.time || "-"}
-                </span>
-                <span className="flex-1">
-                  <span className="block text-base">{i.title}</span>
-                  <PlaatsBeeld place={i.place} />
-                  <span className="block font-mono text-xs mt-1" style={{ color: C.muted }}>
-                    door {i.by}
-                  </span>
-                </span>
-                <button
-                  onClick={() => setItems(items.filter((x) => x.id !== i.id))}
-                  aria-label={`Verwijder ${i.title}`}
-                  className="font-mono text-sm px-2 rounded focus:outline-none focus:ring-2"
-                  style={{ color: C.ember }}
-                >
-                  x
-                </button>
-              </li>
+              <AgendaRegel key={i.id} item={i} items={items} setItems={setItems} />
             ))}
           </ul>
         )}
@@ -2444,7 +2591,10 @@ function NamenOphalen({ agenda, setAgenda, dagIso }) {
   const [melding, setMelding] = useState("");
 
   const teDoen = agenda.filter(
-    (a) => a.date === dagIso && alsCoordinaat(a.place) && (!a.naamOpgehaald)
+    (a) =>
+      a.date === dagIso &&
+      !a.naamOpgehaald &&
+      (alsCoordinaat(a.place) || alsCoordinaat(a.vanPunt) || alsCoordinaat(a.naarPunt))
   );
   if (!key || teDoen.length === 0) return null;
 
@@ -2452,20 +2602,27 @@ function NamenOphalen({ agenda, setAgenda, dagIso }) {
     let lijst = [...agenda];
     let gevonden = 0;
     for (let i = 0; i < teDoen.length; i++) {
+      const item = teDoen[i];
       setBezig(`${i + 1} van ${teDoen.length}`);
-      const punt = alsCoordinaat(teDoen[i].place);
-      const r = await plaatsnaamBijPunt(key, punt);
+      const punt = alsCoordinaat(item.place);
+      const vanPunt = alsCoordinaat(item.vanPunt);
+      const naarPunt = alsCoordinaat(item.naarPunt);
+      const hier = punt ? await plaatsnaamBijPunt(key, punt) : null;
+      const vanNaam = vanPunt && !item.van ? await plaatsnaamBijPunt(key, vanPunt) : null;
+      const naarNaam = naarPunt && !item.naar ? await plaatsnaamBijPunt(key, naarPunt) : null;
       lijst = lijst.map((x) =>
-        x.id === teDoen[i].id
+        x.id === item.id
           ? {
               ...x,
               naamOpgehaald: true,
-              title: r && r.naam ? r.naam : x.title,
-              place: r && r.adres ? r.adres : x.place,
+              title: hier && hier.naam ? hier.naam : x.title,
+              place: hier && hier.adres ? hier.adres : x.place,
+              van: x.van || (vanNaam && vanNaam.naam) || x.van,
+              naar: x.naar || (naarNaam && naarNaam.naam) || x.naar,
             }
           : x
       );
-      if (r && r.naam) gevonden++;
+      if ((hier && hier.naam) || (vanNaam && vanNaam.naam) || (naarNaam && naarNaam.naam)) gevonden++;
     }
     setAgenda(lijst);
     setBezig("");
@@ -2648,27 +2805,7 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
                 ) : (
                   <ul className="space-y-2">
                     {plannen.map((a) => (
-                      <li
-                        key={a.id}
-                        className="flex gap-3 px-3 py-2 rounded-2xl"
-                        style={{ background: "rgba(255,255,255,0.75)", border: "1.5px solid rgba(255,255,255,0.9)" }}
-                      >
-                        <span className="font-mono text-sm w-12 shrink-0" style={{ color: C.muted }}>
-                          {a.time || "-"}
-                        </span>
-                        <span className="flex-1">
-                          <span className="block text-sm">{a.title}</span>
-                          <PlaatsBeeld place={a.place} hoogte={84} />
-                        </span>
-                        <button
-                          onClick={() => setAgenda(agenda.filter((x) => x.id !== a.id))}
-                          aria-label={`Verwijder ${a.title}`}
-                          className="font-mono px-1 focus:outline-none focus:ring-2"
-                          style={{ color: C.ember }}
-                        >
-                          x
-                        </button>
-                      </li>
+                      <AgendaRegel key={a.id} item={a} items={agenda} setItems={setAgenda} compact />
                     ))}
                   </ul>
                 )}
@@ -2806,6 +2943,16 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
     </div>
   );
 }
+
+/* ---------- emoji's ---------- */
+const STANDAARD_EMOJIS = ["\u2764\uFE0F", "\u{1F602}", "\u{1F60D}", "\u{1F44D}", "\u{1F525}"];
+const ALLE_EMOJIS = [
+  "\u2764\uFE0F", "\u{1F602}", "\u{1F60D}", "\u{1F44D}", "\u{1F525}",
+  "\u{1F62E}", "\u{1F389}", "\u{1F60E}", "\u{1F970}", "\u{1F605}",
+  "\u{1F929}", "\u{1F622}", "\u{1F64C}", "\u{1F44F}", "\u{1F31E}",
+  "\u{1F3D6}\uFE0F", "\u{1F355}", "\u{1F366}", "\u{1F30A}", "\u26F0\uFE0F",
+  "\u{1F697}", "\u{1F40E}", "\u{1F942}", "\u2728",
+];
 
 /* ---------- photos ---------- */
 function PhotosView({ index, setIndex, images, loadImages, days, selected, setSelected, me, trip }) {
@@ -3013,16 +3160,49 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
   const [praatTekst, setPraatTekst] = useState("");
   const [groot, setGroot] = useState(false);
 
-  const EMOJIS = [
-    "\u2764\uFE0F",
-    "\u{1F602}",
-    "\u{1F60D}",
-    "\u{1F44D}",
-    "\u{1F525}",
-    "\u{1F62E}",
-    "\u{1F389}",
-    "\u{1F60E}",
-  ];
+  const [snelEmojis, setSnelEmojis] = useState(STANDAARD_EMOJIS);
+  const [emojiPop, setEmojiPop] = useState(false);
+  const [emojiKies, setEmojiKies] = useState(false);
+  const drukTimer = useRef(null);
+  const langIngedrukt = useRef(false);
+
+  /* De vijf van deze persoon onthouden. */
+  useEffect(() => {
+    (async () => {
+      const eigen = await loadKey("emoji-set", null, false);
+      if (Array.isArray(eigen) && eigen.length === 5) setSnelEmojis(eigen);
+    })();
+  }, []);
+
+  const startDruk = () => {
+    langIngedrukt.current = false;
+    clearTimeout(drukTimer.current);
+    drukTimer.current = setTimeout(() => {
+      langIngedrukt.current = true;
+      setEmojiKies(false);
+      setEmojiPop(true);
+    }, 450);
+  };
+  const eindDruk = () => {
+    clearTimeout(drukTimer.current);
+    if (!langIngedrukt.current) setGroot(true);
+    langIngedrukt.current = false;
+  };
+  const annuleerDruk = () => {
+    clearTimeout(drukTimer.current);
+    langIngedrukt.current = false;
+  };
+
+  const kiesEmoji = async (emo) => {
+    await wisselEmoji(emo);
+    if (!snelEmojis.includes(emo)) {
+      const nieuw = [emo, ...snelEmojis].slice(0, 5);
+      setSnelEmojis(nieuw);
+      await saveKey("emoji-set", nieuw, false);
+    }
+    setEmojiKies(false);
+    setEmojiPop(false);
+  };
 
   /* Reacties en opmerkingen bij deze foto ophalen. */
   useEffect(() => {
@@ -3073,6 +3253,7 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
   );
   const huidige = open ? volgorde.findIndex((p) => p.id === open.id) : -1;
   const blader = (stap) => {
+    if (groot) return; // tijdens vergroten niet bladeren
     if (huidige < 0) return;
     const i = huidige + stap;
     if (i >= 0 && i < volgorde.length) setOpen(volgorde[i]);
@@ -3080,6 +3261,7 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
 
   /* Vegen met je vinger. */
   const veeg = useRef(null);
+  const grootVinger = useRef(null);
   const veegStart = (e) => {
     veeg.current = e.touches && e.touches[0] ? e.touches[0].clientX : null;
   };
@@ -3102,13 +3284,18 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
   useEffect(() => {
     if (!open) return;
     const toets = (e) => {
+      if (e.key === "Escape") {
+        if (groot) setGroot(false);
+        else setOpen(null);
+        return;
+      }
+      if (groot) return;
       if (e.key === "ArrowRight") blader(1);
       if (e.key === "ArrowLeft") blader(-1);
-      if (e.key === "Escape") setOpen(null);
     };
     window.addEventListener("keydown", toets);
     return () => window.removeEventListener("keydown", toets);
-  }, [open, volgorde]);
+  }, [open, volgorde, groot]);
 
   /* De terugknop van de telefoon sluit de foto, niet de hele app. */
   const isOpen = !!open;
@@ -3118,6 +3305,7 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
     window.history.pushState({ reisboekFoto: true }, "");
     const terug = () => {
       viaTerugknop = true;
+      setGroot(false);
       setOpen(null);
     };
     window.addEventListener("popstate", terug);
@@ -3350,17 +3538,26 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
               style={{ background: "#000" }}
             />
           ) : images[open.id] ? (
-            <button
-              onClick={() => setGroot(true)}
-              className="block w-full focus:outline-none focus:ring-2 rounded-2xl"
-              aria-label="Toon de foto op volle grootte"
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label="Tik voor volle grootte, houd ingedrukt voor emoji's"
+              onTouchStart={startDruk}
+              onTouchEnd={eindDruk}
+              onTouchMove={annuleerDruk}
+              onMouseDown={startDruk}
+              onMouseUp={eindDruk}
+              onMouseLeave={annuleerDruk}
+              onContextMenu={(e) => e.preventDefault()}
+              className="block w-full rounded-2xl"
+              style={{ WebkitTouchCallout: "none", userSelect: "none" }}
             >
               <img
                 src={images[open.id]}
                 alt={open.caption || "Reisbeeld"}
-                className="max-h-96 w-full object-contain rounded-2xl"
+                className="max-h-96 w-full object-contain rounded-2xl pointer-events-none"
               />
-            </button>
+            </div>
           ) : null}
           {open.type === "video" && !open.inline && !open.url && (
             <p className="text-sm mt-3" style={{ color: "#FFFFFF" }}>
@@ -3381,38 +3578,29 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
               toegevoegd door {open.by}
             </p>
           </div>
-          <div
-            className="flex flex-wrap gap-2 mt-3 p-2 rounded-2xl"
-            style={{ background: "rgba(255,255,255,0.10)" }}
-          >
-            {EMOJIS.map((emo) => {
-              const wie = (reacties[open.id] || {})[emo] || [];
-              const vanMij = wie.includes(me.name);
-              return (
-                <button
+          {Object.keys(reacties[open.id] || {}).length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {Object.entries(reacties[open.id] || {}).map(([emo, wie]) => (
+                <span
                   key={emo}
-                  onClick={() => wisselEmoji(emo)}
                   title={wie.join(", ")}
-                  className="flex items-center gap-1 rounded-full px-3 py-1 focus:outline-none focus:ring-2"
+                  className="flex items-center gap-1 rounded-full px-3 py-1"
                   style={{
-                    background: vanMij ? C.koraal : "rgba(255,255,255,0.14)",
-                    border: `2px solid ${vanMij ? C.koraal : "rgba(255,255,255,0.25)"}`,
-                    fontSize: 17,
+                    background: wie.includes(me.name) ? C.koraal : "rgba(255,255,255,0.16)",
+                    fontSize: 16,
                   }}
                 >
                   <span>{emo}</span>
-                  {wie.length > 0 && (
-                    <span
-                      className="font-mono text-xs"
-                      style={{ color: vanMij ? C.ink : "#FFFFFF" }}
-                    >
-                      {wie.length}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                  <span
+                    className="font-mono text-xs"
+                    style={{ color: wie.includes(me.name) ? C.ink : "#FFFFFF" }}
+                  >
+                    {wie.length}
+                  </span>
+                </span>
+              ))}
+            </div>
+          )}
 
           <div className="mt-3">
             {(praat[open.id] || []).map((b) => {
@@ -3456,13 +3644,128 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
           </div>
 
           <p className="font-mono text-xs mt-3" style={{ color: "rgba(243,231,218,0.7)" }}>
-            Veeg voor de volgende foto. Tik op de foto om hem groot te zien.
+            Veeg voor de volgende foto. Tik op de foto om hem groot te zien, of houd hem even
+            ingedrukt voor een emoji.
           </p>
+          {emojiPop && (
+            <div
+              className="fixed inset-0 flex items-center justify-center p-5"
+              style={{ zIndex: 70, background: "rgba(27,52,87,0.75)" }}
+              onClick={() => {
+                setEmojiPop(false);
+                setEmojiKies(false);
+              }}
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => e.stopPropagation()}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="rounded-3xl p-4"
+                style={{
+                  background: C.bone,
+                  border: `3px solid ${C.line}`,
+                  boxShadow: "0 14px 34px rgba(0,0,0,0.35)",
+                  maxWidth: 340,
+                  width: "100%",
+                }}
+              >
+                {!emojiKies ? (
+                  <>
+                    <Eyebrow>Jouw reactie</Eyebrow>
+                    <div className="flex items-center gap-2 mt-3">
+                      {snelEmojis.map((emo) => {
+                        const wie = (reacties[open.id] || {})[emo] || [];
+                        const vanMij = wie.includes(me.name);
+                        return (
+                          <button
+                            key={emo}
+                            onClick={() => {
+                              wisselEmoji(emo);
+                              setEmojiPop(false);
+                            }}
+                            className="rounded-full flex items-center justify-center focus:outline-none focus:ring-2"
+                            style={{
+                              width: 48,
+                              height: 48,
+                              fontSize: 26,
+                              background: vanMij ? C.koraal : "#FFFFFF",
+                              border: `2px solid ${vanMij ? C.koraal : C.line}`,
+                            }}
+                          >
+                            {emo}
+                          </button>
+                        );
+                      })}
+                      <button
+                        onClick={() => setEmojiKies(true)}
+                        aria-label="Andere emoji kiezen"
+                        className="rounded-full flex items-center justify-center focus:outline-none focus:ring-2"
+                        style={{
+                          width: 48,
+                          height: 48,
+                          fontSize: 24,
+                          background: C.ink,
+                          color: "#FFFFFF",
+                        }}
+                      >
+                        +
+                      </button>
+                    </div>
+                    <p className="text-xs mt-3" style={{ color: C.muted }}>
+                      Tik op het plusje om er een te kiezen die hier niet bij staat. Die komt daarna
+                      in jouw rijtje van vijf.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Eyebrow>Kies een emoji</Eyebrow>
+                    <div className="grid grid-cols-6 gap-2 mt-3">
+                      {ALLE_EMOJIS.map((emo) => (
+                        <button
+                          key={emo}
+                          onClick={() => kiesEmoji(emo)}
+                          className="rounded-2xl flex items-center justify-center focus:outline-none focus:ring-2"
+                          style={{
+                            height: 44,
+                            fontSize: 22,
+                            background: snelEmojis.includes(emo) ? C.boneSoft : "#FFFFFF",
+                            border: `2px solid ${C.line}`,
+                          }}
+                        >
+                          {emo}
+                        </button>
+                      ))}
+                    </div>
+                    <Btn tone="ghost" className="mt-3" onClick={() => setEmojiKies(false)}>
+                      Terug
+                    </Btn>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
           {groot && images[open.id] && (
             <div
               className="fixed inset-0 overflow-auto"
-              style={{ zIndex: 60, background: "#000000" }}
-              onClick={() => setGroot(false)}
+              style={{ zIndex: 60, background: "#000000", touchAction: "pan-x pan-y pinch-zoom" }}
+              onClick={(e) => e.stopPropagation()}
+              onTouchStart={(e) => {
+                e.stopPropagation();
+                const t = e.touches && e.touches[0];
+                grootVinger.current = t ? { x: t.clientX, y: t.clientY } : null;
+              }}
+              onTouchMove={(e) => e.stopPropagation()}
+              onTouchEnd={(e) => {
+                e.stopPropagation();
+                const start = grootVinger.current;
+                grootVinger.current = null;
+                const t = e.changedTouches && e.changedTouches[0];
+                if (!start || !t) return;
+                const dx = Math.abs(t.clientX - start.x);
+                const dy = Math.abs(t.clientY - start.y);
+                if (dx < 12 && dy < 12) setGroot(false);
+              }}
             >
               <img
                 src={images[open.id]}
@@ -3470,7 +3773,11 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
                 style={{ maxWidth: "none", display: "block", margin: "0 auto" }}
               />
               <button
-                onClick={() => setGroot(false)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setGroot(false);
+                }}
+                onTouchEnd={(e) => e.stopPropagation()}
                 className="fixed rounded-full px-4 py-2 font-mono uppercase text-xs tracking-widest focus:outline-none focus:ring-2"
                 style={{
                   right: 14,
