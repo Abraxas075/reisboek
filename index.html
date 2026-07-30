@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-8" />
+<meta name="reisboek-versie" content="familytrip-9" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
@@ -2419,11 +2419,10 @@ function ZwevendeBalk({ tab, onGaNaar }) {
         maxWidth: 460,
         marginLeft: "auto",
         marginRight: "auto",
-        background: "rgba(255,251,245,0.97)",
-        border: `2px solid ${C.line}`,
-        borderRadius: 26,
-        padding: "8px 4px",
-        boxShadow: "0 10px 26px rgba(34,64,107,0.22)",
+        background: "transparent",
+        border: "none",
+        padding: 0,
+        pointerEvents: "none",
       }}
     >
       {SNELKNOPPEN.map((k) => {
@@ -2434,18 +2433,19 @@ function ZwevendeBalk({ tab, onGaNaar }) {
             onClick={() => onGaNaar(k.id)}
             aria-label={k.label}
             className="flex flex-col items-center gap-1 focus:outline-none focus:ring-2 rounded-2xl px-1"
-            style={{ width: 76 }}
+            style={{ width: 76, pointerEvents: "auto" }}
           >
             <span
               className="inline-flex items-center justify-center rounded-full"
               style={{
-                width: 42,
-                height: 42,
+                width: 48,
+                height: 48,
                 background: actief ? k.kleur + "33" : "#FFFFFF",
                 border: `2px solid ${actief ? k.kleur : C.line}`,
+                boxShadow: "0 6px 16px rgba(34,64,107,0.26)",
               }}
             >
-              <Icoon naam={k.id} kleur={k.kleur} maat={22} />
+              <Icoon naam={k.id} kleur={k.kleur} maat={24} />
             </span>
             <span
               className="text-center"
@@ -2455,6 +2455,7 @@ function ZwevendeBalk({ tab, onGaNaar }) {
                 fontWeight: 700,
                 fontSize: 10,
                 lineHeight: 1.1,
+                textShadow: "0 1px 3px rgba(255,255,255,0.95), 0 0 6px rgba(255,255,255,0.85)",
               }}
             >
               {k.label}
