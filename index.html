@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-12" />
+<meta name="reisboek-versie" content="familytrip-13" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
@@ -3008,6 +3008,64 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
     return c;
   }, [index]);
 
+  const [reacties, setReacties] = useState({});
+  const [praat, setPraat] = useState({});
+  const [praatTekst, setPraatTekst] = useState("");
+  const [groot, setGroot] = useState(false);
+
+  const EMOJIS = [
+    "\u2764\uFE0F",
+    "\u{1F602}",
+    "\u{1F60D}",
+    "\u{1F44D}",
+    "\u{1F525}",
+    "\u{1F62E}",
+    "\u{1F389}",
+    "\u{1F60E}",
+  ];
+
+  /* Reacties en opmerkingen bij deze foto ophalen. */
+  useEffect(() => {
+    setGroot(false);
+    if (!open) return;
+    let stop = false;
+    (async () => {
+      const r = await loadKey(`reacties:${open.id}`, {});
+      const pr = await loadKey(`praat:${open.id}`, []);
+      if (stop) return;
+      setReacties((v) => ({ ...v, [open.id]: r || {} }));
+      setPraat((v) => ({ ...v, [open.id]: Array.isArray(pr) ? pr : [] }));
+    })();
+    return () => {
+      stop = true;
+    };
+  }, [open]);
+
+  const wisselEmoji = async (emo) => {
+    const nu = { ...(reacties[open.id] || {}) };
+    const wie = Array.isArray(nu[emo]) ? [...nu[emo]] : [];
+    const i = wie.indexOf(me.name);
+    if (i >= 0) wie.splice(i, 1);
+    else wie.push(me.name);
+    if (wie.length) nu[emo] = wie;
+    else delete nu[emo];
+    setReacties((v) => ({ ...v, [open.id]: nu }));
+    await saveKey(`reacties:${open.id}`, nu);
+  };
+
+  const stuurPraat = async () => {
+    const tekst = praatTekst.trim();
+    if (!tekst) return;
+    const lijst = [
+      ...(praat[open.id] || []),
+      { id: uid(), by: me.name, text: tekst, at: new Date().toISOString() },
+    ];
+    setPraat((v) => ({ ...v, [open.id]: lijst }));
+    setPraatTekst("");
+    const ok = await saveKey(`praat:${open.id}`, lijst);
+    if (!ok) setBusy("De opmerking kon niet opgeslagen worden.");
+  };
+
   /* Alle beelden op volgorde, zoals ze op het scherm staan. */
   const volgorde = useMemo(
     () => days.filter((d) => grouped[d] && grouped[d].length).flatMap((d) => grouped[d]),
@@ -3211,8 +3269,8 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
 
       {open && (
         <div
-          className="fixed inset-0 z-50 p-4 flex flex-col justify-center"
-          style={{ background: "rgba(27,52,87,0.95)" }}
+          className="fixed inset-0 z-50 p-4 overflow-y-auto"
+          style={{ background: "rgba(27,52,87,0.96)" }}
           role="dialog"
           onTouchStart={veegStart}
           onTouchEnd={veegEind}
@@ -3292,11 +3350,17 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
               style={{ background: "#000" }}
             />
           ) : images[open.id] ? (
-            <img
-              src={images[open.id]}
-              alt={open.caption || "Reisbeeld"}
-              className="max-h-96 w-full object-contain rounded-2xl"
-            />
+            <button
+              onClick={() => setGroot(true)}
+              className="block w-full focus:outline-none focus:ring-2 rounded-2xl"
+              aria-label="Toon de foto op volle grootte"
+            >
+              <img
+                src={images[open.id]}
+                alt={open.caption || "Reisbeeld"}
+                className="max-h-96 w-full object-contain rounded-2xl"
+              />
+            </button>
           ) : null}
           {open.type === "video" && !open.inline && !open.url && (
             <p className="text-sm mt-3" style={{ color: "#FFFFFF" }}>
@@ -3317,9 +3381,108 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
               toegevoegd door {open.by}
             </p>
           </div>
-          <p className="font-mono text-xs mt-2" style={{ color: "rgba(243,231,218,0.7)" }}>
-            Veeg naar links of rechts voor de volgende foto.
+          <div
+            className="flex flex-wrap gap-2 mt-3 p-2 rounded-2xl"
+            style={{ background: "rgba(255,255,255,0.10)" }}
+          >
+            {EMOJIS.map((emo) => {
+              const wie = (reacties[open.id] || {})[emo] || [];
+              const vanMij = wie.includes(me.name);
+              return (
+                <button
+                  key={emo}
+                  onClick={() => wisselEmoji(emo)}
+                  title={wie.join(", ")}
+                  className="flex items-center gap-1 rounded-full px-3 py-1 focus:outline-none focus:ring-2"
+                  style={{
+                    background: vanMij ? C.koraal : "rgba(255,255,255,0.14)",
+                    border: `2px solid ${vanMij ? C.koraal : "rgba(255,255,255,0.25)"}`,
+                    fontSize: 17,
+                  }}
+                >
+                  <span>{emo}</span>
+                  {wie.length > 0 && (
+                    <span
+                      className="font-mono text-xs"
+                      style={{ color: vanMij ? C.ink : "#FFFFFF" }}
+                    >
+                      {wie.length}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-3">
+            {(praat[open.id] || []).map((b) => {
+              const vanMij = b.by === me.name;
+              return (
+                <div key={b.id} className={"flex mb-2 " + (vanMij ? "justify-end" : "justify-start")}>
+                  <span
+                    className="inline-block px-3 py-2"
+                    style={{
+                      maxWidth: "80%",
+                      background: vanMij ? C.koraal : "rgba(255,255,255,0.92)",
+                      color: C.ink,
+                      borderRadius: 18,
+                      borderBottomRightRadius: vanMij ? 4 : 18,
+                      borderBottomLeftRadius: vanMij ? 18 : 4,
+                    }}
+                  >
+                    {!vanMij && (
+                      <span className="block font-mono text-xs" style={{ color: C.muted }}>
+                        {b.by}
+                      </span>
+                    )}
+                    <span className="block text-sm">{b.text}</span>
+                  </span>
+                </div>
+              );
+            })}
+            <div className="flex gap-2 mt-2">
+              <input
+                value={praatTekst}
+                onChange={(e) => setPraatTekst(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && stuurPraat()}
+                placeholder="Iets erbij zeggen"
+                className="flex-1 px-4 py-2 rounded-2xl text-base focus:outline-none focus:ring-2"
+                style={{ background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}
+              />
+              <Btn onClick={stuurPraat} disabled={!praatTekst.trim()}>
+                Plaats
+              </Btn>
+            </div>
+          </div>
+
+          <p className="font-mono text-xs mt-3" style={{ color: "rgba(243,231,218,0.7)" }}>
+            Veeg voor de volgende foto. Tik op de foto om hem groot te zien.
           </p>
+          {groot && images[open.id] && (
+            <div
+              className="fixed inset-0 overflow-auto"
+              style={{ zIndex: 60, background: "#000000" }}
+              onClick={() => setGroot(false)}
+            >
+              <img
+                src={images[open.id]}
+                alt={open.caption || "Reisbeeld"}
+                style={{ maxWidth: "none", display: "block", margin: "0 auto" }}
+              />
+              <button
+                onClick={() => setGroot(false)}
+                className="fixed rounded-full px-4 py-2 font-mono uppercase text-xs tracking-widest focus:outline-none focus:ring-2"
+                style={{
+                  right: 14,
+                  top: 14,
+                  background: "rgba(255,255,255,0.9)",
+                  color: C.ink,
+                }}
+              >
+                Sluiten
+              </button>
+            </div>
+          )}
           <div className="flex gap-2 mt-3">
             <Btn onClick={() => setOpen(null)}>Sluiten</Btn>
             <Btn tone="danger" onClick={() => remove(open)}>
