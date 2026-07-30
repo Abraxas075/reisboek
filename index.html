@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-9" />
+<meta name="reisboek-versie" content="familytrip-11" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
@@ -439,7 +439,11 @@ async function loadKey(key, fallback, shared = true) {
   try {
     const r = await AppStore.get(key, shared);
     if (!r || !r.value) return fallback;
-    return JSON.parse(r.value);
+    try {
+      return JSON.parse(r.value);
+    } catch (e) {
+      return r.value; // stond er nog als kale tekst in
+    }
   } catch (e) {
     return fallback;
   }
@@ -1119,6 +1123,90 @@ const PlaatsBeeld = ({ place, hoogte = 92 }) => {
     </span>
   );
 };
+
+/* ---------- de opnamegegevens uit een foto lezen (Exif) ---------- */
+const TYPE_GROOTTE = { 1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 7: 1, 9: 4, 10: 8 };
+
+function leesIFD(dv, tiff, ifd, le) {
+  const uit = {};
+  const aantal = dv.getUint16(tiff + ifd, le);
+  for (let i = 0; i < aantal; i++) {
+    const e = tiff + ifd + 2 + i * 12;
+    if (e + 12 > dv.byteLength) break;
+    const tag = dv.getUint16(e, le);
+    const type = dv.getUint16(e + 2, le);
+    const n = dv.getUint32(e + 4, le);
+    const bytes = (TYPE_GROOTTE[type] || 1) * n;
+    const waar = bytes <= 4 ? e + 8 : tiff + dv.getUint32(e + 8, le);
+    uit[tag] = { type, n, waar };
+  }
+  return uit;
+}
+const leesTekst = (dv, v) => {
+  let t = "";
+  for (let i = 0; i < v.n && v.waar + i < dv.byteLength; i++) {
+    const c = dv.getUint8(v.waar + i);
+    if (!c) break;
+    t += String.fromCharCode(c);
+  }
+  return t;
+};
+const leesBreuk = (dv, waar, le) => {
+  const teller = dv.getUint32(waar, le);
+  const noemer = dv.getUint32(waar + 4, le);
+  return noemer ? teller / noemer : 0;
+};
+
+async function leesExif(file) {
+  try {
+    const buf = await file.slice(0, 512 * 1024).arrayBuffer();
+    const dv = new DataView(buf);
+    if (dv.byteLength < 8 || dv.getUint16(0) !== 0xffd8) return null;
+    let pos = 2;
+    while (pos + 4 < dv.byteLength) {
+      const merk = dv.getUint16(pos);
+      if ((merk & 0xff00) !== 0xff00) break;
+      const lengte = dv.getUint16(pos + 2);
+      if (merk === 0xffe1 && dv.getUint32(pos + 4) === 0x45786966) {
+        const tiff = pos + 10;
+        const le = dv.getUint16(tiff) === 0x4949;
+        const ifd0 = leesIFD(dv, tiff, dv.getUint32(tiff + 4, le), le);
+        let datum = null;
+        let punt = null;
+        if (ifd0[0x8769]) {
+          const exif = leesIFD(dv, tiff, dv.getUint32(ifd0[0x8769].waar, le), le);
+          const v = exif[0x9003] || exif[0x9004];
+          if (v) {
+            const t = leesTekst(dv, v); // "2026:08:09 14:22:31"
+            const m = t.match(/^(\d{4}):(\d{2}):(\d{2})/);
+            if (m) datum = `${m[1]}-${m[2]}-${m[3]}`;
+          }
+        }
+        if (ifd0[0x8825]) {
+          const gps = leesIFD(dv, tiff, dv.getUint32(ifd0[0x8825].waar, le), le);
+          const graden = (v) =>
+            v && v.n >= 3
+              ? leesBreuk(dv, v.waar, le) +
+                leesBreuk(dv, v.waar + 8, le) / 60 +
+                leesBreuk(dv, v.waar + 16, le) / 3600
+              : null;
+          const lat = graden(gps[0x0002]);
+          const lng = graden(gps[0x0004]);
+          if (lat != null && lng != null) {
+            const nz = leesTekst(dv, gps[0x0001] || { n: 0, waar: 0 }) || "N";
+            const ow = leesTekst(dv, gps[0x0003] || { n: 0, waar: 0 }) || "E";
+            punt = `${(nz === "S" ? -lat : lat).toFixed(6)},${(ow === "W" ? -lng : lng).toFixed(6)}`;
+          }
+        }
+        return { datum, punt };
+      }
+      pos += 2 + lengte;
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
 
 /* ---------- video: hoeveel past er in de opslag, en wat is het beeldje ---------- */
 const VIDEO_MAX = 2.5 * 1024 * 1024; // ruwe bestandsgrootte
@@ -2726,6 +2814,7 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
   const [busy, setBusy] = useState("");
   const [open, setOpen] = useState(null);
   const fileRef = useRef(null);
+  const albumRef = useRef(null);
 
   const [videos, setVideos] = useState({});
 
@@ -2738,8 +2827,8 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
     let stop = false;
     (async () => {
       try {
-        const r = await AppStore.get(`video:${open.id}`, true);
-        if (!stop && r?.value) setVideos((v) => ({ ...v, [open.id]: r.value }));
+        const film = await loadKey(`video:${open.id}`, null);
+        if (!stop && film) setVideos((v) => ({ ...v, [open.id]: film }));
       } catch (e) {
         /* video staat er niet meer */
       }
@@ -2820,6 +2909,71 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
     if (fileRef.current) fileRef.current.value = "";
   };
 
+  const opnameDatum = (file, exif) => {
+    if (exif && exif.datum) return { datum: exif.datum, bron: "exif" };
+    if (file.lastModified) {
+      const d = new Date(file.lastModified);
+      return {
+        datum: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+        bron: "bestand",
+      };
+    }
+    return { datum: null, bron: null };
+  };
+
+  const handleAlbum = async (e) => {
+    const files = Array.from(e.target.files || []).slice(0, 80);
+    if (!files.length) return;
+    const nieuw = [];
+    let buiten = 0;
+    let zonderDatum = 0;
+    const perDag = {};
+    for (let n = 0; n < files.length; n++) {
+      const file = files[n];
+      setBusy(`Foto ${n + 1} van ${files.length} wordt bekeken\u2026`);
+      try {
+        const exif = await leesExif(file);
+        const { datum, bron } = opnameDatum(file, exif);
+        if (!datum) {
+          zonderDatum++;
+          continue;
+        }
+        if (!days.includes(datum)) {
+          buiten++;
+          continue;
+        }
+        const beeld = await resizeImage(file);
+        const id = uid();
+        const ok = await saveKey(`photo:${id}`, beeld);
+        if (!ok) continue;
+        nieuw.push({
+          id,
+          date: datum,
+          caption: "",
+          trip: trip.name,
+          by: me.name,
+          at: new Date().toISOString(),
+          type: "foto",
+          plek: exif && exif.punt ? exif.punt : undefined,
+          bron,
+        });
+        perDag[datum] = (perDag[datum] || 0) + 1;
+      } catch (err) {
+        /* deze foto slaan we over */
+      }
+    }
+    if (nieuw.length) setIndex([...index, ...nieuw]);
+    const dagen = Object.keys(perDag).length;
+    setBusy(
+      nieuw.length
+        ? `${nieuw.length} foto's verdeeld over ${dagen} ${dagen === 1 ? "dag" : "dagen"}.` +
+            (buiten ? ` ${buiten} vielen buiten je reisdata.` : "") +
+            (zonderDatum ? ` ${zonderDatum} hadden geen datum.` : "")
+        : "Geen foto's toegevoegd: geen enkele opnamedatum viel binnen je reis."
+    );
+    if (albumRef.current) albumRef.current.value = "";
+  };
+
   const voegLinkToe = () => {
     const url = link.trim();
     if (!url) return;
@@ -2870,8 +3024,31 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
   return (
     <div className="space-y-4">
       <DayStrip days={days} selected={selected} onSelect={setSelected} counts={counts} />
+
+      <Card style={{ background: "#FFF6EC", border: `3px solid ${C.koraal}` }}>
+        <Eyebrow color={C.ember}>Uit je fotoalbum, op datum</Eyebrow>
+        <p className="text-sm mt-2 leading-relaxed">
+          Kies hieronder de foto's van je vakantie. De app leest per foto uit wanneer hij genomen is
+          en zet hem bij de juiste dag. Selecteer er gerust honderd tegelijk; er worden er maximaal
+          tachtig per keer verwerkt.
+        </p>
+        <input
+          ref={albumRef}
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handleAlbum}
+          className="block w-full text-sm mt-3"
+          style={{ color: C.muted }}
+        />
+        <p className="text-xs mt-2" style={{ color: C.muted }}>
+          Foto's van buiten je reisdata worden overgeslagen. Staat er een locatie in de foto, dan
+          komt die er als kaartje bij.
+        </p>
+      </Card>
+
       <Card>
-        <Eyebrow>Foto's en video bij {fmtLong(selected)}</Eyebrow>
+        <Eyebrow>Zelf toevoegen bij {fmtLong(selected)}</Eyebrow>
         <div className="mt-2 space-y-2">
           <Field label="Omschrijving (optioneel)" placeholder="Ontbijt op het terras" value={caption} onChange={(e) => setCaption(e.target.value)} />
           <input
@@ -2921,14 +3098,14 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
                 <button
                   key={p.id}
                   onClick={() => setOpen(p)}
-                  className="aspect-square rounded-lg overflow-hidden focus:outline-none focus:ring-2"
-                  style={{ background: C.boneSoft }}
+                  className="relative rounded-2xl overflow-hidden focus:outline-none focus:ring-2 w-full"
+                  style={{ background: C.boneSoft, paddingTop: "100%", border: `2px solid ${C.line}` }}
                 >
-                  <span className="block w-full h-full relative">
+                  <span className="absolute inset-0 block">
                     {images[p.id] ? (
                       <img
                         src={images[p.id]}
-                        alt={p.caption || "Reisbeeld"}
+                        alt=""
                         className="w-full h-full object-cover"
                       />
                     ) : p.type === "link" ? (
@@ -2939,7 +3116,10 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
                         video
                       </span>
                     ) : (
-                      <span className="font-mono text-xs" style={{ color: C.muted }}>
+                      <span
+                        className="flex w-full h-full items-center justify-center font-mono text-xs"
+                        style={{ color: C.muted }}
+                      >
                         ...
                       </span>
                     )}
@@ -3022,6 +3202,11 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
             <p className="text-sm mt-3" style={{ color: "#FFFFFF" }}>
               Van deze video is alleen het beeldje bewaard; hij was te groot voor de opslag.
             </p>
+          )}
+          {open.plek && (
+            <div className="mt-3">
+              <PlaatsBeeld place={open.plek} hoogte={80} />
+            </div>
           )}
           <div className="mt-4" style={{ color: C.bone }}>
             <Eyebrow color={C.marigold}>
@@ -3460,8 +3645,8 @@ function VakantieApp() {
     const missing = photoIndex.filter((p) => !images[p.id]).slice(0, 24);
     for (const p of missing) {
       try {
-        const r = await AppStore.get(`photo:${p.id}`, true);
-        if (r?.value) setImages((prev) => ({ ...prev, [p.id]: r.value }));
+        const beeld = await loadKey(`photo:${p.id}`, null);
+        if (beeld) setImages((prev) => ({ ...prev, [p.id]: beeld }));
       } catch (e) {
         /* foto niet meer aanwezig */
       }
