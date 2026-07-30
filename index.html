@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-19" />
+<meta name="reisboek-versie" content="familytrip-20" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
@@ -2819,21 +2819,50 @@ function ZwevendeBalk({ tab, onGaNaar }) {
 /* ---------- hoofdscherm: dagen naast elkaar ---------- */
 function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, todos, photoIndex, images, loadImages, selected, setSelected, me, onGoTo }) {
   const scroller = useRef(null);
-  const [snel, setSnel] = useState("");
+  const [snel, setSnel] = useState({});
 
   useEffect(() => {
     loadImages();
   }, [photoIndex.length]);
 
   useEffect(() => {
-    const el = scroller.current?.querySelector('[data-dag="true"]');
-    if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest", inline: "start" });
+    const houder = scroller.current;
+    const el = houder?.querySelector('[data-dag="true"]');
+    if (!el || !houder) return;
+    const a = el.getBoundingClientRect();
+    const b = houder.getBoundingClientRect();
+    if (Math.abs(a.left - b.left) > 40 && el.scrollIntoView) {
+      el.scrollIntoView({ block: "nearest", inline: "start", behavior: "smooth" });
+    }
   }, [selected]);
 
+  /* Welke dagkaart staat er vooraan? Die wordt de gekozen dag. */
+  const scrollTimer = useRef(null);
+  const opScroll = () => {
+    clearTimeout(scrollTimer.current);
+    scrollTimer.current = setTimeout(() => {
+      const houder = scroller.current;
+      if (!houder) return;
+      const kaarten = Array.from(houder.querySelectorAll("section[data-iso]"));
+      const links = houder.getBoundingClientRect().left;
+      let beste = null;
+      let kleinste = Infinity;
+      kaarten.forEach((k) => {
+        const afstand = Math.abs(k.getBoundingClientRect().left - links);
+        if (afstand < kleinste) {
+          kleinste = afstand;
+          beste = k.getAttribute("data-iso");
+        }
+      });
+      if (beste && beste !== selected) setSelected(beste);
+    }, 140);
+  };
+
   const voegToe = (iso) => {
-    if (!snel.trim()) return;
-    setAgenda([...agenda, { id: uid(), date: iso, time: "", title: snel.trim(), place: "", by: me.name }]);
-    setSnel("");
+    const tekst = (snel[iso] || "").trim();
+    if (!tekst) return;
+    setAgenda([...agenda, { id: uid(), date: iso, time: "", title: tekst, place: "", by: me.name }]);
+    setSnel({ ...snel, [iso]: "" });
   };
 
   const index = days.indexOf(selected);
@@ -2869,6 +2898,7 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
 
       <div
         ref={scroller}
+        onScroll={opScroll}
         className="flex gap-3 overflow-x-auto snap-x snap-mandatory -mx-4 px-4 pb-2"
         style={{ alignItems: "flex-start" }}
       >
@@ -2882,8 +2912,8 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
           return (
             <section
               key={iso}
+              data-iso={iso}
               data-dag={actief}
-              onClick={() => !actief && setSelected(iso)}
               className="snap-start shrink-0 rounded-3xl p-4"
               style={{
                 width: "88%",
@@ -2913,22 +2943,20 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
                     ))}
                   </ul>
                 )}
-                {actief && <NamenOphalen agenda={agenda} setAgenda={setAgenda} dagIso={iso} />}
-                {actief && (
-                  <div className="flex gap-2 mt-2">
-                    <input
-                      value={snel}
-                      onChange={(e) => setSnel(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && voegToe(iso)}
-                      placeholder="Snel iets toevoegen"
-                      className="flex-1 px-3 py-2 rounded-md text-base focus:outline-none focus:ring-2"
-                      style={{ background: "#FFFFFF", color: C.ink, border: `1px solid ${C.line}` }}
-                    />
-                    <Btn onClick={() => voegToe(iso)} disabled={!snel.trim()}>
-                      +
-                    </Btn>
-                  </div>
-                )}
+                <NamenOphalen agenda={agenda} setAgenda={setAgenda} dagIso={iso} />
+                <div className="flex gap-2 mt-2">
+                  <input
+                    value={snel[iso] || ""}
+                    onChange={(e) => setSnel({ ...snel, [iso]: e.target.value })}
+                    onKeyDown={(e) => e.key === "Enter" && voegToe(iso)}
+                    placeholder="Snel iets toevoegen"
+                    className="flex-1 px-4 py-2 rounded-2xl text-base focus:outline-none focus:ring-2"
+                    style={{ background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}
+                  />
+                  <Btn onClick={() => voegToe(iso)} disabled={!(snel[iso] || "").trim()}>
+                    +
+                  </Btn>
+                </div>
               </div>
 
               {kiekjes.length > 0 && (
