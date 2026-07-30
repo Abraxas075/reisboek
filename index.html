@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-16" />
+<meta name="reisboek-versie" content="familytrip-17" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
@@ -2170,7 +2170,7 @@ function AgendaRegel({ item, items, setItems, compact }) {
 
   const heenEnWeer = item.van || item.naar;
   const kop = heenEnWeer
-    ? `${item.van || "Onbekend"} \u2192 ${item.naar || "Onbekend"}`
+    ? `${item.van || "Onbekend"} &gt; ${item.naar || "Onbekend"}`
     : item.title;
 
   if (bewerken) {
@@ -2252,7 +2252,7 @@ function AgendaRegel({ item, items, setItems, compact }) {
       }}
     >
       <span className="font-mono text-sm w-12 shrink-0" style={{ color: C.muted }}>
-        {item.time || "\u2014"}
+        {item.time || "-"}
       </span>
       <span className="flex-1">
         <button
@@ -2281,7 +2281,7 @@ function AgendaRegel({ item, items, setItems, compact }) {
         className="font-mono px-1 focus:outline-none focus:ring-2"
         style={{ color: C.ember }}
       >
-        \u00d7
+        x
       </button>
     </li>
   );
@@ -2655,12 +2655,27 @@ const SNELKNOPPEN = [
 
 function ZwevendeBalk({ tab, onGaNaar }) {
   return (
+    <>
+    <div
+      className="fixed"
+      style={{
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: "calc(96px + env(safe-area-inset-bottom, 0px))",
+        background: C.bg,
+        borderTop: "2px solid rgba(255,255,255,0.75)",
+        boxShadow: "0 -6px 18px rgba(34,64,107,0.12)",
+        zIndex: 45,
+      }}
+      aria-hidden="true"
+    />
     <nav
       className="fixed z-50 flex justify-around items-center"
       style={{
         left: 12,
         right: 12,
-        bottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
+        bottom: "calc(10px + env(safe-area-inset-bottom, 0px))",
         maxWidth: 460,
         marginLeft: "auto",
         marginRight: "auto",
@@ -2709,6 +2724,7 @@ function ZwevendeBalk({ tab, onGaNaar }) {
         );
       })}
     </nav>
+    </>
   );
 }
 
@@ -2766,6 +2782,7 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
       <div
         ref={scroller}
         className="flex gap-3 overflow-x-auto snap-x snap-mandatory -mx-4 px-4 pb-2"
+        style={{ alignItems: "flex-start" }}
       >
         {days.map((iso, n) => {
           const plannen = agenda
@@ -2783,8 +2800,7 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
               style={{
                 width: "88%",
                 maxWidth: 420,
-                maxHeight: "calc(100vh - 340px)",
-                minHeight: 200,
+                maxHeight: "calc(100vh - 330px)",
                 overflowY: "auto",
                 background: dagKleur(n).tint,
                 color: C.ink,
@@ -4412,7 +4428,10 @@ function VakantieApp() {
         </div>
       </header>
 
-      <main className="p-4 max-w-lg mx-auto" style={{ paddingBottom: 118 }}>
+      <main
+        className="p-4 max-w-lg mx-auto"
+        style={{ paddingBottom: "calc(126px + env(safe-area-inset-bottom, 0px))" }}
+      >
         {notice && (
           <p className="text-sm mb-3" style={{ color: C.marigold }}>
             {notice}
