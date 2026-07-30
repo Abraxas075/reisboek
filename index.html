@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-6" />
+<meta name="reisboek-versie" content="familytrip-8" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
@@ -327,15 +327,111 @@ function Logo({ size = 104, tekst = true, kleur = C.ink }) {
   );
 }
 
+/* ---------- pictogrammen: ronde lijnen, kleur per onderdeel ---------- */
+const ICOON = {
+  dagen: (
+    <>
+      <rect x="3" y="5.5" width="18" height="15.5" rx="4.5" />
+      <path d="M3 11h18" />
+      <path d="M8 3v4M16 3v4" />
+      <path d="M12 15.2c-1-1-2.3-1.6-2.3-2.8 0-.8.6-1.4 1.3-1.4.5 0 .8.3 1 .6.2-.3.5-.6 1-.6.7 0 1.3.6 1.3 1.4 0 1.2-1.3 1.8-2.3 2.8z" />
+    </>
+  ),
+  reis: (
+    <>
+      <rect x="3" y="7.5" width="18" height="13" rx="3.5" />
+      <path d="M9 7.5V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1.5" />
+      <path d="M12 7.5v13M3 12h18" />
+    </>
+  ),
+  agenda: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </>
+  ),
+  buurt: (
+    <>
+      <path d="M12 21s7-6.6 7-11a7 7 0 1 0-14 0c0 4.4 7 11 7 11z" />
+      <circle cx="12" cy="10" r="2.6" />
+    </>
+  ),
+  fotos: (
+    <>
+      <rect x="2.5" y="6.5" width="19" height="14" rx="4.5" />
+      <path d="M9 6.5 10.2 4h3.6l1.2 2.5" />
+      <path d="M10.6 10.8 15 13.5l-4.4 2.7z" />
+    </>
+  ),
+  notities: (
+    <>
+      <path d="M6 3.5h9L19 8v12.5H6z" />
+      <path d="M15 3.5V8h4" />
+      <path d="M9 12h7M9 16h5" />
+    </>
+  ),
+  todo: (
+    <>
+      <rect x="3.5" y="4.5" width="17" height="16" rx="4" />
+      <path d="M8 12.5l2.6 2.5L16.5 9" />
+    </>
+  ),
+  lijst: (
+    <>
+      <path d="M4 8.5h16l-1.6 10a2 2 0 0 1-2 1.7H7.6a2 2 0 0 1-2-1.7z" />
+      <path d="M9 8.5 12 3l3 5.5" />
+      <path d="M10 12.5v4M14 12.5v4" />
+    </>
+  ),
+  profiel: (
+    <>
+      <circle cx="12" cy="8.5" r="4" />
+      <path d="M5 20.5c0-3.6 3.1-5.5 7-5.5s7 1.9 7 5.5" />
+    </>
+  ),
+  uit: (
+    <>
+      <path d="M14.5 4.5H6.5v15h8" />
+      <path d="M12 12h8M17 9l3 3-3 3" />
+    </>
+  ),
+};
+
+const Icoon = ({ naam, kleur = C.ink, maat = 22, dikte = 2 }) => (
+  <svg
+    width={maat}
+    height={maat}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={kleur}
+    strokeWidth={dikte}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    {ICOON[naam]}
+  </svg>
+);
+
+/* Wit tegeltje met het pictogram in de eigen kleur. */
+const Tegel = ({ naam, kleur, maat = 38 }) => (
+  <span
+    className="inline-flex items-center justify-center rounded-2xl shrink-0"
+    style={{ width: maat, height: maat, background: "#FFFFFF", border: `2px solid ${C.line}` }}
+  >
+    <Icoon naam={naam} kleur={kleur} maat={Math.round(maat * 0.58)} />
+  </span>
+);
+
 const TABS = [
-  { id: "dagen", label: "Dagen" },
-  { id: "reis", label: "Reis" },
-  { id: "agenda", label: "Agenda" },
-  { id: "buurt", label: "In de buurt" },
-  { id: "fotos", label: "Foto's en video" },
-  { id: "notities", label: "Notities" },
-  { id: "todo", label: "To-do" },
-  { id: "lijst", label: "Boodschappen" },
+  { id: "dagen", label: "Dagen", kleur: "#F0A98E" },
+  { id: "reis", label: "Reis", kleur: "#E98D7E" },
+  { id: "agenda", label: "Agenda", kleur: "#E0B978" },
+  { id: "buurt", label: "In de buurt", kleur: "#8CC9A8" },
+  { id: "fotos", label: "Foto's en video", kleur: "#8FBCDF" },
+  { id: "notities", label: "Notities", kleur: "#F2A9A5" },
+  { id: "todo", label: "To-do", kleur: "#5B7BA6" },
+  { id: "lijst", label: "Boodschappen", kleur: "#6FB894" },
 ];
 
 /* ---------- storage helpers ---------- */
@@ -2304,6 +2400,72 @@ function NamenOphalen({ agenda, setAgenda, dagIso }) {
   );
 }
 
+/* ---------- zwevende balk onderaan ---------- */
+const SNELKNOPPEN = [
+  { id: "dagen", label: "Dagen", kleur: "#F0A98E" },
+  { id: "fotos", label: "Foto's", kleur: "#8FBCDF" },
+  { id: "reis", label: "Reis", kleur: "#E98D7E" },
+  { id: "buurt", label: "In de buurt", kleur: "#8CC9A8" },
+];
+
+function ZwevendeBalk({ tab, onGaNaar }) {
+  return (
+    <nav
+      className="fixed z-50 flex justify-around items-center"
+      style={{
+        left: 12,
+        right: 12,
+        bottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
+        maxWidth: 460,
+        marginLeft: "auto",
+        marginRight: "auto",
+        background: "rgba(255,251,245,0.97)",
+        border: `2px solid ${C.line}`,
+        borderRadius: 26,
+        padding: "8px 4px",
+        boxShadow: "0 10px 26px rgba(34,64,107,0.22)",
+      }}
+    >
+      {SNELKNOPPEN.map((k) => {
+        const actief = tab === k.id;
+        return (
+          <button
+            key={k.id}
+            onClick={() => onGaNaar(k.id)}
+            aria-label={k.label}
+            className="flex flex-col items-center gap-1 focus:outline-none focus:ring-2 rounded-2xl px-1"
+            style={{ width: 76 }}
+          >
+            <span
+              className="inline-flex items-center justify-center rounded-full"
+              style={{
+                width: 42,
+                height: 42,
+                background: actief ? k.kleur + "33" : "#FFFFFF",
+                border: `2px solid ${actief ? k.kleur : C.line}`,
+              }}
+            >
+              <Icoon naam={k.id} kleur={k.kleur} maat={22} />
+            </span>
+            <span
+              className="text-center"
+              style={{
+                color: C.ink,
+                fontFamily: FONT_TEKST,
+                fontWeight: 700,
+                fontSize: 10,
+                lineHeight: 1.1,
+              }}
+            >
+              {k.label}
+            </span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
 /* ---------- hoofdscherm: dagen naast elkaar ---------- */
 function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, todos, photoIndex, images, loadImages, selected, setSelected, me, onGoTo }) {
   const scroller = useRef(null);
@@ -2375,6 +2537,9 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
               style={{
                 width: "88%",
                 maxWidth: 420,
+                maxHeight: "calc(100vh - 340px)",
+                minHeight: 200,
+                overflowY: "auto",
                 background: dagKleur(n).tint,
                 color: C.ink,
                 opacity: actief ? 1 : 0.8,
@@ -2536,15 +2701,12 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
         })}
       </div>
 
-      <div className="flex flex-wrap gap-2 mt-3">
-        <Btn tone="dark" onClick={() => onGoTo("buurt")}>
-          Zoek iets in de buurt
-        </Btn>
-        <Btn tone="dark" onClick={() => onGoTo("fotos")}>
-          Foto toevoegen
-        </Btn>
-        <Btn tone="dark" onClick={() => onGoTo("lijst")}>
+      <div className="flex gap-3 mt-3">
+        <Btn tone="ghost" onClick={() => onGoTo("lijst")}>
           Boodschappen
+        </Btn>
+        <Btn tone="ghost" onClick={() => onGoTo("agenda")}>
+          Hele agenda
         </Btn>
       </div>
       {todos.filter((t) => !t.done).length > 0 && (
@@ -3389,8 +3551,15 @@ function VakantieApp() {
                 className="rounded-md px-3 py-2 focus:outline-none focus:ring-2"
                 style={{ background: C.bone, color: C.deep }}
               >
-                <span className="font-mono uppercase text-xs tracking-widest">
-                  {TABS.find((t) => t.id === tab)?.label || "Menu"} v
+                <span className="flex items-center gap-2">
+                  <Icoon
+                    naam={tab}
+                    kleur={TABS.find((t) => t.id === tab)?.kleur || C.ink}
+                    maat={18}
+                  />
+                  <span className="font-mono uppercase text-xs tracking-widest">
+                    {TABS.find((t) => t.id === tab)?.label || "Menu"} v
+                  </span>
                 </span>
               </button>
               {menuOpen && (
@@ -3405,14 +3574,19 @@ function VakantieApp() {
                         setTab(t.id);
                         setMenuOpen(false);
                       }}
-                      className="block w-full text-left px-4 py-3 font-mono uppercase text-xs tracking-widest focus:outline-none focus:ring-2"
+                      className="flex items-center gap-3 w-full text-left px-3 py-2 focus:outline-none focus:ring-2"
                       style={{
-                        color: tab === t.id ? C.deep : C.ink,
-                        background: tab === t.id ? C.marigold : "transparent",
+                        background: tab === t.id ? t.kleur + "33" : "transparent",
                         borderBottom: `1px solid ${C.line}`,
                       }}
                     >
-                      {t.label}
+                      <Tegel naam={t.id} kleur={t.kleur} maat={34} />
+                      <span
+                        className="font-mono uppercase text-xs tracking-widest"
+                        style={{ color: C.ink }}
+                      >
+                        {t.label}
+                      </span>
                     </button>
                   ))}
                   <button
@@ -3420,17 +3594,22 @@ function VakantieApp() {
                       setMenuOpen(false);
                       setEditingProfile(true);
                     }}
-                    className="block w-full text-left px-4 py-3 font-mono uppercase text-xs tracking-widest focus:outline-none focus:ring-2"
-                    style={{ color: C.ink, borderBottom: `1px solid ${C.line}` }}
+                    className="flex items-center gap-3 w-full text-left px-3 py-2 focus:outline-none focus:ring-2"
+                    style={{ borderBottom: `1px solid ${C.line}` }}
                   >
-                    Mijn profiel
+                    <Tegel naam="profiel" kleur={C.muted} maat={34} />
+                    <span className="font-mono uppercase text-xs tracking-widest" style={{ color: C.ink }}>
+                      Mijn profiel
+                    </span>
                   </button>
                   <button
                     onClick={logout}
-                    className="block w-full text-left px-4 py-3 font-mono uppercase text-xs tracking-widest focus:outline-none focus:ring-2"
-                    style={{ color: C.ember }}
+                    className="flex items-center gap-3 w-full text-left px-3 py-2 focus:outline-none focus:ring-2"
                   >
-                    Uitloggen
+                    <Tegel naam="uit" kleur={C.ember} maat={34} />
+                    <span className="font-mono uppercase text-xs tracking-widest" style={{ color: C.ember }}>
+                      Uitloggen
+                    </span>
                   </button>
                 </div>
               )}
@@ -3458,7 +3637,7 @@ function VakantieApp() {
         </div>
       </header>
 
-      <main className="p-4 pb-10 max-w-lg mx-auto">
+      <main className="p-4 max-w-lg mx-auto" style={{ paddingBottom: 118 }}>
         {notice && (
           <p className="text-sm mb-3" style={{ color: C.marigold }}>
             {notice}
@@ -3530,6 +3709,7 @@ function VakantieApp() {
           Aangemeld als {me.name} | tik op Vernieuw voor wat anderen toevoegden
         </p>
       </main>
+      <ZwevendeBalk tab={tab} onGaNaar={setTab} />
     </div>
     </AvatarsContext.Provider>
     </MapsKeyContext.Provider>
