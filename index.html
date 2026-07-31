@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-21" />
+<meta name="reisboek-versie" content="familytrip-22" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
@@ -2371,7 +2371,7 @@ function AgendaView({ items, setItems, days, selected, setSelected, me }) {
         }}
       >
         <Eyebrow color={C.ink}>{fmtLong(selected)}</Eyebrow>
-        <NamenOphalen agenda={items} setAgenda={setItems} dagIso={selected} />
+        <NamenOphalen agenda={items} setAgenda={setItems} dagIso={selected} auto />
         {dayItems.length === 0 ? (
           <Empty>Nog niets gepland. Zet hieronder het eerste plan voor deze dag.</Empty>
         ) : (
@@ -2636,7 +2636,11 @@ function NearbyView({ trip, days, selected, setSelected, saved, setSaved, onAddT
 }
 
 /* Zoekt bij items met alleen coordinaten op welke plek daar zit. */
-function NamenOphalen({ agenda, setAgenda, dagIso }) {
+/* Onthouden wat het automatisch invullen al geprobeerd heeft. */
+const AUTO_GEPROBEERD = new Set();
+let AUTO_SLOT = false;
+
+function NamenOphalen({ agenda, setAgenda, dagIso, auto }) {
   const key = React.useContext(MapsKeyContext);
   const [bezig, setBezig] = useState("");
   const [melding, setMelding] = useState("");
@@ -2668,14 +2672,13 @@ function NamenOphalen({ agenda, setAgenda, dagIso }) {
     if (isOnderweg(a)) return !a.van || !a.naar;
     return generiek(a) && !!alsCoordinaat(a.place);
   });
-  if (!key || teDoen.length === 0) return null;
-
-  const start = async () => {
+  const start = async (werk = teDoen) => {
+    setMelding("");
     let lijst = [...agenda];
     let gevonden = 0;
-    for (let i = 0; i < teDoen.length; i++) {
-      const item = teDoen[i];
-      setBezig(`${i + 1} van ${teDoen.length}`);
+    for (let i = 0; i < werk.length; i++) {
+      const item = werk[i];
+      setBezig(`${i + 1} van ${werk.length}`);
       const punt = alsCoordinaat(item.place);
       const vanPunt = alsCoordinaat(item.vanPunt);
       const naarPunt = alsCoordinaat(item.naarPunt);
@@ -2723,12 +2726,32 @@ function NamenOphalen({ agenda, setAgenda, dagIso }) {
     );
   };
 
+  /* Vanzelf invullen zodra deze dag in beeld staat. */
+  useEffect(() => {
+    if (!auto || !key || AUTO_SLOT) return;
+    const vers = teDoen.filter((a) => !AUTO_GEPROBEERD.has(a.id));
+    if (!vers.length) return;
+    AUTO_SLOT = true;
+    vers.forEach((a) => AUTO_GEPROBEERD.add(a.id));
+    start(vers).finally(() => {
+      AUTO_SLOT = false;
+    });
+  }, [auto, key, dagIso, teDoen.length]);
+
+  if (!key || (teDoen.length === 0 && !bezig && !melding)) return null;
+
   return (
     <div className="mt-2 mb-1">
-      <Btn onClick={start} disabled={!!bezig} className="w-full">
-        {bezig ? `Bezig: ${bezig}` : `Namen en routes invullen (${teDoen.length})`}
-      </Btn>
-      {melding && (
+      {bezig ? (
+        <p className="font-mono text-xs" style={{ color: C.ember }}>
+          Google Maps vult in: {bezig}
+        </p>
+      ) : teDoen.length > 0 ? (
+        <Btn onClick={() => start()} className="w-full">
+          Namen en routes invullen ({teDoen.length})
+        </Btn>
+      ) : null}
+      {melding && !bezig && (
         <p className="text-xs mt-1" style={{ color: C.muted }}>
           {melding}
         </p>
@@ -2936,7 +2959,7 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
 
               <div className="mt-3">
                 <Eyebrow color={C.ember}>Gebeurtenissen</Eyebrow>
-                <NamenOphalen agenda={agenda} setAgenda={setAgenda} dagIso={iso} />
+                <NamenOphalen agenda={agenda} setAgenda={setAgenda} dagIso={iso} auto={actief} />
                 {plannen.length === 0 ? (
                   <p className="text-sm py-2" style={{ color: C.muted }}>
                     Nog niets gepland.
