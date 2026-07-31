@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-22" />
+<meta name="reisboek-versie" content="familytrip-23" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
@@ -471,7 +471,7 @@ async function plaatsnaamBijPunt(key, punt, straal = 80) {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": key,
         "X-Goog-FieldMask":
-          "places.displayName,places.formattedAddress,places.primaryTypeDisplayName",
+          "places.displayName,places.formattedAddress,places.primaryTypeDisplayName,places.rating,places.userRatingCount",
       },
       body: JSON.stringify({
         languageCode: "nl",
@@ -488,6 +488,8 @@ async function plaatsnaamBijPunt(key, punt, straal = 80) {
       naam: p.displayName?.text || "",
       adres: p.formattedAddress || "",
       soort: p.primaryTypeDisplayName?.text || "",
+      score: p.rating || null,
+      aantal: p.userRatingCount || null,
     };
   } catch (e) {
     return null;
@@ -496,7 +498,11 @@ async function plaatsnaamBijPunt(key, punt, straal = 80) {
 
 /* Eerst dichtbij zoeken, daarna in een ruimere cirkel. */
 async function zoekNaam(key, punt) {
-  return (await plaatsnaamBijPunt(key, punt, 80)) || (await plaatsnaamBijPunt(key, punt, 400));
+  return (
+    (await plaatsnaamBijPunt(key, punt, 80)) ||
+    (await plaatsnaamBijPunt(key, punt, 400)) ||
+    (await plaatsnaamBijPunt(key, punt, 1200))
+  );
 }
 
 /* Google Places (New) - adres-suggesties */
@@ -2221,8 +2227,17 @@ function AgendaRegel({ item, items, setItems, compact }) {
 
   const heenEnWeer = item.van || item.naar;
   const kop = heenEnWeer
-    ? `${item.van || "Onbekend"} &gt; ${item.naar || "Onbekend"}`
+    ? `${item.van || "Onbekend"} naar ${item.naar || "Onbekend"}`
     : nlOnderweg(item.title);
+  const naarRegel = item.naarInfo
+    ? [
+        item.naarInfo.soort,
+        item.naarInfo.score ? `${String(item.naarInfo.score).replace(".", ",")} sterren` : "",
+        item.naarInfo.aantal ? `${item.naarInfo.aantal} beoordelingen` : "",
+      ]
+        .filter(Boolean)
+        .join(" | ")
+    : "";
 
   if (bewerken) {
     return (
@@ -2311,7 +2326,15 @@ function AgendaRegel({ item, items, setItems, compact }) {
           className="block text-left w-full focus:outline-none focus:ring-2 rounded"
         >
           <span className="block text-sm" style={{ color: C.ink }}>
-            {kop}
+            {heenEnWeer ? (
+              <>
+                {item.van || "Onbekend"}{" "}
+                <span style={{ color: C.ember, fontWeight: 700 }}>&rarr;</span>{" "}
+                {item.naar || "Onbekend"}
+              </>
+            ) : (
+              kop
+            )}
           </span>
           {heenEnWeer && item.title && item.title !== kop && (
             <span className="block font-mono text-xs" style={{ color: C.muted }}>
@@ -2324,7 +2347,16 @@ function AgendaRegel({ item, items, setItems, compact }) {
             </span>
           )}
         </button>
-        <PlaatsBeeld place={item.place} hoogte={compact ? 84 : 92} />
+        {naarRegel && (
+          <span className="block font-mono text-xs mt-1" style={{ color: C.muted }}>
+            Bij aankomst: {naarRegel}
+          </span>
+        )}
+        {item.naarInfo && item.naarInfo.punt ? (
+          <PlaatsBeeld place={item.naarInfo.punt} hoogte={compact ? 84 : 92} />
+        ) : (
+          <PlaatsBeeld place={item.place} hoogte={compact ? 84 : 92} />
+        )}
       </span>
       <button
         onClick={() => setItems(items.filter((x) => x.id !== item.id))}
@@ -2665,6 +2697,14 @@ function NamenOphalen({ agenda, setAgenda, dagIso, auto }) {
     const r = await zoekNaam(key, punt);
     return (r && r.naam) || "";
   };
+  const infoVan = async (x) => {
+    if (!x) return null;
+    const punt = alsCoordinaat(x.place);
+    if (x.title && !/^bezoek$/i.test(x.title) && !isOnderweg(x)) return { naam: x.title, punt: punt || "" };
+    if (!punt) return null;
+    const r = await zoekNaam(key, punt);
+    return r ? { ...r, punt } : null;
+  };
 
   /* Wat is er nog echt te doen? Een oud vinkje telt niet. */
   const generiek = (a) => !a.title || /^bezoek$/i.test(String(a.title).trim());
@@ -2686,6 +2726,7 @@ function NamenOphalen({ agenda, setAgenda, dagIso, auto }) {
       const hier = punt && !rit ? await zoekNaam(key, punt) : null;
       let van = item.van || "";
       let naar = item.naar || "";
+      let naarInfo = item.naarInfo || null;
       if (rit) {
         if (!van && vanPunt) {
           const r = await zoekNaam(key, vanPunt);
@@ -2693,12 +2734,21 @@ function NamenOphalen({ agenda, setAgenda, dagIso, auto }) {
         }
         if (!naar && naarPunt) {
           const r = await zoekNaam(key, naarPunt);
-          naar = (r && r.naam) || "";
+          if (r) {
+            naar = r.naam;
+            naarInfo = { soort: r.soort, adres: r.adres, score: r.score, aantal: r.aantal, punt: naarPunt };
+          }
         }
         if (!van || !naar) {
           const { vorige, volgende } = buren(item);
           if (!van) van = await naamVan(vorige);
-          if (!naar) naar = await naamVan(volgende);
+          if (!naar) {
+            const v = await infoVan(volgende);
+            if (v) {
+              naar = v.naam || "";
+              naarInfo = { soort: v.soort || "", adres: v.adres || "", score: v.score || null, aantal: v.aantal || null, punt: v.punt || "" };
+            }
+          }
         }
       }
       const ietsGevonden = !!((hier && hier.naam) || (rit && (van || naar)));
@@ -2712,6 +2762,7 @@ function NamenOphalen({ agenda, setAgenda, dagIso, auto }) {
               place: hier && hier.adres ? hier.adres : x.place,
               van: van || x.van,
               naar: naar || x.naar,
+              naarInfo: naarInfo || x.naarInfo,
             }
           : x
       );
