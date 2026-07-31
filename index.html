@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-29" />
+<meta name="reisboek-versie" content="familytrip-30" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
@@ -458,18 +458,42 @@ async function loadKey(key, fallback, shared = true) {
     return fallback;
   }
 }
+const OPSLAG = { laatsteFout: "", vol: false };
+
 async function saveKey(key, value, shared = true) {
+  OPSLAG.laatsteFout = "";
+  OPSLAG.vol = false;
   for (let poging = 0; poging < 3; poging++) {
     try {
       const r = await AppStore.set(key, JSON.stringify(value), shared);
       if (r) return true;
     } catch (e) {
-      /* volgende poging */
+      const tekst = `${e && e.name} ${e && e.message}`;
+      OPSLAG.laatsteFout = tekst;
+      if (/quota|exceeded|full|storage/i.test(tekst)) {
+        OPSLAG.vol = true;
+        return false; // opnieuw proberen heeft geen zin
+      }
     }
     await new Promise((r) => setTimeout(r, 350 * (poging + 1)));
   }
   return false;
 }
+
+/* Hoeveel ruimte gebruikt dit reisboek op dit apparaat? */
+function opslagGebruik() {
+  try {
+    let bytes = 0;
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith("vakantie:")) bytes += k.length + (localStorage.getItem(k) || "").length;
+    }
+    return bytes * 2; // tekens worden als 2 bytes bewaard
+  } catch (e) {
+    return 0;
+  }
+}
+const mbTekst = (bytes) => `${(bytes / 1048576).toFixed(1).replace(".", ",")} MB`;
 
 /* Google Places (New) - welke plek ligt op dit punt? */
 async function plaatsnaamBijPunt(key, punt, straal = 80) {
@@ -2773,6 +2797,49 @@ function Wandeling({ onKlaar }) {
   );
 }
 
+function RuimteMeter({ aantal }) {
+  const [bytes, setBytes] = useState(0);
+  const gedeeld = typeof window !== "undefined" && window.VAKANTIE_MODE === "gedeeld";
+
+  useEffect(() => {
+    setBytes(opslagGebruik());
+  }, [aantal]);
+
+  if (gedeeld || bytes === 0) return null;
+  const grens = 5 * 1048576; // wat een browser doorgaans toestaat
+  const deel = Math.min(100, Math.round((bytes / grens) * 100));
+  const krap = deel >= 70;
+
+  return (
+    <Card style={{ border: `3px solid ${krap ? C.ember : C.line}` }}>
+      <div className="flex items-baseline justify-between">
+        <Eyebrow color={krap ? C.ember : C.muted}>Ruimte op dit apparaat</Eyebrow>
+        <span className="font-mono text-xs" style={{ color: C.muted }}>
+          {mbTekst(bytes)} van ongeveer 5 MB
+        </span>
+      </div>
+      <div
+        className="mt-2 rounded-full overflow-hidden"
+        style={{ height: 10, background: C.boneSoft }}
+      >
+        <div
+          style={{
+            width: `${deel}%`,
+            height: "100%",
+            background: krap ? C.ember : C.munt,
+          }}
+        />
+      </div>
+      {krap && (
+        <p className="text-sm mt-2" style={{ color: C.ink }}>
+          Bijna vol. Zonder Firebase bewaart de browser alles op deze telefoon, en dat houdt op bij
+          ongeveer 5 MB. Zet Firebase aan voor 1 GB gedeelde opslag, of verwijder een paar foto's.
+        </p>
+      )}
+    </Card>
+  );
+}
+
 /* ---------- mijn wandelingen: eigen venster ---------- */
 function WandelView({ me, agenda, setAgenda, days }) {
   const [mijne, setMijne] = useState([]);
@@ -3920,6 +3987,13 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
           const beeldje = await videoBeeldje(file);
           const past = file.size <= VIDEO_MAX;
           const okBeeld = await saveKey(`photo:${id}`, beeldje);
+          if (!okBeeld) {
+            klachten.push(
+              OPSLAG.vol
+                ? `De opslag van deze browser zit vol (${mbTekst(opslagGebruik())} in gebruik).`
+                : "Het beeldje van deze video kon niet bewaard worden."
+            );
+          }
           const naarWolk = !past && window.AppFiles && window.AppFiles.beschikbaar;
           let url = "";
           if (naarWolk) {
@@ -3950,8 +4024,14 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
               );
           }
         } else {
-          const dataUrl = await resizeImage(file);
-          const ok = await saveKey(`photo:${id}`, dataUrl);
+          let dataUrl = await resizeImage(file);
+          let ok = await saveKey(`photo:${id}`, dataUrl);
+          if (!ok && OPSLAG.vol) {
+            /* Ruimte tekort: nog een keer, een stuk kleiner. */
+            setBusy("De opslag is bijna vol, ik probeer een kleinere versie\u2026");
+            dataUrl = await resizeImage(file, 800, 0.6);
+            ok = await saveKey(`photo:${id}`, dataUrl);
+          }
           if (ok) {
             added.push({
               id,
@@ -3962,6 +4042,14 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
               at: new Date().toISOString(),
               type: "foto",
             });
+          } else {
+            klachten.push(
+              OPSLAG.vol
+                ? `De opslag van deze browser zit vol (${mbTekst(
+                    opslagGebruik()
+                  )} in gebruik). Verwijder wat foto's, of zet Firebase aan zodat alles op de server komt.`
+                : "Deze foto kon niet bewaard worden."
+            );
           }
         }
       } catch (err) {
@@ -3994,6 +4082,7 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
     const nieuw = [];
     let buiten = 0;
     let zonderDatum = 0;
+    let mislukt = 0;
     const perDag = {};
     for (let n = 0; n < files.length; n++) {
       const file = files[n];
@@ -4009,10 +4098,18 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
           buiten++;
           continue;
         }
-        const beeld = await resizeImage(file);
+        let beeld = await resizeImage(file);
         const id = uid();
-        const ok = await saveKey(`photo:${id}`, beeld);
-        if (!ok) continue;
+        let ok = await saveKey(`photo:${id}`, beeld);
+        if (!ok && OPSLAG.vol) {
+          beeld = await resizeImage(file, 800, 0.6);
+          ok = await saveKey(`photo:${id}`, beeld);
+        }
+        if (!ok) {
+          mislukt++;
+          if (OPSLAG.vol) break; // verder proberen heeft geen zin
+          continue;
+        }
         nieuw.push({
           id,
           date: datum,
@@ -4032,11 +4129,16 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
     if (nieuw.length) setIndex([...index, ...nieuw]);
     const dagen = Object.keys(perDag).length;
     setBusy(
-      nieuw.length
+      (nieuw.length
         ? `${nieuw.length} foto's verdeeld over ${dagen} ${dagen === 1 ? "dag" : "dagen"}.` +
-            (buiten ? ` ${buiten} vielen buiten je reisdata.` : "") +
-            (zonderDatum ? ` ${zonderDatum} hadden geen datum.` : "")
-        : "Geen foto's toegevoegd: geen enkele opnamedatum viel binnen je reis."
+          (buiten ? ` ${buiten} vielen buiten je reisdata.` : "") +
+          (zonderDatum ? ` ${zonderDatum} hadden geen datum.` : "")
+        : "Geen foto's toegevoegd.") +
+        (mislukt
+          ? ` ${mislukt} pasten er niet meer bij: de opslag zit vol (${mbTekst(
+              opslagGebruik()
+            )} in gebruik).`
+          : "")
     );
     if (albumRef.current) albumRef.current.value = "";
   };
@@ -4251,6 +4353,8 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
   return (
     <div className="space-y-4">
       <DayStrip days={days} selected={selected} onSelect={setSelected} counts={counts} />
+
+      <RuimteMeter aantal={index.length} />
 
       <Card style={{ background: "#FFF6EC", border: `3px solid ${C.koraal}` }}>
         <Eyebrow color={C.ember}>Uit je fotoalbum, op datum</Eyebrow>
