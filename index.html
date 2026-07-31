@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-23" />
+<meta name="reisboek-versie" content="familytrip-24" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
@@ -1637,9 +1637,11 @@ function SetupView({ me, initial, onSave, onCancel, apiKey, setApiKey, onImportT
 
   const setStops = (lijst) => setTrip({ ...trip, stops: lijst });
   const voegStopToe = () =>
-    setStops([...(trip.stops || []), { id: uid(), place: "", time: "", note: "" }]);
+    setStops([...(trip.stops || []), { id: uid(), place: "", date: "", time: "", note: "" }]);
   const wijzigStop = (id, veld, waarde) =>
     setStops((trip.stops || []).map((s) => (s.id === id ? { ...s, [veld]: waarde } : s)));
+  const STOP_REDENEN = ["Overnachting", "Tanken", "Lunch", "Pauze", "Bezienswaardigheid", "Boodschappen"];
+
   const verplaatsStop = (i, richting) => {
     const lijst = [...(trip.stops || [])];
     const j = i + richting;
@@ -1800,20 +1802,42 @@ function SetupView({ me, initial, onSave, onCancel, apiKey, setApiKey, onImportT
                     value={s.place || ""}
                     onChange={(e) => wijzigStop(s.id, "place", e.target.value)}
                   />
-                  <div className="grid grid-cols-3 gap-2 mt-2">
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <Field
+                      label="Datum"
+                      type="date"
+                      value={s.date || ""}
+                      onChange={(e) => wijzigStop(s.id, "date", e.target.value)}
+                    />
                     <Field
                       label="Rond"
                       type="time"
                       value={s.time || ""}
                       onChange={(e) => wijzigStop(s.id, "time", e.target.value)}
                     />
-                    <div className="col-span-2">
-                      <Field
-                        label="Waarvoor"
-                        placeholder="Tanken en koffie"
-                        value={s.note || ""}
-                        onChange={(e) => wijzigStop(s.id, "note", e.target.value)}
-                      />
+                  </div>
+                  <div className="mt-2">
+                    <Field
+                      label="Waarvoor"
+                      placeholder="Tanken en koffie"
+                      value={s.note || ""}
+                      onChange={(e) => wijzigStop(s.id, "note", e.target.value)}
+                    />
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {STOP_REDENEN.map((r) => (
+                        <button
+                          key={r}
+                          onClick={() => wijzigStop(s.id, "note", r)}
+                          className="rounded-full px-3 py-1 text-xs focus:outline-none focus:ring-2"
+                          style={{
+                            background: s.note === r ? C.koraal : "#FFFFFF",
+                            color: s.note === r ? "#FFFFFF" : C.ink,
+                            border: `2px solid ${s.note === r ? C.koraal : C.line}`,
+                          }}
+                        >
+                          {r}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -3103,12 +3127,19 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
                         .filter((s) => s.place)
                         .map((s, i) => (
                           <li key={s.id} className="flex gap-2 text-sm">
-                            <span className="font-mono text-xs" style={{ color: C.muted }}>
+                            <span className="font-mono text-xs" style={{ color: C.muted, minWidth: 44 }}>
                               {s.time || `${i + 1}.`}
                             </span>
                             <span className="flex-1">
-                              {s.note && (
-                                <span className="block text-sm">{s.note}</span>
+                              {(s.date || s.note) && (
+                                <span className="block text-sm">
+                                  {s.note}
+                                  {s.date && (
+                                    <span className="font-mono text-xs ml-2" style={{ color: C.muted }}>
+                                      {fmtLong(s.date)}
+                                    </span>
+                                  )}
+                                </span>
                               )}
                               <PlaatsBeeld place={s.place} hoogte={80} />
                             </span>
