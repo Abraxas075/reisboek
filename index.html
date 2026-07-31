@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-30" />
+<meta name="reisboek-versie" content="familytrip-32" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
@@ -44,6 +44,22 @@ setTimeout(function () {
 }, 12000);
 </script>
 <script src="config.js" onerror="window.__fouten.push('config.js kon niet geladen worden')"></script>
+<script>
+/* Instellingen die in de app zelf zijn ingevuld gaan voor op config.js. */
+(function () {
+  try {
+    var eigen = localStorage.getItem("reisboek-firebase");
+    if (!eigen) return;
+    var o = JSON.parse(eigen);
+    window.VAKANTIE_CONFIG = window.VAKANTIE_CONFIG || {};
+    if (o.firebase && o.firebase.projectId) window.VAKANTIE_CONFIG.firebase = o.firebase;
+    if (o.tripId) window.VAKANTIE_CONFIG.tripId = o.tripId;
+    if (typeof o.opslag === "boolean") window.VAKANTIE_CONFIG.opslag = o.opslag;
+  } catch (e) {
+    /* dan gewoon config.js gebruiken */
+  }
+})();
+</script>
 <script>
 /* ------------------------------------------------------------------
    Opslag, inloggen en bestanden. Drie standen:
@@ -1575,6 +1591,24 @@ function bestandNaarTekst(file) {
 }
 
 /* ---------- image resize ---------- */
+const DOC_GRENS = 900000; // Firestore staat 1 MiB per document toe
+
+/* Verklein tot de foto zeker in een document past. */
+async function maakPassend(file) {
+  const stappen = [
+    [1200, 0.72],
+    [1000, 0.65],
+    [800, 0.6],
+    [640, 0.55],
+  ];
+  let laatste = "";
+  for (const [max, kwaliteit] of stappen) {
+    laatste = await resizeImage(file, max, kwaliteit);
+    if (laatste.length <= DOC_GRENS) return laatste;
+  }
+  return laatste;
+}
+
 function resizeImage(file, max = 1200, quality = 0.72) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -2529,6 +2563,8 @@ function TripView({
         </ul>
       </Card>
 
+      <FirebaseKaart />
+
       <Card style={{ border: `3px solid ${C.lucht}` }}>
         <Eyebrow color={C.ink}>Waar is iedereen</Eyebrow>
         <label className="flex items-start gap-3 mt-2 cursor-pointer">
@@ -2794,6 +2830,134 @@ function Wandeling({ onKlaar }) {
         </p>
       )}
     </div>
+  );
+}
+
+/* Firebase instellen vanaf je telefoon, zonder bestanden te bewerken. */
+function leesFirebaseTekst(tekst) {
+  const t = String(tekst || "").trim();
+  if (!t) return { fout: "Plak eerst de gegevens uit Firebase." };
+  const velden = {};
+  const paren = t.matchAll(/["']?(apiKey|authDomain|projectId|storageBucket|messagingSenderId|appId)["']?\s*:\s*["']([^"']+)["']/g);
+  for (const m of paren) velden[m[1]] = m[2];
+  if (!velden.projectId || !velden.apiKey) {
+    return { fout: "Hierin staan geen projectId en apiKey. Kopieer het hele blok uit Firebase." };
+  }
+  return { firebase: velden };
+}
+
+function FirebaseKaart() {
+  const [tekst, setTekst] = useState("");
+  const [reisnaam, setReisnaam] = useState("");
+  const [melding, setMelding] = useState("");
+  const gedeeld = typeof window !== "undefined" && window.VAKANTIE_MODE === "gedeeld";
+  const beschikbaar = typeof window !== "undefined" && "VAKANTIE_MODE" in window;
+
+  if (!beschikbaar) return null;
+
+  const bewaar = () => {
+    const r = leesFirebaseTekst(tekst);
+    if (r.fout) {
+      setMelding(r.fout);
+      return;
+    }
+    const huidig = (() => {
+      try {
+        return JSON.parse(localStorage.getItem("reisboek-firebase") || "{}");
+      } catch (e) {
+        return {};
+      }
+    })();
+    const naam =
+      reisnaam.trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "") ||
+      huidig.tripId ||
+      (window.VAKANTIE_CONFIG && window.VAKANTIE_CONFIG.tripId) ||
+      "onze-reis";
+    localStorage.setItem(
+      "reisboek-firebase",
+      JSON.stringify({ ...huidig, firebase: r.firebase, tripId: naam })
+    );
+    setMelding("Bewaard. De app wordt opnieuw geladen\u2026");
+    setTimeout(() => window.location.reload(), 900);
+  };
+
+  const uitzetten = () => {
+    localStorage.removeItem("reisboek-firebase");
+    setMelding("Uitgezet. De app wordt opnieuw geladen\u2026");
+    setTimeout(() => window.location.reload(), 900);
+  };
+
+  return (
+    <Card style={{ border: `3px solid ${gedeeld ? C.munt : C.ember}` }}>
+      <div className="flex items-baseline justify-between">
+        <Eyebrow color={gedeeld ? C.munt : C.ember}>
+          Gedeelde opslag {gedeeld ? "staat aan" : "staat uit"}
+        </Eyebrow>
+        {gedeeld && (
+          <button
+            onClick={uitzetten}
+            className="font-mono text-xs underline"
+            style={{ color: C.muted }}
+          >
+            uitzetten
+          </button>
+        )}
+      </div>
+
+      {gedeeld ? (
+        <p className="text-sm mt-2" style={{ color: C.ink }}>
+          Alles staat op de server: iedereen ziet dezelfde foto's en lijstjes, en de ruimte op je
+          telefoon raakt niet meer vol.
+        </p>
+      ) : (
+        <>
+          <p className="text-sm mt-2" style={{ color: C.ink }}>
+            Nu bewaart je browser alles op dit apparaat, met ongeveer 5 MB als grens. Met een gratis
+            Firebase-project krijg je 1 GB en zien je reisgenoten alles.
+          </p>
+          <ol className="text-sm mt-2 space-y-1" style={{ color: C.muted }}>
+            <li>1. Maak op console.firebase.google.com een project.</li>
+            <li>2. Zet Firestore Database aan (productiemodus, locatie in Europa).</li>
+            <li>3. Bij Regels: allow read, write: if true; en publiceren.</li>
+            <li>4. Projectinstellingen, onderaan bij Jouw apps, kies het web-icoon.</li>
+            <li>5. Kopieer het blok met apiKey en projectId en plak het hieronder.</li>
+          </ol>
+          <p
+            className="text-sm mt-2 p-2 rounded-2xl"
+            style={{ background: "#FFF6EC", color: C.ink, border: `2px solid ${C.koraal}` }}
+          >
+            Kom je bij <strong>Storage</strong> een knop "Upgrade project" tegen? Sla dat onderdeel
+            over. Storage is alleen voor grote videobestanden en kost geld. Je foto's gaan in
+            Firestore, en dat is gratis.
+          </p>
+          <textarea
+            value={tekst}
+            onChange={(e) => setTekst(e.target.value)}
+            rows={5}
+            placeholder={'apiKey: "AIza...", authDomain: "...", projectId: "..."'}
+            className="w-full mt-2 px-3 py-2 rounded-2xl text-sm focus:outline-none focus:ring-2"
+            style={{ background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}
+          />
+          <Field
+            label="Naam van jullie reis in de database"
+            placeholder="corsica-2026-k9t3"
+            value={reisnaam}
+            onChange={(e) => setReisnaam(e.target.value)}
+          />
+          <p className="text-xs mt-1" style={{ color: C.muted }}>
+            Verzin iets dat niemand raadt; iedereen die meedoet vult dezelfde naam in.
+          </p>
+          <Btn className="mt-2 w-full" onClick={bewaar}>
+            Gedeelde opslag aanzetten
+          </Btn>
+        </>
+      )}
+      {melding && (
+        <p className="text-sm mt-2" style={{ color: C.ember }}>
+          {melding}
+        </p>
+      )}
+    </Card>
   );
 }
 
@@ -4024,7 +4188,7 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
               );
           }
         } else {
-          let dataUrl = await resizeImage(file);
+          let dataUrl = await maakPassend(file);
           let ok = await saveKey(`photo:${id}`, dataUrl);
           if (!ok && OPSLAG.vol) {
             /* Ruimte tekort: nog een keer, een stuk kleiner. */
@@ -4098,7 +4262,7 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
           buiten++;
           continue;
         }
-        let beeld = await resizeImage(file);
+        let beeld = await maakPassend(file);
         const id = uid();
         let ok = await saveKey(`photo:${id}`, beeld);
         if (!ok && OPSLAG.vol) {
@@ -4181,6 +4345,10 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
   const [praat, setPraat] = useState({});
   const [praatTekst, setPraatTekst] = useState("");
   const [groot, setGroot] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [schuif, setSchuif] = useState({ x: 0, y: 0 });
+  const gebaar = useRef(null);
+  const laatsteTik = useRef(0);
 
   const [snelEmojis, setSnelEmojis] = useState(STANDAARD_EMOJIS);
   const [emojiPop, setEmojiPop] = useState(false);
@@ -4229,6 +4397,8 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
   /* Reacties en opmerkingen bij deze foto ophalen. */
   useEffect(() => {
     setGroot(false);
+    setZoom(1);
+    setSchuif({ x: 0, y: 0 });
     if (!open) return;
     let stop = false;
     (async () => {
@@ -4771,30 +4941,86 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
 
           {groot && images[open.id] && (
             <div
-              className="fixed inset-0 overflow-auto"
-              style={{ zIndex: 60, background: "#000000", touchAction: "pan-x pan-y pinch-zoom" }}
+              className="fixed inset-0 flex items-center justify-center overflow-hidden"
+              style={{ zIndex: 60, background: "#000000", touchAction: "none" }}
               onClick={(e) => e.stopPropagation()}
               onTouchStart={(e) => {
                 e.stopPropagation();
-                const t = e.touches && e.touches[0];
-                grootVinger.current = t ? { x: t.clientX, y: t.clientY } : null;
+                if (e.touches.length === 2) {
+                  const dx = e.touches[0].clientX - e.touches[1].clientX;
+                  const dy = e.touches[0].clientY - e.touches[1].clientY;
+                  gebaar.current = {
+                    soort: "knijp",
+                    afstand: Math.hypot(dx, dy),
+                    beginZoom: zoom,
+                  };
+                } else if (e.touches.length === 1) {
+                  gebaar.current = {
+                    soort: "sleep",
+                    x: e.touches[0].clientX,
+                    y: e.touches[0].clientY,
+                    beginSchuif: schuif,
+                    bewogen: 0,
+                  };
+                }
               }}
-              onTouchMove={(e) => e.stopPropagation()}
+              onTouchMove={(e) => {
+                e.stopPropagation();
+                const g = gebaar.current;
+                if (!g) return;
+                if (g.soort === "knijp" && e.touches.length === 2) {
+                  const dx = e.touches[0].clientX - e.touches[1].clientX;
+                  const dy = e.touches[0].clientY - e.touches[1].clientY;
+                  const nieuweZoom = Math.min(
+                    6,
+                    Math.max(1, (g.beginZoom * Math.hypot(dx, dy)) / (g.afstand || 1))
+                  );
+                  setZoom(nieuweZoom);
+                  if (nieuweZoom === 1) setSchuif({ x: 0, y: 0 });
+                } else if (g.soort === "sleep" && e.touches.length === 1) {
+                  const dx = e.touches[0].clientX - g.x;
+                  const dy = e.touches[0].clientY - g.y;
+                  g.bewogen = Math.max(g.bewogen, Math.hypot(dx, dy));
+                  if (zoom > 1) {
+                    setSchuif({ x: g.beginSchuif.x + dx / zoom, y: g.beginSchuif.y + dy / zoom });
+                  }
+                }
+              }}
               onTouchEnd={(e) => {
                 e.stopPropagation();
-                const start = grootVinger.current;
-                grootVinger.current = null;
-                const t = e.changedTouches && e.changedTouches[0];
-                if (!start || !t) return;
-                const dx = Math.abs(t.clientX - start.x);
-                const dy = Math.abs(t.clientY - start.y);
-                if (dx < 12 && dy < 12) setGroot(false);
+                const g = gebaar.current;
+                gebaar.current = null;
+                if (!g || g.soort !== "sleep" || g.bewogen > 12) return;
+                const nu = Date.now();
+                if (nu - laatsteTik.current < 300) {
+                  /* twee keer tikken: heen en weer tussen normaal en ingezoomd */
+                  laatsteTik.current = 0;
+                  if (zoom > 1) {
+                    setZoom(1);
+                    setSchuif({ x: 0, y: 0 });
+                  } else {
+                    setZoom(2.5);
+                  }
+                  return;
+                }
+                laatsteTik.current = nu;
+                setTimeout(() => {
+                  if (laatsteTik.current === nu && zoom === 1) setGroot(false);
+                }, 310);
               }}
             >
               <img
                 src={images[open.id]}
                 alt={open.caption || "Reisbeeld"}
-                style={{ maxWidth: "none", display: "block", margin: "0 auto" }}
+                draggable={false}
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "100%",
+                  objectFit: "contain",
+                  transform: `translate(${schuif.x}px, ${schuif.y}px) scale(${zoom})`,
+                  transition: gebaar.current ? "none" : "transform 0.15s ease-out",
+                  userSelect: "none",
+                }}
               />
               <button
                 onClick={(e) => {
@@ -4803,15 +5029,18 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
                 }}
                 onTouchEnd={(e) => e.stopPropagation()}
                 className="fixed rounded-full px-4 py-2 font-mono uppercase text-xs tracking-widest focus:outline-none focus:ring-2"
-                style={{
-                  right: 14,
-                  top: 14,
-                  background: "rgba(255,255,255,0.9)",
-                  color: C.ink,
-                }}
+                style={{ right: 14, top: 14, background: "rgba(255,255,255,0.9)", color: C.ink }}
               >
                 Sluiten
               </button>
+              <span
+                className="fixed font-mono text-xs"
+                style={{ left: 0, right: 0, bottom: 16, textAlign: "center", color: "rgba(255,255,255,0.65)" }}
+              >
+                {zoom > 1
+                  ? `${zoom.toFixed(1).replace(".", ",")}x | sleep om te schuiven`
+                  : "Knijp met twee vingers om in te zoomen"}
+              </span>
             </div>
           )}
           <div className="flex gap-2 mt-3">
