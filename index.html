@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-24" />
+<meta name="reisboek-versie" content="familytrip-27" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
@@ -383,6 +383,15 @@ const ICOON = {
       <path d="M10 12.5v4M14 12.5v4" />
     </>
   ),
+  wandeling: (
+    <>
+      <circle cx="13.5" cy="4.2" r="2" />
+      <path d="M12.4 8.2 9.6 10l-1.2 3.4" />
+      <path d="M12.4 8.2c1.6-.5 3 .2 3.6 1.6l.9 2.2 2.1 1" />
+      <path d="M13.6 12.4 12 15.2l.9 5.4" />
+      <path d="M12 15.2 8.2 17l-1.4 3.6" />
+    </>
+  ),
   profiel: (
     <>
       <circle cx="12" cy="8.5" r="4" />
@@ -432,6 +441,7 @@ const TABS = [
   { id: "notities", label: "Notities", kleur: "#F2A9A5" },
   { id: "todo", label: "To-do", kleur: "#5B7BA6" },
   { id: "lijst", label: "Boodschappen", kleur: "#6FB894" },
+  { id: "wandeling", label: "Mijn wandelingen", kleur: "#7FA9C9" },
 ];
 
 /* ---------- storage helpers ---------- */
@@ -536,6 +546,70 @@ const mapsStatic = (q, key, opties = {}) => {
     `&markers=color:0xE98D7E%7C${encodeURIComponent(q)}&key=${encodeURIComponent(key)}`
   );
 };
+
+/* Afstand tussen twee punten in meters (formule van Haversine). */
+const afstandMeter = (a, b) => {
+  const R = 6371000;
+  const rad = (g) => (g * Math.PI) / 180;
+  const dLat = rad(b.lat - a.lat);
+  const dLng = rad(b.lng - a.lng);
+  const x =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+};
+
+/* De route inpakken zoals Google dat doet, zodat hij in een kaart-adres past. */
+const codeerGetal = (getal) => {
+  let g = getal < 0 ? ~(getal << 1) : getal << 1;
+  let uit = "";
+  while (g >= 0x20) {
+    uit += String.fromCharCode((0x20 | (g & 0x1f)) + 63);
+    g >>= 5;
+  }
+  return uit + String.fromCharCode(g + 63);
+};
+const codeerPad = (punten) => {
+  let vLat = 0;
+  let vLng = 0;
+  let uit = "";
+  for (const p of punten) {
+    const lat = Math.round(p.lat * 1e5);
+    const lng = Math.round(p.lng * 1e5);
+    uit += codeerGetal(lat - vLat) + codeerGetal(lng - vLng);
+    vLat = lat;
+    vLng = lng;
+  }
+  return uit;
+};
+
+/* Punten die te dicht op elkaar liggen weglaten, scheelt ruimte. */
+const dunUit = (punten, minMeter = 12) => {
+  const uit = [];
+  for (const p of punten) {
+    if (!uit.length || afstandMeter(uit[uit.length - 1], p) >= minMeter) uit.push(p);
+  }
+  if (punten.length && uit[uit.length - 1] !== punten[punten.length - 1]) {
+    uit.push(punten[punten.length - 1]);
+  }
+  return uit;
+};
+
+const routeStatic = (encoded, key, opties = {}) =>
+  `https://maps.googleapis.com/maps/api/staticmap?size=${opties.breedte || 320}x${
+    opties.hoogte || 150
+  }&scale=2&language=nl` +
+  `&path=weight:4%7Ccolor:0xC75B45FF%7Cenc:${encodeURIComponent(encoded)}` +
+  `&key=${encodeURIComponent(key)}`;
+
+const duurTekst = (seconden) => {
+  const u = Math.floor(seconden / 3600);
+  const m = Math.round((seconden % 3600) / 60);
+  if (u > 0) return `${u} uur ${m} min`;
+  return `${m} min`;
+};
+const afstandTekst = (meters) =>
+  meters >= 1000 ? `${(meters / 1000).toFixed(1).replace(".", ",")} km` : `${Math.round(meters)} m`;
 
 /* Herkent "52.09,5.12" of "geo:52.09,5.12" - dat willen we niet als tekst tonen. */
 const alsCoordinaat = (tekst) => {
@@ -1105,6 +1179,22 @@ const RouteFrame = ({ from, to, stops = [], mode, height = 240 }) => {
 };
 
 /* Toont een plek als kaartje in plaats van als kale coordinaten. */
+const RouteBeeld = ({ pad, hoogte = 130 }) => {
+  const key = React.useContext(MapsKeyContext);
+  const [stuk, setStuk] = useState(false);
+  if (!pad || !key || stuk) return null;
+  return (
+    <img
+      src={routeStatic(pad, key, { breedte: 320, hoogte: 140 })}
+      alt="De gelopen route"
+      onError={() => setStuk(true)}
+      loading="lazy"
+      className="w-full rounded-2xl object-cover mt-1"
+      style={{ height: hoogte, border: `2px solid ${C.line}` }}
+    />
+  );
+};
+
 const PlaatsBeeld = ({ place, hoogte = 92 }) => {
   const key = React.useContext(MapsKeyContext);
   const [stuk, setStuk] = useState(false);
@@ -1514,7 +1604,7 @@ function LoginView({ onLogin }) {
 }
 
 /* ---------- profiel ---------- */
-function ProfileView({ me, photo, onSave, onSkip }) {
+function ProfileView({ me, photo, onSave, onSkip, onWandelingen }) {
   const [name, setName] = useState(me.name || "");
   const [phone, setPhone] = useState(me.phone || "");
   const [about, setAbout] = useState(me.about || "");
@@ -1607,6 +1697,26 @@ function ProfileView({ me, photo, onSave, onSkip }) {
           </div>
         </div>
       </Card>
+
+      {onWandelingen && (
+        <Card className="mt-4">
+          <Eyebrow>Alleen van jou</Eyebrow>
+          <button
+            onClick={onWandelingen}
+            className="flex items-center gap-3 w-full text-left mt-2 focus:outline-none focus:ring-2 rounded-2xl"
+          >
+            <Tegel naam="wandeling" kleur="#7FA9C9" maat={44} />
+            <span>
+              <span className="block text-sm" style={{ color: C.ink }}>
+                Mijn wandelingen
+              </span>
+              <span className="block text-xs" style={{ color: C.muted }}>
+                Route, afstand en tijd opnemen. Blijft van jou tot je hem deelt.
+              </span>
+            </span>
+          </button>
+        </Card>
+      )}
       <p className="text-xs mt-4" style={{ color: C.muted }}>
         Je foto en naam zijn zichtbaar voor je reisgenoten, zodat je bij elk plan en elke foto ziet
         wie het heeft toegevoegd.
@@ -2071,7 +2181,20 @@ function TijdlijnImport({ days, onImport }) {
 }
 
 /* ---------- trip overview ---------- */
-function TripView({ trip, members, days, stats, onEdit, apiKey, setApiKey, onGaNaar }) {
+function TripView({
+  trip,
+  members,
+  days,
+  stats,
+  onEdit,
+  apiKey,
+  setApiKey,
+  onGaNaar,
+  locaties,
+  deelLocatie,
+  onDeelLocatie,
+  locatieFout,
+}) {
   const today = localToday();
   const untilStart = daysBetween(today, trip.start);
   const status =
@@ -2148,6 +2271,61 @@ function TripView({ trip, members, days, stats, onEdit, apiKey, setApiKey, onGaN
         </ul>
       </Card>
 
+      <Card style={{ border: `3px solid ${C.lucht}` }}>
+        <Eyebrow color={C.ink}>Waar is iedereen</Eyebrow>
+        <label className="flex items-start gap-3 mt-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={deelLocatie}
+            onChange={(e) => onDeelLocatie(e.target.checked)}
+            className="mt-1"
+            style={{ width: 20, height: 20, accentColor: C.koraal }}
+          />
+          <span>
+            <span className="block text-sm" style={{ color: C.ink }}>
+              Deel mijn locatie met de groep
+            </span>
+            <span className="block text-xs" style={{ color: C.muted }}>
+              Alleen zolang je deze app open hebt staan. Zet je het uit, dan wordt je laatste plek
+              meteen gewist.
+            </span>
+          </span>
+        </label>
+
+        {locatieFout && (
+          <p className="text-sm mt-2" style={{ color: C.ember }}>
+            {locatieFout}
+          </p>
+        )}
+
+        {Object.keys(locaties || {}).length === 0 ? (
+          <p className="text-sm mt-3" style={{ color: C.muted }}>
+            Nog niemand deelt zijn locatie.
+          </p>
+        ) : (
+          <ul className="mt-3 space-y-3">
+            {Object.entries(locaties || {}).map(([email, w]) => (
+              <li key={email}>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm" style={{ color: C.ink }}>
+                    {w.naam || email}
+                  </span>
+                  <span className="font-mono text-xs" style={{ color: C.muted }}>
+                    {geledenTekst(w.at)}
+                  </span>
+                </div>
+                {w.nauwkeurig > 0 && (
+                  <span className="block font-mono text-xs" style={{ color: C.muted }}>
+                    tot op ongeveer {w.nauwkeurig} meter
+                  </span>
+                )}
+                <PlaatsBeeld place={w.punt} hoogte={90} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
       <Card>
         <Eyebrow>Stand van zaken</Eyebrow>
         <p className="text-xs mt-1 mb-3" style={{ color: C.muted }}>
@@ -2218,6 +2396,262 @@ const nlOnderweg = (titel) => {
   const soort = m[1].trim().toLowerCase().replace(/_/g, " ");
   return `Onderweg ${ENGELS[soort] || soort || ""}`.trim();
 };
+
+const geledenTekst = (iso) => {
+  const t = new Date(iso).getTime();
+  if (!t || isNaN(t)) return "";
+  const m = Math.round((Date.now() - t) / 60000);
+  if (m < 1) return "zojuist";
+  if (m < 60) return `${m} min geleden`;
+  const u = Math.round(m / 60);
+  if (u < 24) return `${u} uur geleden`;
+  const d = Math.round(u / 24);
+  return `${d} ${d === 1 ? "dag" : "dagen"} geleden`;
+};
+
+/* ---------- een wandeling opnemen ---------- */
+function Wandeling({ onKlaar }) {
+  const [bezig, setBezig] = useState(false);
+  const [punten, setPunten] = useState([]);
+  const [begonnen, setBegonnen] = useState(null);
+  const [nu, setNu] = useState(Date.now());
+  const [fout, setFout] = useState("");
+  const wacht = useRef(null);
+  const slot = useRef(null);
+
+  const meters = useMemo(() => {
+    let t = 0;
+    for (let i = 1; i < punten.length; i++) t += afstandMeter(punten[i - 1], punten[i]);
+    return t;
+  }, [punten]);
+  const seconden = begonnen ? Math.round((nu - begonnen) / 1000) : 0;
+
+  useEffect(() => {
+    if (!bezig) return;
+    const t = setInterval(() => setNu(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [bezig]);
+
+  const start = async () => {
+    if (!navigator.geolocation) {
+      setFout("Dit apparaat geeft geen locatie door.");
+      return;
+    }
+    setFout("");
+    setPunten([]);
+    setBegonnen(Date.now());
+    setNu(Date.now());
+    setBezig(true);
+    try {
+      if (navigator.wakeLock) slot.current = await navigator.wakeLock.request("screen");
+    } catch (e) {
+      /* schermslot is een extraatje */
+    }
+    wacht.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        if (pos.coords.accuracy && pos.coords.accuracy > 60) return; // te onnauwkeurig
+        setPunten((v) => [...v, { lat: pos.coords.latitude, lng: pos.coords.longitude }]);
+      },
+      (err) => {
+        setFout(
+          err && err.code === 1
+            ? "Je browser mag je locatie niet gebruiken."
+            : "Je locatie kon niet bepaald worden."
+        );
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
+    );
+  };
+
+  const stop = async () => {
+    setBezig(false);
+    if (wacht.current != null) navigator.geolocation.clearWatch(wacht.current);
+    wacht.current = null;
+    try {
+      if (slot.current) await slot.current.release();
+    } catch (e) {
+      /* was al vrijgegeven */
+    }
+    slot.current = null;
+
+    const netjes = dunUit(punten);
+    if (netjes.length < 2) {
+      setFout("Te weinig punten om een wandeling te bewaren.");
+      setPunten([]);
+      setBegonnen(null);
+      return;
+    }
+    const d = new Date(begonnen);
+    onKlaar({
+      id: uid(),
+      date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+        d.getDate()
+      ).padStart(2, "0")}`,
+      time: `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+      afstandM: Math.round(meters),
+      duurS: seconden,
+      pad: codeerPad(netjes),
+      start: `${netjes[0].lat.toFixed(6)},${netjes[0].lng.toFixed(6)}`,
+    });
+    setPunten([]);
+    setBegonnen(null);
+  };
+
+  return (
+    <div
+      className="rounded-2xl p-3 mt-2"
+      style={{ background: "rgba(255,255,255,0.85)", border: `2px solid ${C.munt}` }}
+    >
+      <Eyebrow color={C.ink}>Wandeling opnemen</Eyebrow>
+      {bezig ? (
+        <>
+          <div className="flex gap-4 mt-2 items-baseline">
+            <span className="font-serif text-2xl" style={{ color: C.ink }}>
+              {afstandTekst(meters)}
+            </span>
+            <span className="font-serif text-xl" style={{ color: C.muted }}>
+              {duurTekst(seconden)}
+            </span>
+          </div>
+          <p className="font-mono text-xs mt-1" style={{ color: C.muted }}>
+            {punten.length} punten gemeten. Houd je scherm aan, anders stopt de meting.
+          </p>
+          <Btn className="mt-2 w-full" onClick={stop}>
+            Wandeling afronden
+          </Btn>
+        </>
+      ) : (
+        <>
+          <p className="text-sm mt-1" style={{ color: C.muted }}>
+            Ga je alleen op pad? Dan tekent de app je route, afstand en tijd op.
+          </p>
+          <Btn tone="ghost" className="mt-2 w-full" onClick={start}>
+            Wandeling starten
+          </Btn>
+        </>
+      )}
+      {fout && (
+        <p className="text-sm mt-2" style={{ color: C.ember }}>
+          {fout}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/* ---------- mijn wandelingen: eigen venster ---------- */
+function WandelView({ me, agenda, setAgenda, days }) {
+  const [mijne, setMijne] = useState([]);
+  const [geladen, setGeladen] = useState(false);
+  const [melding, setMelding] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      const w = await loadKey("mijn-wandelingen", [], false);
+      setMijne(Array.isArray(w) ? w : []);
+      setGeladen(true);
+    })();
+  }, []);
+
+  const bewaar = async (lijst) => {
+    setMijne(lijst);
+    await saveKey("mijn-wandelingen", lijst, false);
+  };
+
+  const nieuweWandeling = (w) => {
+    bewaar([{ ...w, gedeeld: false }, ...mijne]);
+    setMelding("Wandeling bewaard in je eigen overzicht.");
+  };
+
+  const deel = async (w) => {
+    const dag = days.includes(w.date) ? w.date : days[0];
+    setAgenda([
+      ...agenda,
+      {
+        id: uid(),
+        date: dag,
+        time: w.time,
+        title: "Wandeling",
+        place: w.start || "",
+        soort: "wandeling",
+        afstandM: w.afstandM,
+        duurS: w.duurS,
+        pad: w.pad,
+        by: me.name,
+      },
+    ]);
+    await bewaar(mijne.map((x) => (x.id === w.id ? { ...x, gedeeld: true } : x)));
+    setMelding(`Toegevoegd aan ${fmtLong(dag)} in het gezamenlijke reisboek.`);
+  };
+
+  const verwijder = (w) => bewaar(mijne.filter((x) => x.id !== w.id));
+
+  return (
+    <div className="space-y-4">
+      <Card style={{ border: `3px solid ${C.lucht}` }}>
+        <Eyebrow color={C.ink}>Mijn wandelingen</Eyebrow>
+        <p className="text-sm mt-1" style={{ color: C.muted }}>
+          Wat je hier opneemt blijft op je eigen telefoon. Pas als je op delen tikt, komt het in het
+          gezamenlijke reisboek te staan.
+        </p>
+        <Wandeling onKlaar={nieuweWandeling} />
+        {melding && (
+          <p className="text-sm mt-2" style={{ color: C.ember }}>
+            {melding}
+          </p>
+        )}
+      </Card>
+
+      {geladen && mijne.length === 0 && (
+        <Card>
+          <p className="text-sm" style={{ color: C.muted }}>
+            Nog geen wandelingen opgenomen.
+          </p>
+        </Card>
+      )}
+
+      {mijne.map((w) => (
+        <Card key={w.id}>
+          <div className="flex items-baseline justify-between">
+            <Eyebrow color={C.ember}>{fmtLong(w.date)}</Eyebrow>
+            <span className="font-mono text-xs" style={{ color: C.muted }}>
+              {w.time}
+            </span>
+          </div>
+          <div className="flex gap-4 items-baseline mt-1">
+            <span className="font-serif text-2xl" style={{ color: C.ink }}>
+              {afstandTekst(w.afstandM || 0)}
+            </span>
+            <span className="font-serif text-xl" style={{ color: C.muted }}>
+              {duurTekst(w.duurS || 0)}
+            </span>
+            {w.duurS > 60 && w.afstandM > 0 && (
+              <span className="font-mono text-xs" style={{ color: C.muted }}>
+                {(w.afstandM / 1000 / (w.duurS / 3600)).toFixed(1).replace(".", ",")} km/u
+              </span>
+            )}
+          </div>
+          <RouteBeeld pad={w.pad} />
+          <div className="flex gap-2 mt-3 flex-wrap">
+            {w.gedeeld ? (
+              <span
+                className="font-mono uppercase text-xs tracking-widest px-3 py-2 rounded-2xl"
+                style={{ background: C.munt, color: C.ink }}
+              >
+                Gedeeld met de groep
+              </span>
+            ) : (
+              <Btn onClick={() => deel(w)}>Toevoegen aan gezamenlijk reisboek</Btn>
+            )}
+            <Btn tone="ghost" onClick={() => verwijder(w)}>
+              Verwijderen
+            </Btn>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
 
 /* ---------- een regel in de agenda ---------- */
 const BESTEMMINGEN = [
@@ -2371,12 +2805,23 @@ function AgendaRegel({ item, items, setItems, compact }) {
             </span>
           )}
         </button>
+        {item.soort === "wandeling" && (
+          <span className="block font-mono text-xs mt-1" style={{ color: C.muted }}>
+            {afstandTekst(item.afstandM || 0)} in {duurTekst(item.duurS || 0)}
+            {item.duurS > 60 && item.afstandM > 0
+              ? ` | ${((item.afstandM / 1000 / (item.duurS / 3600)) || 0)
+                  .toFixed(1)
+                  .replace(".", ",")} km/u`
+              : ""}
+          </span>
+        )}
+        {item.soort === "wandeling" && item.pad && <RouteBeeld pad={item.pad} />}
         {naarRegel && (
           <span className="block font-mono text-xs mt-1" style={{ color: C.muted }}>
             Bij aankomst: {naarRegel}
           </span>
         )}
-        {item.naarInfo && item.naarInfo.punt ? (
+        {item.soort === "wandeling" ? null : item.naarInfo && item.naarInfo.punt ? (
           <PlaatsBeeld place={item.naarInfo.punt} hoogte={compact ? 84 : 92} />
         ) : (
           <PlaatsBeeld place={item.place} hoogte={compact ? 84 : 92} />
@@ -4301,6 +4746,9 @@ function VakantieApp() {
   const [avatars, setAvatars] = useState({});
   const [selected, setSelected] = useState(localToday());
   const [editingTrip, setEditingTrip] = useState(false);
+  const [locaties, setLocaties] = useState({});
+  const [deelLocatie, setDeelLocatie] = useState(false);
+  const [locatieFout, setLocatieFout] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [notice, setNotice] = useState("");
 
@@ -4329,8 +4777,82 @@ function VakantieApp() {
     setPhotoIndex(pi);
     setPlaces(pl);
     setApiKeyState(typeof mk === "string" ? mk : "");
+    await haalLocaties();
     setSyncing(false);
     return core;
+  };
+
+  /* Zelf locatie doorgeven, zolang de app openstaat. */
+  const laatsteZet = useRef(0);
+  useEffect(() => {
+    if (!deelLocatie || !me || !navigator.geolocation) return;
+    setLocatieFout("");
+    let stop = false;
+    const wacht = navigator.geolocation.watchPosition(
+      async (pos) => {
+        if (stop) return;
+        const nu = Date.now();
+        if (nu - laatsteZet.current < 60000) return; // hooguit eens per minuut
+        laatsteZet.current = nu;
+        const gegeven = {
+          punt: `${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`,
+          nauwkeurig: Math.round(pos.coords.accuracy || 0),
+          naam: me.name,
+          at: new Date().toISOString(),
+        };
+        await saveKey(`locatie:${me.email}`, gegeven);
+        setLocaties((v) => ({ ...v, [me.email]: gegeven }));
+      },
+      (err) => {
+        if (stop) return;
+        setLocatieFout(
+          err && err.code === 1
+            ? "Je browser mag je locatie niet gebruiken. Zet dat aan bij de site-instellingen."
+            : "Je locatie kon niet bepaald worden."
+        );
+      },
+      { enableHighAccuracy: true, maximumAge: 30000, timeout: 20000 }
+    );
+    return () => {
+      stop = true;
+      navigator.geolocation.clearWatch(wacht);
+    };
+  }, [deelLocatie, me]);
+
+  /* De eigen keuze onthouden, per apparaat. */
+  useEffect(() => {
+    (async () => {
+      const aan = await loadKey("locatie-delen", false, false);
+      if (aan === true) setDeelLocatie(true);
+    })();
+  }, []);
+
+  const wisselLocatieDelen = async (aan) => {
+    setDeelLocatie(aan);
+    await saveKey("locatie-delen", aan, false);
+    if (!aan && me) {
+      await AppStore.delete(`locatie:${me.email}`, true).catch(() => {});
+      setLocaties((v) => {
+        const kopie = { ...v };
+        delete kopie[me.email];
+        return kopie;
+      });
+    }
+  };
+
+  /* Waar is iedereen? Elke persoon heeft een eigen sleutel. */
+  const haalLocaties = async () => {
+    try {
+      const r = await AppStore.list("locatie:", true);
+      const uit = {};
+      for (const sleutel of r?.keys || []) {
+        const w = await loadKey(sleutel, null);
+        if (w && w.punt) uit[sleutel.slice("locatie:".length)] = w;
+      }
+      setLocaties(uit);
+    } catch (e) {
+      /* nog niemand deelt iets */
+    }
   };
 
   /* first load */
@@ -4506,6 +5028,15 @@ function VakantieApp() {
               editingProfile
                 ? () => setEditingProfile(false)
                 : () => setPhase(trip ? "app" : "setup")
+            }
+            onWandelingen={
+              trip
+                ? () => {
+                    setEditingProfile(false);
+                    setPhase("app");
+                    setTab("wandeling");
+                  }
+                : null
             }
           />
         </div>
@@ -4691,6 +5222,10 @@ function VakantieApp() {
             apiKey={apiKey}
             setApiKey={setApiKey}
             onGaNaar={setTab}
+            locaties={locaties}
+            deelLocatie={deelLocatie}
+            onDeelLocatie={wisselLocatieDelen}
+            locatieFout={locatieFout}
           />
         )}
         {tab === "agenda" && (
@@ -4719,6 +5254,14 @@ function VakantieApp() {
             setSelected={setSelected}
             me={me}
             trip={trip}
+          />
+        )}
+        {tab === "wandeling" && (
+          <WandelView
+            me={me}
+            agenda={agenda}
+            setAgenda={persist("agenda", setAgenda)}
+            days={days}
           />
         )}
         {tab === "notities" && <NotesView notes={notes} setNotes={persist("notes", setNotes)} me={me} />}
