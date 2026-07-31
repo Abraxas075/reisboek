@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-20" />
+<meta name="reisboek-versie" content="familytrip-21" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
@@ -462,7 +462,7 @@ async function saveKey(key, value, shared = true) {
 }
 
 /* Google Places (New) - welke plek ligt op dit punt? */
-async function plaatsnaamBijPunt(key, punt) {
+async function plaatsnaamBijPunt(key, punt, straal = 80) {
   const [lat, lng] = punt.split(",").map(Number);
   try {
     const res = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
@@ -477,7 +477,7 @@ async function plaatsnaamBijPunt(key, punt) {
         languageCode: "nl",
         maxResultCount: 1,
         rankPreference: "DISTANCE",
-        locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius: 80 } },
+        locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius: straal } },
       }),
     });
     if (!res.ok) return null;
@@ -492,6 +492,11 @@ async function plaatsnaamBijPunt(key, punt) {
   } catch (e) {
     return null;
   }
+}
+
+/* Eerst dichtbij zoeken, daarna in een ruimere cirkel. */
+async function zoekNaam(key, punt) {
+  return (await plaatsnaamBijPunt(key, punt, 80)) || (await plaatsnaamBijPunt(key, punt, 400));
 }
 
 /* Google Places (New) - adres-suggesties */
@@ -2653,18 +2658,16 @@ function NamenOphalen({ agenda, setAgenda, dagIso }) {
     if (x.title && !/^bezoek$/i.test(x.title) && !isOnderweg(x)) return x.title;
     const punt = alsCoordinaat(x.place);
     if (!punt) return "";
-    const r = await plaatsnaamBijPunt(key, punt);
+    const r = await zoekNaam(key, punt);
     return (r && r.naam) || "";
   };
 
-  const teDoen = opTijd.filter(
-    (a) =>
-      !a.naamOpgehaald &&
-      (alsCoordinaat(a.place) ||
-        alsCoordinaat(a.vanPunt) ||
-        alsCoordinaat(a.naarPunt) ||
-        (isOnderweg(a) && !a.van && !a.naar))
-  );
+  /* Wat is er nog echt te doen? Een oud vinkje telt niet. */
+  const generiek = (a) => !a.title || /^bezoek$/i.test(String(a.title).trim());
+  const teDoen = opTijd.filter((a) => {
+    if (isOnderweg(a)) return !a.van || !a.naar;
+    return generiek(a) && !!alsCoordinaat(a.place);
+  });
   if (!key || teDoen.length === 0) return null;
 
   const start = async () => {
@@ -2677,16 +2680,16 @@ function NamenOphalen({ agenda, setAgenda, dagIso }) {
       const vanPunt = alsCoordinaat(item.vanPunt);
       const naarPunt = alsCoordinaat(item.naarPunt);
       const rit = isOnderweg(item);
-      const hier = punt && !rit ? await plaatsnaamBijPunt(key, punt) : null;
+      const hier = punt && !rit ? await zoekNaam(key, punt) : null;
       let van = item.van || "";
       let naar = item.naar || "";
       if (rit) {
         if (!van && vanPunt) {
-          const r = await plaatsnaamBijPunt(key, vanPunt);
+          const r = await zoekNaam(key, vanPunt);
           van = (r && r.naam) || "";
         }
         if (!naar && naarPunt) {
-          const r = await plaatsnaamBijPunt(key, naarPunt);
+          const r = await zoekNaam(key, naarPunt);
           naar = (r && r.naam) || "";
         }
         if (!van || !naar) {
@@ -2695,11 +2698,12 @@ function NamenOphalen({ agenda, setAgenda, dagIso }) {
           if (!naar) naar = await naamVan(volgende);
         }
       }
+      const ietsGevonden = !!((hier && hier.naam) || (rit && (van || naar)));
       lijst = lijst.map((x) =>
         x.id === item.id
           ? {
               ...x,
-              naamOpgehaald: true,
+              naamOpgehaald: ietsGevonden ? true : x.naamOpgehaald,
               soort: rit ? "onderweg" : x.soort,
               title: hier && hier.naam ? hier.naam : rit ? nlOnderweg(x.title) : x.title,
               place: hier && hier.adres ? hier.adres : x.place,
@@ -2708,20 +2712,20 @@ function NamenOphalen({ agenda, setAgenda, dagIso }) {
             }
           : x
       );
-      if ((hier && hier.naam) || van || naar) gevonden++;
+      if (ietsGevonden) gevonden++;
     }
     setAgenda(lijst);
     setBezig("");
     setMelding(
       gevonden
         ? `${gevonden} regel${gevonden > 1 ? "s" : ""} ingevuld.`
-        : "Niets gevonden om in te vullen."
+        : "Google vond hier geen plaatsnamen. Vul ze in door op een regel te tikken."
     );
   };
 
   return (
-    <div className="mt-2">
-      <Btn tone="ghost" onClick={start} disabled={!!bezig}>
+    <div className="mt-2 mb-1">
+      <Btn onClick={start} disabled={!!bezig} className="w-full">
         {bezig ? `Bezig: ${bezig}` : `Namen en routes invullen (${teDoen.length})`}
       </Btn>
       {melding && (
@@ -2932,6 +2936,7 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
 
               <div className="mt-3">
                 <Eyebrow color={C.ember}>Gebeurtenissen</Eyebrow>
+                <NamenOphalen agenda={agenda} setAgenda={setAgenda} dagIso={iso} />
                 {plannen.length === 0 ? (
                   <p className="text-sm py-2" style={{ color: C.muted }}>
                     Nog niets gepland.
@@ -2943,7 +2948,6 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
                     ))}
                   </ul>
                 )}
-                <NamenOphalen agenda={agenda} setAgenda={setAgenda} dagIso={iso} />
                 <div className="flex gap-2 mt-2">
                   <input
                     value={snel[iso] || ""}
