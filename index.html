@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-28" />
+<meta name="reisboek-versie" content="familytrip-29" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
@@ -976,6 +976,80 @@ const Field = ({ label, ...rest }) => (
   </label>
 );
 
+/* Een plek doorgeven aan Google: als coordinaat of als tekst. */
+const alsWaypoint = (tekst) => {
+  const c = alsCoordinaat(tekst);
+  if (c) {
+    const [lat, lng] = c.split(",").map(Number);
+    return { location: { latLng: { latitude: lat, longitude: lng } } };
+  }
+  return { address: String(tekst || "") };
+};
+
+const REISWIJZE = {
+  auto: "DRIVE",
+  camper: "DRIVE",
+  bus: "TRANSIT",
+  trein: "TRANSIT",
+  vliegtuig: null,
+  anders: "DRIVE",
+};
+
+/* Reistijd opvragen bij Google. Vereist dat Routes API aanstaat. */
+async function berekenReis(key, van, naar, stops, vertrekISO, vervoer) {
+  const wijze = REISWIJZE[String(vervoer || "auto").toLowerCase()];
+  if (!wijze) return { fout: "Voor een vlucht kan Google geen reistijd berekenen." };
+
+  const body = {
+    origin: alsWaypoint(van),
+    destination: alsWaypoint(naar),
+    travelMode: wijze,
+    languageCode: "nl-NL",
+    units: "METRIC",
+  };
+  const tussen = (stops || []).filter((x) => x && String(x).trim());
+  if (tussen.length) body.intermediates = tussen.map(alsWaypoint);
+  if (vertrekISO) body.departureTime = vertrekISO;
+  if (wijze === "DRIVE") body.routingPreference = "TRAFFIC_AWARE";
+
+  try {
+    const res = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": key,
+        "X-Goog-FieldMask":
+          "routes.duration,routes.distanceMeters,routes.legs.duration,routes.legs.distanceMeters",
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      const bericht = data?.error?.message || "";
+      if (/api|enabled|permission|blocked/i.test(bericht)) {
+        return {
+          fout:
+            "Google weigert dit: zet 'Routes API' aan in Google Cloud en voeg hem toe aan de beperkingen van je key.",
+        };
+      }
+      return { fout: bericht || "Google gaf een fout terug." };
+    }
+    const route = data?.routes?.[0];
+    if (!route) return { fout: "Google vond geen route tussen deze plaatsen." };
+    const sec = parseInt(String(route.duration || "0").replace("s", ""), 10) || 0;
+    return {
+      seconden: sec,
+      meters: route.distanceMeters || 0,
+      delen: (route.legs || []).map((l) => ({
+        seconden: parseInt(String(l.duration || "0").replace("s", ""), 10) || 0,
+        meters: l.distanceMeters || 0,
+      })),
+    };
+  } catch (e) {
+    return { fout: "Geen verbinding met Google." };
+  }
+}
+
 /* Uit een geplakte Google Maps-link halen wat bruikbaar is. */
 const uitMapsLink = (tekst) => {
   const t = String(tekst || "").trim();
@@ -1844,6 +1918,66 @@ function SetupView({ me, initial, onSave, onCancel, apiKey, setApiKey, onImportT
     setStops((trip.stops || []).map((s) => (s.id === id ? { ...s, [veld]: waarde } : s)));
   const STOP_REDENEN = ["Overnachting", "Tanken", "Lunch", "Pauze", "Bezienswaardigheid", "Boodschappen"];
 
+  const [rekenBezig, setRekenBezig] = useState(false);
+  const [rekenUitslag, setRekenUitslag] = useState("");
+
+  const klokUit = (d) =>
+    `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+
+  const berekenAankomst = async () => {
+    const van = trip.travelFrom;
+    const naar = trip.base || trip.destination;
+    if (!apiKey) {
+      setRekenUitslag("Hiervoor is een Google Maps-key nodig.");
+      return;
+    }
+    if (!van || !naar) {
+      setRekenUitslag("Vul eerst het vertrekpunt en de bestemming in.");
+      return;
+    }
+    setRekenBezig(true);
+    setRekenUitslag("");
+
+    const vertrek = new Date(`${trip.start || new Date().toISOString().slice(0, 10)}T${trip.travelDepart || "08:00"}:00`);
+    const nu = new Date();
+    const vertrekISO = (vertrek > nu ? vertrek : new Date(nu.getTime() + 120000)).toISOString();
+
+    const r = await berekenReis(
+      apiKey,
+      van,
+      naar,
+      (trip.stops || []).map((x) => x.place),
+      vertrekISO,
+      trip.travelMode
+    );
+    setRekenBezig(false);
+    if (r.fout) {
+      setRekenUitslag(r.fout);
+      return;
+    }
+
+    /* De aankomsttijd, gerekend vanaf de ingevulde vertrektijd. */
+    const basis = new Date(`${trip.start || "2000-01-01"}T${trip.travelDepart || "08:00"}:00`);
+    const aankomst = new Date(basis.getTime() + r.seconden * 1000);
+
+    /* En meteen een schatting per tussenstop. */
+    const stops = [...(trip.stops || [])];
+    let loper = basis.getTime();
+    r.delen.slice(0, stops.length).forEach((deel, i) => {
+      loper += deel.seconden * 1000;
+      stops[i] = { ...stops[i], time: stops[i].time || klokUit(new Date(loper)) };
+    });
+
+    setTrip({ ...trip, travelArrive: klokUit(aankomst), stops });
+    const middernacht = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const dagenLater = Math.round((middernacht(aankomst) - middernacht(basis)) / 86400000);
+    setRekenUitslag(
+      `${afstandTekst(r.meters)} en ${duurTekst(r.seconden)} rijden${
+        dagenLater > 0 ? ` - je komt ${dagenLater} dag${dagenLater > 1 ? "en" : ""} later aan` : ""
+      }. Reken op pauzes bovenop deze tijd.`
+    );
+  };
+
   const verplaatsStop = (i, richting) => {
     const lijst = [...(trip.stops || [])];
     const j = i + richting;
@@ -1948,6 +2082,14 @@ function SetupView({ me, initial, onSave, onCancel, apiKey, setApiKey, onImportT
               <Field label="Vertrektijd" type="time" value={trip.travelDepart || ""} onChange={set("travelDepart")} />
               <Field label="Aankomst" type="time" value={trip.travelArrive || ""} onChange={set("travelArrive")} />
             </div>
+            <Btn tone="ghost" className="w-full" onClick={berekenAankomst} disabled={rekenBezig}>
+              {rekenBezig ? "Google rekent\u2026" : "Aankomst berekenen via Google Maps"}
+            </Btn>
+            {rekenUitslag && (
+              <p className="text-sm" style={{ color: C.ember }}>
+                {rekenUitslag}
+              </p>
+            )}
             <Field
               label="Onderweg (optioneel)"
               placeholder="Tanken bij Metz, lunch onderweg"
