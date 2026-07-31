@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-27" />
+<meta name="reisboek-versie" content="familytrip-28" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
@@ -976,11 +976,51 @@ const Field = ({ label, ...rest }) => (
   </label>
 );
 
+/* Uit een geplakte Google Maps-link halen wat bruikbaar is. */
+const uitMapsLink = (tekst) => {
+  const t = String(tekst || "").trim();
+  if (
+    !/^https?:\/\//i.test(t) ||
+    !/(maps\.google\.[a-z.]+|google\.[a-z.]+\/maps|goo\.gl\/maps|maps\.app\.goo\.gl)/i.test(t)
+  ) {
+    return null;
+  }
+  if (/maps\.app\.goo\.gl|goo\.gl\/maps/i.test(t)) return { kort: true };
+
+  const paar = (a, b) => `${Number(a).toFixed(6)},${Number(b).toFixed(6)}`;
+
+  const naamUitPad = () => {
+    const n = t.match(/\/place\/([^/@?]+)/);
+    return n ? decodeURIComponent(n[1]).replace(/\+/g, " ") : "";
+  };
+
+  let m = t.match(/[?&]q=(?:loc:)?(-?\d+\.\d+),\s*(-?\d+\.\d+)/i);
+  if (m) return { punt: paar(m[1], m[2]), naam: naamUitPad() };
+
+  m = t.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+  if (m) return { punt: paar(m[1], m[2]), naam: naamUitPad() };
+
+  m = t.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (m) {
+    const naam = t.match(/\/place\/([^/@]+)/);
+    return {
+      punt: paar(m[1], m[2]),
+      naam: naam ? decodeURIComponent(naam[1]).replace(/\+/g, " ") : "",
+    };
+  }
+
+  m = t.match(/\/place\/([^/@?]+)/);
+  if (m) return { naam: decodeURIComponent(m[1]).replace(/\+/g, " ") };
+
+  return { onbekend: true };
+};
+
 const AddressField = ({ label, value, onChange, placeholder }) => {
   const key = React.useContext(MapsKeyContext);
   const [suggestions, setSuggestions] = useState([]);
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState("");
+  const [linkMelding, setLinkMelding] = useState("");
 
   useEffect(() => {
     if (!key || !value || value.length < 3 || value === picked) {
@@ -1001,9 +1041,61 @@ const AddressField = ({ label, value, onChange, placeholder }) => {
     };
   }, [value, key, picked]);
 
+  const verwerkInvoer = (e) => {
+    const tekst = e.target.value;
+    const link = uitMapsLink(tekst);
+    if (!link) {
+      setLinkMelding("");
+      onChange(e);
+      return;
+    }
+    if (link.kort) {
+      setLinkMelding(
+        "Korte links kan de app niet uitpakken. Open hem in Google Maps, houd de plek ingedrukt en kies de coordinaten, of plak het adres uit de adresbalk."
+      );
+      onChange(e);
+      return;
+    }
+    if (link.punt) {
+      setPicked(link.punt);
+      setSuggestions([]);
+      setLinkMelding(
+        link.naam ? `Link herkend: ${link.naam}` : "Link herkend, coordinaten overgenomen."
+      );
+      onChange({ target: { value: link.punt } });
+      return;
+    }
+    if (link.naam) {
+      setLinkMelding(`Link herkend: ${link.naam}`);
+      onChange({ target: { value: link.naam } });
+      return;
+    }
+    setLinkMelding("Uit deze link kon geen plek gehaald worden.");
+    onChange(e);
+  };
+
   return (
     <div className="relative">
-      <Field label={label} value={value} placeholder={placeholder} onChange={onChange} />
+      <Field label={label} value={value} placeholder={placeholder} onChange={verwerkInvoer} />
+      <div className="flex flex-wrap gap-2 mt-1">
+        <a
+          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(value || "")}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-mono uppercase text-xs tracking-widest px-3 py-1 rounded-full"
+          style={{ background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}
+        >
+          Zoek op Google Maps
+        </a>
+        <span className="font-mono text-xs self-center" style={{ color: C.muted }}>
+          of plak hier een Maps-link
+        </span>
+      </div>
+      {linkMelding && (
+        <p className="text-xs mt-1" style={{ color: C.ember }}>
+          {linkMelding}
+        </p>
+      )}
       {key && open && suggestions.length > 0 && (
         <ul
           className="mt-1 rounded-md overflow-hidden"
