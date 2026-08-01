@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-33" />
+<meta name="reisboek-versie" content="familytrip-34" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
@@ -3125,10 +3125,17 @@ function DagToevoegen({ iso, agenda, setAgenda, me }) {
   const [heleDag, setHeleDag] = useState(false);
   const [tijd, setTijd] = useState("");
   const [waar, setWaar] = useState("");
+  const [fout, setFout] = useState("");
+  const naamVeld = useRef(null);
 
   const bewaar = (uitgebreid) => {
     const naam = tekst.trim();
-    if (!naam) return;
+    if (!naam) {
+      setFout("Vul eerst in wat jullie gaan doen.");
+      if (naamVeld.current) naamVeld.current.focus();
+      return;
+    }
+    setFout("");
     setAgenda([
       ...agenda,
       {
@@ -3152,8 +3159,12 @@ function DagToevoegen({ iso, agenda, setAgenda, me }) {
     <div className="mt-2">
       <div className="flex gap-2">
         <input
+          ref={naamVeld}
           value={tekst}
-          onChange={(e) => setTekst(e.target.value)}
+          onChange={(e) => {
+            setTekst(e.target.value);
+            if (fout) setFout("");
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
@@ -3161,16 +3172,27 @@ function DagToevoegen({ iso, agenda, setAgenda, me }) {
             }
           }}
           placeholder="Wat gaan jullie doen?"
-          className="flex-1 px-4 py-2 rounded-2xl text-base focus:outline-none focus:ring-2"
-          style={{ background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}
+          className="flex-1 min-w-0 px-4 py-2 rounded-2xl text-base focus:outline-none focus:ring-2"
+          style={{
+            background: "#FFFFFF",
+            color: C.ink,
+            border: `2px solid ${fout ? C.ember : C.line}`,
+          }}
         />
-        <Btn onClick={() => (open ? bewaar(true) : setOpen(true))}>
-          {open ? "Opslaan" : "Meer"}
-        </Btn>
-        <Btn tone="ghost" onClick={() => bewaar(false)}>
-          +
-        </Btn>
+        {!open && (
+          <>
+            <Btn tone="ghost" onClick={() => setOpen(true)}>
+              Meer
+            </Btn>
+            <Btn onClick={() => bewaar(false)}>+</Btn>
+          </>
+        )}
       </div>
+      {fout && (
+        <p className="text-sm mt-1" style={{ color: C.ember }}>
+          {fout}
+        </p>
+      )}
 
       {open && (
         <div
@@ -3206,10 +3228,18 @@ function DagToevoegen({ iso, agenda, setAgenda, me }) {
 
           <div className="flex gap-2 mt-3">
             <Btn onClick={() => bewaar(true)}>Opslaan</Btn>
-            <Btn tone="ghost" onClick={() => setOpen(false)}>
+            <Btn tone="ghost" onClick={() => {
+              setOpen(false);
+              setFout("");
+            }}>
               Annuleren
             </Btn>
           </div>
+          {!tekst.trim() && (
+            <p className="text-xs mt-2" style={{ color: C.muted }}>
+              Vul hierboven nog in wat jullie gaan doen, dan kun je opslaan.
+            </p>
+          )}
         </div>
       )}
     </div>
