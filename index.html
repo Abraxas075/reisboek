@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-32" />
+<meta name="reisboek-versie" content="familytrip-33" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
@@ -3118,6 +3118,104 @@ function WandelView({ me, agenda, setAgenda, days }) {
   );
 }
 
+/* ---------- iets toevoegen aan een dag ---------- */
+function DagToevoegen({ iso, agenda, setAgenda, me }) {
+  const [tekst, setTekst] = useState("");
+  const [open, setOpen] = useState(false);
+  const [heleDag, setHeleDag] = useState(false);
+  const [tijd, setTijd] = useState("");
+  const [waar, setWaar] = useState("");
+
+  const bewaar = (uitgebreid) => {
+    const naam = tekst.trim();
+    if (!naam) return;
+    setAgenda([
+      ...agenda,
+      {
+        id: uid(),
+        date: iso,
+        time: uitgebreid && !heleDag ? tijd : "",
+        heleDag: uitgebreid ? heleDag : false,
+        title: naam,
+        place: uitgebreid ? waar.trim() : "",
+        by: me.name,
+      },
+    ]);
+    setTekst("");
+    setTijd("");
+    setWaar("");
+    setHeleDag(false);
+    setOpen(false);
+  };
+
+  return (
+    <div className="mt-2">
+      <div className="flex gap-2">
+        <input
+          value={tekst}
+          onChange={(e) => setTekst(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              bewaar(open);
+            }
+          }}
+          placeholder="Wat gaan jullie doen?"
+          className="flex-1 px-4 py-2 rounded-2xl text-base focus:outline-none focus:ring-2"
+          style={{ background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}
+        />
+        <Btn onClick={() => (open ? bewaar(true) : setOpen(true))}>
+          {open ? "Opslaan" : "Meer"}
+        </Btn>
+        <Btn tone="ghost" onClick={() => bewaar(false)}>
+          +
+        </Btn>
+      </div>
+
+      {open && (
+        <div
+          className="rounded-2xl p-3 mt-2"
+          style={{ background: "rgba(255,255,255,0.9)", border: `2px solid ${C.koraal}` }}
+        >
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={heleDag}
+              onChange={(e) => setHeleDag(e.target.checked)}
+              style={{ width: 20, height: 20, accentColor: C.koraal }}
+            />
+            <span className="text-sm" style={{ color: C.ink }}>
+              Duurt de hele dag
+            </span>
+          </label>
+
+          {!heleDag && (
+            <div className="mt-2">
+              <Field label="Hoe laat" type="time" value={tijd} onChange={(e) => setTijd(e.target.value)} />
+            </div>
+          )}
+
+          <div className="mt-2">
+            <AddressField
+              label="Waar"
+              placeholder="Plage de Palombaggia"
+              value={waar}
+              onChange={(e) => setWaar(e.target.value)}
+            />
+          </div>
+
+          <div className="flex gap-2 mt-3">
+            <Btn onClick={() => bewaar(true)}>Opslaan</Btn>
+            <Btn tone="ghost" onClick={() => setOpen(false)}>
+              Annuleren
+            </Btn>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ---------- een regel in de agenda ---------- */
 const BESTEMMINGEN = [
   "Vakantiehuisje",
@@ -3168,20 +3266,41 @@ function AgendaRegel({ item, items, setItems, compact }) {
         className="px-3 py-3 rounded-2xl"
         style={{ background: "rgba(255,255,255,0.9)", border: `2px solid ${C.koraal}` }}
       >
-        <div className="grid grid-cols-3 gap-2">
-          <Field
-            label="Tijd"
-            type="time"
-            value={concept.time || ""}
-            onChange={(e) => setConcept({ ...concept, time: e.target.value })}
+        <Field
+          label="Wat"
+          value={concept.title || ""}
+          onChange={(e) => setConcept({ ...concept, title: e.target.value })}
+        />
+        <label className="flex items-center gap-3 mt-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={!!concept.heleDag}
+            onChange={(e) =>
+              setConcept({ ...concept, heleDag: e.target.checked, time: e.target.checked ? "" : concept.time })
+            }
+            style={{ width: 20, height: 20, accentColor: C.koraal }}
           />
-          <div className="col-span-2">
+          <span className="text-sm" style={{ color: C.ink }}>
+            Duurt de hele dag
+          </span>
+        </label>
+        {!concept.heleDag && (
+          <div className="mt-2">
             <Field
-              label="Wat"
-              value={concept.title || ""}
-              onChange={(e) => setConcept({ ...concept, title: e.target.value })}
+              label="Hoe laat"
+              type="time"
+              value={concept.time || ""}
+              onChange={(e) => setConcept({ ...concept, time: e.target.value })}
             />
           </div>
+        )}
+        <div className="mt-2">
+          <AddressField
+            label="Waar"
+            placeholder="Plage de Palombaggia"
+            value={concept.place || ""}
+            onChange={(e) => setConcept({ ...concept, place: e.target.value })}
+          />
         </div>
         <div className="grid grid-cols-2 gap-2 mt-2">
           <Field
@@ -3240,8 +3359,11 @@ function AgendaRegel({ item, items, setItems, compact }) {
         border: "1.5px solid rgba(255,255,255,0.9)",
       }}
     >
-      <span className="font-mono text-sm w-12 shrink-0" style={{ color: C.muted }}>
-        {item.time || "-"}
+      <span
+        className="font-mono text-xs w-12 shrink-0"
+        style={{ color: item.heleDag ? C.ember : C.muted, lineHeight: 1.2 }}
+      >
+        {item.heleDag ? "Hele dag" : item.time || "-"}
       </span>
       <span className="flex-1">
         <button
@@ -3611,9 +3733,10 @@ function NamenOphalen({ agenda, setAgenda, dagIso, auto }) {
   const [bezig, setBezig] = useState("");
   const [melding, setMelding] = useState("");
 
+  const sleutel = (a) => (a.heleDag ? "00" : a.time || "99");
   const opTijd = agenda
     .filter((a) => a.date === dagIso)
-    .sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
+    .sort((a, b) => sleutel(a).localeCompare(sleutel(b)));
 
   /* Bij een rit zonder punten: kijk naar het bezoek ervoor en erna. */
   const buren = (item) => {
@@ -3831,7 +3954,6 @@ function ZwevendeBalk({ tab, onGaNaar }) {
 /* ---------- hoofdscherm: dagen naast elkaar ---------- */
 function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, todos, photoIndex, images, loadImages, selected, setSelected, me, onGoTo }) {
   const scroller = useRef(null);
-  const [snel, setSnel] = useState({});
 
   useEffect(() => {
     loadImages();
@@ -3868,13 +3990,6 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
       });
       if (beste && beste !== selected) setSelected(beste);
     }, 140);
-  };
-
-  const voegToe = (iso) => {
-    const tekst = (snel[iso] || "").trim();
-    if (!tekst) return;
-    setAgenda([...agenda, { id: uid(), date: iso, time: "", title: tekst, place: "", by: me.name }]);
-    setSnel({ ...snel, [iso]: "" });
   };
 
   const index = days.indexOf(selected);
@@ -3917,7 +4032,9 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
         {days.map((iso, n) => {
           const plannen = agenda
             .filter((a) => a.date === iso)
-            .sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
+            .sort((a, b) =>
+              (a.heleDag ? "00" : a.time || "99").localeCompare(b.heleDag ? "00" : b.time || "99")
+            );
           const lijst = shopping.filter((s) => s.date === iso);
           const kiekjes = photoIndex.filter((p) => p.date === iso);
           const actief = iso === selected;
@@ -3956,19 +4073,7 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
                     ))}
                   </ul>
                 )}
-                <div className="flex gap-2 mt-2">
-                  <input
-                    value={snel[iso] || ""}
-                    onChange={(e) => setSnel({ ...snel, [iso]: e.target.value })}
-                    onKeyDown={(e) => e.key === "Enter" && voegToe(iso)}
-                    placeholder="Snel iets toevoegen"
-                    className="flex-1 px-4 py-2 rounded-2xl text-base focus:outline-none focus:ring-2"
-                    style={{ background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}
-                  />
-                  <Btn onClick={() => voegToe(iso)} disabled={!(snel[iso] || "").trim()}>
-                    +
-                  </Btn>
-                </div>
+                <DagToevoegen iso={iso} agenda={agenda} setAgenda={setAgenda} me={me} />
               </div>
 
               {kiekjes.length > 0 && (
