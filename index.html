@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-40-themas-profiel" />
+<meta name="reisboek-versie" content="familytrip-51-firebase-herstel" />
 <title>Family Trip</title>
 <style>
   body { margin: 0; background: #F8C9A4; transition: background 0.25s ease; }
@@ -43,7 +43,10 @@ setTimeout(function () {
   if (document.getElementById("laden")) __toon("Het laden duurt te lang.");
 }, 12000);
 </script>
-<script src="config.js" onerror="window.__fouten.push('config.js kon niet geladen worden')"></script>
+<script>
+window.FIREBASE_STATUS = { fase: "config laden", ok: false, fout: "" };
+</script>
+<script src="config.js?v=51" onload="window.FIREBASE_STATUS.configBestand=true" onerror="window.FIREBASE_STATUS.configBestand=false; window.__fouten.push('config.js kon niet geladen worden')"></script>
 <script>
 /* Instellingen die in de app zelf zijn ingevuld gaan voor op config.js. */
 (function () {
@@ -59,6 +62,13 @@ setTimeout(function () {
     /* dan gewoon config.js gebruiken */
   }
 })();
+/* Vul authDomain automatisch in als alleen apiKey en projectId zijn opgeslagen. */
+(function () {
+  var c = window.VAKANTIE_CONFIG || {};
+  var f = c.firebase || {};
+  if (f.projectId && !f.authDomain) f.authDomain = f.projectId + ".firebaseapp.com";
+  window.VAKANTIE_CONFIG = c;
+})();
 </script>
 <script>
 /* ------------------------------------------------------------------
@@ -69,25 +79,46 @@ setTimeout(function () {
    ------------------------------------------------------------------ */
 window.__initOpslag = function () {
   const cfg = window.VAKANTIE_CONFIG || {};
-  const fb = cfg.firebase || {};
+  const fb = { ...(cfg.firebase || {}) };
+  if (fb.projectId && !fb.authDomain) fb.authDomain = fb.projectId + ".firebaseapp.com";
   const tripId = cfg.tripId || "onze-reis";
   const wilFirebase = !!(fb.projectId && fb.apiKey);
   let db = null;
   let auth = null;
   let opslag = null;
 
+  window.FIREBASE_STATUS = window.FIREBASE_STATUS || {};
+  window.FIREBASE_STATUS.projectId = fb.projectId || "";
+  window.FIREBASE_STATUS.tripId = tripId;
+  window.FIREBASE_STATUS.configAanwezig = wilFirebase;
+  window.FIREBASE_STATUS.fase = "initialiseren";
+
   if (wilFirebase && window.firebase) {
     try {
-      firebase.initializeApp(fb);
-      db = firebase.firestore();
-      if (firebase.auth) auth = firebase.auth();
-      if (cfg.opslag && firebase.storage) opslag = firebase.storage();
+      const app = firebase.apps && firebase.apps.length ? firebase.app() : firebase.initializeApp(fb);
+      db = app.firestore ? app.firestore() : firebase.firestore();
+      if (firebase.auth) auth = app.auth ? app.auth() : firebase.auth();
+      if (cfg.opslag && firebase.storage) opslag = app.storage ? app.storage() : firebase.storage();
+      window.FIREBASE_STATUS.ok = true;
+      window.FIREBASE_STATUS.fase = "verbonden";
+      window.FIREBASE_STATUS.fout = "";
     } catch (e) {
-      window.__fouten.push("Firebase start niet: " + e.message);
+      const bericht = (e && e.message) || String(e);
+      window.FIREBASE_STATUS.ok = false;
+      window.FIREBASE_STATUS.fase = "fout";
+      window.FIREBASE_STATUS.fout = bericht;
+      window.__fouten.push("Firebase start niet: " + bericht);
       db = null;
     }
   } else if (wilFirebase) {
+    window.FIREBASE_STATUS.ok = false;
+    window.FIREBASE_STATUS.fase = "bibliotheek ontbreekt";
+    window.FIREBASE_STATUS.fout = "De Firebase-bibliotheek kon niet geladen worden.";
     window.__fouten.push("De Firebase-bibliotheek kon niet geladen worden; de app werkt nu alleen op dit apparaat.");
+  } else {
+    window.FIREBASE_STATUS.ok = false;
+    window.FIREBASE_STATUS.fase = "geen configuratie";
+    window.FIREBASE_STATUS.fout = "Geen projectId en apiKey gevonden in config.js of de lokale Firebase-instellingen.";
   }
   window.VAKANTIE_MODE = db ? "gedeeld" : "lokaal";
 
@@ -122,18 +153,29 @@ window.__initOpslag = function () {
   window.AppStore = {
     async get(key, shared) {
       if (!db || !shared) return local.get(key, shared);
-      const snap = await db.collection("trips").doc(tripId).collection("data").doc(docId(key)).get();
+      let snap;
+      try {
+        snap = await db.collection("trips").doc(tripId).collection("data").doc(docId(key)).get();
+      } catch (e) {
+        window.FIREBASE_STATUS.fout = (e && e.message) || String(e);
+        throw e;
+      }
       if (!snap.exists) throw new Error("niet gevonden");
       return { key, value: snap.data().v, shared: true };
     },
     async set(key, value, shared) {
       if (!db || !shared) return local.set(key, value, shared);
-      await db
-        .collection("trips")
-        .doc(tripId)
-        .collection("data")
-        .doc(docId(key))
-        .set({ v: value, key, at: Date.now() });
+      try {
+        await db
+          .collection("trips")
+          .doc(tripId)
+          .collection("data")
+          .doc(docId(key))
+          .set({ v: value, key, at: Date.now() });
+      } catch (e) {
+        window.FIREBASE_STATUS.fout = (e && e.message) || String(e);
+        throw e;
+      }
       return { key, value, shared: true };
     },
     async delete(key, shared) {
@@ -157,10 +199,21 @@ window.__initOpslag = function () {
   window.AppAuth = {
     beschikbaar: !!auth,
     async inloggenMetGoogle() {
+      if (!auth) throw new Error("Firebase Authentication is niet verbonden.");
       const provider = new firebase.auth.GoogleAuthProvider();
-      const res = await auth.signInWithPopup(provider);
-      const u = res.user;
-      return { email: u.email, name: u.displayName || u.email, foto: u.photoURL || "" };
+      try {
+        const res = await auth.signInWithPopup(provider);
+        const u = res.user;
+        return { email: u.email, name: u.displayName || u.email, foto: u.photoURL || "" };
+      } catch (e) {
+        const code = (e && e.code) || "";
+        let bericht = (e && e.message) || "Inloggen met Google lukte niet.";
+        if (/unauthorized-domain/i.test(code + " " + bericht)) {
+          bericht = "Dit GitHub Pages-adres staat nog niet bij Firebase Authentication > Settings > Authorized domains. Voeg abraxas075.github.io toe.";
+        }
+        window.FIREBASE_STATUS.fout = bericht;
+        throw new Error(bericht);
+      }
     },
     async uitloggen() {
       if (auth) {
@@ -3067,6 +3120,7 @@ function FirebaseKaart() {
   const [melding, setMelding] = useState("");
   const gedeeld = typeof window !== "undefined" && window.VAKANTIE_MODE === "gedeeld";
   const beschikbaar = typeof window !== "undefined" && "VAKANTIE_MODE" in window;
+  const status = (typeof window !== "undefined" && window.FIREBASE_STATUS) || {};
 
   if (!beschikbaar) return null;
 
@@ -3130,6 +3184,12 @@ function FirebaseKaart() {
             Nu bewaart je browser alles op dit apparaat, met ongeveer 5 MB als grens. Met een gratis
             Firebase-project krijg je 1 GB en zien je reisgenoten alles.
           </p>
+          <div className="mt-3 rounded-2xl p-3 text-sm" style={{ background: "#FFF6EC", border: `2px solid ${C.koraal}`, color: C.ink }}>
+            <strong>Firebase-status:</strong> {status.fase || "onbekend"}
+            {status.projectId ? <span className="block">Project: {status.projectId}</span> : null}
+            {status.tripId ? <span className="block">Reiscode: {status.tripId}</span> : null}
+            {status.fout ? <span className="block mt-1" style={{ color: C.marigold }}>{status.fout}</span> : null}
+          </div>
           <ol className="text-sm mt-2 space-y-1" style={{ color: C.muted }}>
             <li>1. Maak op console.firebase.google.com een project.</li>
             <li>2. Zet Firestore Database aan (productiemodus, locatie in Europa).</li>
@@ -6034,17 +6094,24 @@ root.render(<VakantieApp />);
       });
   }
 
-  var FB = "https://www.gstatic.com/firebasejs/10.12.2/";
+  var FB1 = "https://www.gstatic.com/firebasejs/10.12.2/";
+  var FB2 = "https://cdn.jsdelivr.net/npm/firebase@10.12.2/";
+  function laadFirebaseBestand(naam) {
+    return laadEen(FB1 + naam).catch(function () { return laadEen(FB2 + naam); });
+  }
   function firebaseLaden() {
     if (!window.__firebaseNodig()) return Promise.resolve();
     var c = window.VAKANTIE_CONFIG || {};
-    var lijst = [FB + "firebase-app-compat.js", FB + "firebase-firestore-compat.js", FB + "firebase-auth-compat.js"];
-    if (c.opslag) lijst.push(FB + "firebase-storage-compat.js");
+    var lijst = ["firebase-app-compat.js", "firebase-firestore-compat.js", "firebase-auth-compat.js"];
+    if (c.opslag) lijst.push("firebase-storage-compat.js");
+    window.FIREBASE_STATUS.fase = "bibliotheken laden";
     return lijst
-      .reduce(function (p, url) {
-        return p.then(function () { return laadEen(url); });
+      .reduce(function (p, naam) {
+        return p.then(function () { return laadFirebaseBestand(naam); });
       }, Promise.resolve())
-      .catch(function () {
+      .catch(function (e) {
+        window.FIREBASE_STATUS.fase = "bibliotheekfout";
+        window.FIREBASE_STATUS.fout = (e && e.message) || "Firebase kon niet geladen worden.";
         window.__fouten.push("Firebase kon niet geladen worden; de app werkt nu alleen op dit apparaat.");
       });
   }
