@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-37" />
+<meta name="reisboek-versie" content="familytrip-38" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
@@ -2041,7 +2041,13 @@ function SetupView({ me, initial, onSave, onCancel, apiKey, setApiKey, onImportT
       stops[i] = { ...stops[i], time: stops[i].time || klokUit(new Date(loper)) };
     });
 
-    setTrip({ ...trip, travelArrive: klokUit(aankomst), stops });
+    setTrip({
+      ...trip,
+      travelArrive: klokUit(aankomst),
+      stops,
+      travelDistanceM: r.meters,
+      travelDurationS: r.seconden,
+    });
     const middernacht = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
     const dagenLater = Math.round((middernacht(aankomst) - middernacht(basis)) / 86400000);
     setRekenUitslag(
@@ -3275,7 +3281,7 @@ const BESTEMMINGEN = [
   "Terug naar huisje",
 ];
 
-function AgendaRegel({ item, items, setItems, compact }) {
+function AgendaRegel({ item, items, setItems, compact, fotos, images }) {
   const [bewerken, setBewerken] = useState(false);
   const [concept, setConcept] = useState(item);
   useEffect(() => setConcept(item), [item.id]);
@@ -3453,7 +3459,21 @@ function AgendaRegel({ item, items, setItems, compact }) {
             Bij aankomst: {naarRegel}
           </span>
         )}
-        {item.soort === "wandeling" ? null : item.naarInfo && item.naarInfo.punt ? (
+        {item.soort === "wandeling" ? null : item.naarInfo && fotos && fotos.length > 0 ? (
+          <div className="flex gap-2 mt-1">
+            {fotos.slice(0, 3).map((p) =>
+              images[p.id] ? (
+                <img
+                  key={p.id}
+                  src={images[p.id]}
+                  alt={p.caption || "Foto van deze dag"}
+                  className="rounded-2xl object-cover"
+                  style={{ width: 70, height: 70, border: `2px solid ${C.line}` }}
+                />
+              ) : null
+            )}
+          </div>
+        ) : item.naarInfo && item.naarInfo.punt ? (
           <PlaatsBeeld place={item.naarInfo.punt} hoogte={compact ? 84 : 92} />
         ) : (
           <PlaatsBeeld place={item.place} hoogte={compact ? 84 : 92} />
@@ -4099,7 +4119,15 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
                 ) : (
                   <ul className="space-y-2">
                     {plannen.map((a) => (
-                      <AgendaRegel key={a.id} item={a} items={agenda} setItems={setAgenda} compact />
+                      <AgendaRegel
+                        key={a.id}
+                        item={a}
+                        items={agenda}
+                        setItems={setAgenda}
+                        compact
+                        fotos={kiekjes}
+                        images={images}
+                      />
                     ))}
                   </ul>
                 )}
@@ -4126,30 +4154,62 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
                 </div>
               )}
 
-              {lijst.length > 0 && (
-                <div className="mt-4">
-                  <Eyebrow>Boodschappen</Eyebrow>
-                  <ul className="mt-1">
-                    {lijst.map((i) => (
-                      <li key={i.id} className="flex items-center gap-2 py-1">
-                        <input
-                          type="checkbox"
-                          checked={i.done}
-                          onChange={() =>
-                            setShopping(shopping.map((x) => (x.id === i.id ? { ...x, done: !x.done } : x)))
-                          }
-                          className="w-4 h-4"
-                          aria-label={i.text}
-                        />
-                        <span
-                          className="text-sm"
-                          style={{ textDecoration: i.done ? "line-through" : "none", color: i.done ? C.muted : C.ink }}
-                        >
-                          {i.text}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+              {(lijst.length > 0 || trip.travelDistanceM) && (
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  {lijst.length > 0 && (
+                    <div>
+                      <span className="flex items-center gap-1.5">
+                        <Icoon naam="lijst" kleur="#8DA56B" maat={16} />
+                        <Eyebrow>Boodschappen ({lijst.length})</Eyebrow>
+                      </span>
+                      <ul className="mt-1">
+                        {lijst.slice(0, 4).map((i) => (
+                          <li key={i.id} className="flex items-center gap-2 py-1">
+                            <input
+                              type="checkbox"
+                              checked={i.done}
+                              onChange={() =>
+                                setShopping(shopping.map((x) => (x.id === i.id ? { ...x, done: !x.done } : x)))
+                              }
+                              className="w-4 h-4"
+                              aria-label={i.text}
+                            />
+                            <span
+                              className="text-sm"
+                              style={{ textDecoration: i.done ? "line-through" : "none", color: i.done ? C.muted : C.ink }}
+                            >
+                              {i.text}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {trip.travelDistanceM && (
+                    <div>
+                      <span className="flex items-center gap-1.5">
+                        <Icoon naam="reis" kleur="#8DA56B" maat={16} />
+                        <Eyebrow>Reisdetails</Eyebrow>
+                      </span>
+                      <ul className="mt-1 space-y-1">
+                        <li className="flex items-center gap-2 text-sm">
+                          <Icoon naam="agenda" kleur={C.muted} maat={14} />
+                          {afstandTekst(trip.travelDistanceM)}
+                        </li>
+                        <li className="flex items-center gap-2 text-sm">
+                          <Icoon naam="agenda" kleur={C.muted} maat={14} />
+                          {duurTekst(trip.travelDurationS)} rijden
+                        </li>
+                        {(trip.stops || []).filter((s) => s.place).length > 0 && (
+                          <li className="flex items-center gap-2 text-sm">
+                            <Icoon naam="agenda" kleur={C.muted} maat={14} />
+                            {(trip.stops || []).filter((s) => s.place).length}{" "}
+                            {(trip.stops || []).filter((s) => s.place).length === 1 ? "tussenstop" : "tussenstops"}
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
 
