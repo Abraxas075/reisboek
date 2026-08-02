@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
 <meta name="reisboek-versie" content="familytrip-40-themas-profiel" />
-<title>Reisboek</title>
+<title>Family Trip</title>
 <style>
   body { margin: 0; background: #F8C9A4; transition: background 0.25s ease; }
   #laden { color: #173F6B; font-family: ui-monospace, monospace; padding: 1.5rem; line-height: 1.6; }
@@ -374,9 +374,19 @@ function Letters() {
     document.head.appendChild(link);
     const stijl = document.createElement("style");
     stijl.textContent = `
+      * { box-sizing: border-box; }
+      html { background: ${C.bg}; }
       body, input, select, textarea, button, a { font-family: ${FONT_TEKST}; }
-      .font-serif { font-family: ${FONT_KOP}; font-weight: 800; letter-spacing: 0.2px; }
+      body { min-height: 100vh; color: ${C.ink}; background: ${C.bg}; }
+      button, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+      .font-serif { font-family: ${FONT_KOP}; font-weight: 800; letter-spacing: 0.1px; }
       .font-mono { font-family: ${FONT_TEKST}; font-weight: 700; }
+      .hide-scrollbar { scrollbar-width: none; }
+      .hide-scrollbar::-webkit-scrollbar { display: none; }
+      @media (min-width: 560px) {
+        body:before { content: ""; position: fixed; inset: 0; background: radial-gradient(circle at 50% 5%, rgba(255,255,255,.62), transparent 40%); pointer-events: none; }
+        #root { width: 100%; }
+      }
     `;
     document.head.appendChild(stijl);
     return () => {
@@ -418,6 +428,48 @@ function Logo({ size = 132, tekst = true }) {
         </g>
       )}
     </svg>
+  );
+}
+
+function SchermKop({ onBack, onMenu, onRefresh, compact = false }) {
+  return (
+    <header
+      className="sticky top-0 z-40"
+      style={{
+        background: C.head,
+        borderBottom: "2px solid rgba(255,255,255,0.78)",
+        boxShadow: "0 4px 16px rgba(34,64,107,0.08)",
+      }}
+    >
+      <div
+        className="max-w-lg mx-auto px-5 flex items-center justify-between"
+        style={{ height: compact ? 72 : 86 }}
+      >
+        <button
+          type="button"
+          onClick={onBack || onMenu}
+          aria-label={onBack ? "Terug" : "Menu"}
+          className="rounded-full flex items-center justify-center focus:outline-none focus:ring-2"
+          style={{ width: 42, height: 42, color: C.marigold }}
+        >
+          {onBack ? (
+            <span style={{ fontSize: 28, lineHeight: 1 }}>&larr;</span>
+          ) : (
+            <Icoon naam="menu" kleur={C.marigold} maat={25} dikte={2.2} />
+          )}
+        </button>
+        <Logo size={150} />
+        <button
+          type="button"
+          onClick={onRefresh}
+          aria-label={onRefresh ? "Vernieuwen" : ""}
+          className="rounded-full flex items-center justify-center focus:outline-none focus:ring-2"
+          style={{ width: 42, height: 42, visibility: onRefresh ? "visible" : "hidden" }}
+        >
+          <Icoon naam="vernieuw" kleur={C.marigold} maat={25} dikte={2.2} />
+        </button>
+      </div>
+    </header>
   );
 }
 
@@ -1850,8 +1902,7 @@ function LoginView({ onLogin }) {
   const [blijf, setBlijf] = useState(true);
   const [error, setError] = useState("");
   const [bezig, setBezig] = useState(false);
-  const metGoogle =
-    typeof window !== "undefined" && window.AppAuth && window.AppAuth.beschikbaar;
+  const metGoogle = typeof window !== "undefined" && window.AppAuth && window.AppAuth.beschikbaar;
 
   const googleAanmelden = async () => {
     setError("");
@@ -1860,135 +1911,79 @@ function LoginView({ onLogin }) {
       const p = await window.AppAuth.inloggenMetGoogle();
       onLogin({ email: p.email, name: p.name }, blijf, p.foto);
     } catch (e) {
-      setError(
-        (e && e.message) ||
-          "Inloggen met Google lukte niet. Staat dit adres bij de toegestane domeinen in Firebase?"
-      );
+      setError((e && e.message) || "Inloggen met Google lukte niet.");
     }
     setBezig(false);
   };
 
   const submit = () => {
     const mail = email.trim().toLowerCase();
-    if (!/^[^\s@]+@(gmail\.com|googlemail\.com)$/.test(mail)) {
-      setError("Vul een Gmail-adres in, bijvoorbeeld naam@gmail.com.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) {
+      setError("Vul een geldig e-mailadres in.");
       return;
     }
     if (!name.trim()) {
-      setError("Vul je naam in, zo weten de anderen wie wat toevoegt.");
+      setError("Vul je naam in.");
       return;
     }
     onLogin({ email: mail, name: name.trim() }, blijf);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-5" style={{ background: VERLOOP }}>
+    <div className="min-h-screen" style={{ background: C.bg }}>
       <Letters />
-      <div className="w-full" style={{ maxWidth: 380 }}>
-        <div className="flex flex-col items-center">
-          <div
-            className="rounded-3xl p-4 mb-5"
-            style={{ background: "#FFFFFF", boxShadow: "0 8px 28px rgba(34,64,107,0.20)" }}
-          >
-            <Logo size={104} />
+      <div className="max-w-lg mx-auto min-h-screen" style={{ background: C.bone }}>
+        <div className="px-5 pt-6 pb-4 flex justify-center" style={{ background: C.head }}>
+          <Logo size={180} />
+        </div>
+        <div
+          className="relative overflow-hidden"
+          style={{
+            height: 190,
+            background: `linear-gradient(180deg, ${C.head} 0%, #FFF7E9 48%, ${C.lucht} 49%, ${C.lucht} 68%, #F1D2A5 69%, #F8E2BD 100%)`,
+          }}
+          aria-hidden="true"
+        >
+          <div style={{ position: "absolute", width: 74, height: 74, borderRadius: "50%", background: "#F6C85E", right: 32, top: 22, boxShadow: "0 0 0 12px rgba(246,200,94,.18)" }} />
+          <div style={{ position: "absolute", left: 28, bottom: 20, width: 80, height: 110, borderLeft: `7px solid ${C.munt}`, transform: "rotate(8deg)", borderRadius: 30 }} />
+          <div style={{ position: "absolute", left: 8, bottom: 94, width: 70, height: 32, borderRadius: "80% 10%", background: C.munt, transform: "rotate(-18deg)" }} />
+          <div style={{ position: "absolute", left: 56, bottom: 80, width: 68, height: 30, borderRadius: "10% 80%", background: C.munt, transform: "rotate(22deg)" }} />
+          <div style={{ position: "absolute", left: "50%", bottom: 10, transform: "translateX(-50%)", display: "flex", gap: 10, alignItems: "end" }}>
+            {[78, 100, 72].map((h, i) => (
+              <div key={i} style={{ width: 48, height: h, borderRadius: "24px 24px 14px 14px", background: i === 1 ? C.ink : i === 0 ? C.koraal : C.geel, opacity: .92 }} />
+            ))}
           </div>
-          <h1
-            className="font-serif text-3xl text-center leading-tight"
-            style={{ color: "#FFFFFF", textShadow: "0 1px 8px rgba(34,64,107,0.25)" }}
-          >
-            Family Trip
-          </h1>
-          <p className="text-sm text-center mt-1 mb-5" style={{ color: "rgba(255,255,255,0.95)" }}>
-            Een reisboek voor het hele gezelschap.
-          </p>
         </div>
 
-        <div className="rounded-3xl p-5" style={{ background: "rgba(255,251,245,0.98)", border: `2px solid ${C.line}`, boxShadow: SCHADUW.kaart }}>
-          {metGoogle && (
-            <div className="mb-4">
+        <main className="px-5 pb-8" style={{ marginTop: -8 }}>
+          <div className="rounded-[24px] p-5" style={{ background: C.bone, border: `2px solid ${C.line}`, boxShadow: SCHADUW.kaart }}>
+            {metGoogle && (
               <button
+                type="button"
                 onClick={googleAanmelden}
                 disabled={bezig}
-                className="w-full py-3 rounded-2xl flex items-center justify-center gap-2 focus:outline-none focus:ring-2"
-                style={{
-                  background: "#FFFFFF",
-                  color: C.ink,
-                  border: `2px solid ${C.line}`,
-                  fontFamily: FONT_KOP,
-                  fontWeight: 700,
-                }}
+                className="w-full py-3 rounded-2xl flex items-center justify-center gap-3 focus:outline-none focus:ring-2"
+                style={{ background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}`, fontWeight: 800 }}
               >
-                <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
-                  <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.8 6.1C12.3 13.2 17.7 9.5 24 9.5z" />
-                  <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9.1h12.4c-.5 2.9-2.2 5.4-4.7 7l7.6 5.9c4.4-4.1 6.8-10.1 6.8-17.4z" />
-                  <path fill="#FBBC05" d="M10.4 28.7c-.5-1.4-.8-2.9-.8-4.7s.3-3.3.8-4.7l-7.8-6.1C1 16.4 0 20.1 0 24s1 7.6 2.6 10.8l7.8-6.1z" />
-                  <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.8 2.3-8.3 2.3-6.3 0-11.7-3.7-13.6-9.8l-7.8 6.1C6.5 42.6 14.6 48 24 48z" />
-                </svg>
-                {bezig ? "Bezig\u2026" : "Inloggen met Google"}
+                <span style={{ fontSize: 20, fontWeight: 900, color: "#4285F4" }}>G</span>
+                {bezig ? "Bezig…" : "Inloggen met Google"}
               </button>
-              <p className="text-xs text-center mt-3" style={{ color: C.muted }}>
-                of vul hieronder zelf je gegevens in
-              </p>
-            </div>
-          )}
-          <div className="space-y-3">
-            <Field
-              label="Gmail-adres"
-              type="email"
-              inputMode="email"
-              placeholder="naam@gmail.com"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setError("");
-              }}
-            />
-            <Field
-              label="Jouw naam"
-              placeholder="Sanne"
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                setError("");
-              }}
-              onKeyDown={(e) => e.key === "Enter" && submit()}
-            />
-            {error && (
-              <p className="text-sm" style={{ color: C.ember }}>
-                {error}
-              </p>
             )}
-            <label className="flex items-center gap-3 py-1">
-              <input
-                type="checkbox"
-                checked={blijf}
-                onChange={(e) => setBlijf(e.target.checked)}
-                className="w-5 h-5"
-                style={{ accentColor: C.koraal }}
-              />
-              <span className="text-sm" style={{ color: C.ink }}>
-                Ingelogd blijven op dit apparaat
-              </span>
-            </label>
-            <button
-              onClick={submit}
-              className="w-full py-3 rounded-2xl focus:outline-none focus:ring-2"
-              style={{
-                background: C.ink,
-                color: "#FFFFFF",
-                fontFamily: FONT_KOP,
-                fontWeight: 700,
-                boxShadow: "0 6px 16px rgba(34,64,107,0.30)",
-              }}
-            >
-              Aanmelden
-            </button>
+            {metGoogle && <div className="text-center text-sm my-3" style={{ color: C.muted }}>of</div>}
+            <div className="space-y-3">
+              <Field label="Je naam" placeholder="Naam" value={name} onChange={(e) => { setName(e.target.value); setError(""); }} />
+              <Field label="Je e-mail" type="email" inputMode="email" placeholder="naam@email.com" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }} onKeyDown={(e) => e.key === "Enter" && submit()} />
+              {error && <p className="text-sm" style={{ color: C.marigold }}>{error}</p>}
+              <label className="flex items-center gap-3 py-1">
+                <input type="checkbox" checked={blijf} onChange={(e) => setBlijf(e.target.checked)} className="w-5 h-5" style={{ accentColor: C.koraal }} />
+                <span className="text-sm" style={{ color: C.ink }}>Ingelogd blijven op dit apparaat</span>
+              </label>
+              <button type="button" onClick={submit} className="w-full py-3 rounded-2xl focus:outline-none focus:ring-2" style={{ background: C.ink, color: "#FFFFFF", fontWeight: 800, letterSpacing: "1.2px", boxShadow: "0 6px 16px rgba(34,64,107,.22)" }}>
+                DOORGAAN
+              </button>
+            </div>
           </div>
-        </div>
-        <p className="text-xs mt-5 leading-relaxed text-center" style={{ color: "rgba(255,255,255,0.95)" }}>
-          Iedereen die zich aanmeldt werkt in hetzelfde reisboek: agenda, foto's, notities en
-          lijstjes zijn voor de hele groep zichtbaar.
-        </p>
+        </main>
       </div>
     </div>
   );
@@ -2092,7 +2087,7 @@ function ProfileView({ me, photo, onSave, onSkip, onWandelingen, themeId, setThe
   const kies = async (e) => {
     const file = (e.target.files || [])[0];
     if (!file) return;
-    setBusy("Foto wordt klaargezet...");
+    setBusy("Foto wordt klaargezet…");
     try {
       setFoto(await resizeImage(file, 480, 0.75));
       setBusy("");
@@ -2102,105 +2097,63 @@ function ProfileView({ me, photo, onSave, onSkip, onWandelingen, themeId, setThe
   };
 
   return (
-    <div className="p-5 max-w-lg mx-auto">
-      <Eyebrow color={C.marigold}>Stap 2 | jouw profiel</Eyebrow>
-      <h2 className="font-serif text-3xl mt-1 mb-4" style={{ color: C.ink }}>
-        Wie ben jij?
-      </h2>
-      <Card>
-        <div className="flex items-center gap-4">
-          <div
-            className="rounded-full overflow-hidden flex items-center justify-center shrink-0"
-            style={{ width: 76, height: 76, background: C.mint, border: `1px solid ${C.deep}` }}
-          >
-            {foto ? (
-              <img src={foto} alt="Jouw foto" className="w-full h-full object-cover" />
-            ) : (
-              <span className="font-mono text-xl" style={{ color: C.deep }}>
-                {initials(name, me.email)}
-              </span>
-            )}
+    <div className="min-h-screen" style={{ background: C.bg }}>
+      <SchermKop onBack={onSkip} compact />
+      <main className="p-4 max-w-lg mx-auto" style={{ paddingBottom: 40 }}>
+        <Card>
+          <div>
+            <h2 className="font-serif text-2xl" style={{ color: C.ink }}>Jouw profiel</h2>
+            <p className="text-sm mt-0.5" style={{ color: C.muted }}>Vertel ons wie je bent!</p>
           </div>
-          <div className="flex-1">
-            <Eyebrow>Foto van jezelf</Eyebrow>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={kies}
-              className="block w-full text-sm mt-1"
-              style={{ color: C.muted }}
-            />
-            {foto && (
-              <button
-                onClick={() => setFoto("")}
-                className="font-mono uppercase text-xs tracking-widest mt-1 focus:outline-none focus:ring-2"
-                style={{ color: C.ember }}
-              >
-                Foto weghalen
-              </button>
-            )}
-          </div>
-        </div>
-        {busy && (
-          <p className="font-mono text-xs mt-2" style={{ color: C.muted }}>
-            {busy}
-          </p>
-        )}
-        <div className="space-y-3 mt-4">
-          <Field label="Naam" value={name} onChange={(e) => setName(e.target.value)} />
-          <Field
-            label="Telefoon (optioneel)"
-            type="tel"
-            placeholder="06 12345678"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
-          <Field
-            label="Iets over jou (optioneel)"
-            placeholder="Kok van dienst, slaapt graag uit"
-            value={about}
-            onChange={(e) => setAbout(e.target.value)}
-          />
-          <div className="flex gap-2">
-            <Btn
-              onClick={() => onSave({ ...me, name: name.trim() || me.name, phone: phone.trim(), about: about.trim() }, foto)}
+
+          <div className="flex items-center gap-4 mt-4">
+            <div
+              className="rounded-full overflow-hidden flex items-center justify-center shrink-0"
+              style={{ width: 92, height: 92, background: C.perzik, border: `2px solid ${C.geel}` }}
             >
-              Profiel opslaan
-            </Btn>
-            {onSkip && (
-              <Btn tone="ghost" onClick={onSkip}>
-                Later
-              </Btn>
-            )}
+              {foto ? <img src={foto} alt="Jouw foto" className="w-full h-full object-cover" /> : <span className="text-2xl font-bold" style={{ color: C.ink }}>{initials(name, me.email)}</span>}
+            </div>
+            <label className="flex-1 cursor-pointer">
+              <Eyebrow color={C.marigold}>Profielfoto</Eyebrow>
+              <div className="text-sm mt-1" style={{ color: C.muted }}>{foto ? "Andere foto kiezen" : "Voeg een foto toe"}</div>
+              <span className="inline-flex items-center gap-2 rounded-full px-3 py-2 mt-2 text-sm font-bold" style={{ background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}>
+                📷 Kies foto
+              </span>
+              <input type="file" accept="image/*" onChange={kies} className="hidden" />
+            </label>
           </div>
-        </div>
-      </Card>
+          {busy && <p className="text-xs mt-2" style={{ color: C.muted }}>{busy}</p>}
 
-      <ThemePicker themeId={themeId} setThemeId={setThemeId} />
-
-      {onWandelingen && (
-        <Card className="mt-4">
-          <Eyebrow>Alleen van jou</Eyebrow>
-          <button
-            onClick={onWandelingen}
-            className="flex items-center gap-3 w-full text-left mt-2 focus:outline-none focus:ring-2 rounded-2xl"
-          >
-            <Tegel naam="wandeling" kleur="#76A9CF" maat={44} />
-            <span>
-              <span className="block text-sm" style={{ color: C.ink }}>
-                Mijn wandelingen
-              </span>
-              <span className="block text-xs" style={{ color: C.muted }}>
-                Route, afstand en tijd opnemen. Blijft van jou tot je hem deelt.
-              </span>
-            </span>
-          </button>
+          <div className="space-y-3 mt-5">
+            <Field label="Naam" value={name} onChange={(e) => setName(e.target.value)} />
+            <Field label="Telefoon" type="tel" placeholder="06 12345678" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            <Field label="Iets over jou" placeholder="Chauffeur en kok" value={about} onChange={(e) => setAbout(e.target.value)} />
+            <button
+              type="button"
+              onClick={() => onSave({ ...me, name: name.trim() || me.name, phone: phone.trim(), about: about.trim() }, foto)}
+              className="w-full py-3 rounded-2xl focus:outline-none focus:ring-2"
+              style={{ background: C.koraal, color: "#FFFFFF", fontWeight: 800, letterSpacing: "1px", boxShadow: SCHADUW.knop }}
+            >
+              PROFIEL OPSLAAN
+            </button>
+          </div>
         </Card>
-      )}
-      <p className="text-xs mt-4" style={{ color: C.muted }}>
-        Je foto en naam zijn zichtbaar voor je reisgenoten, zodat je bij elk plan en elke foto ziet
-        wie het heeft toegevoegd.
-      </p>
+
+        <ThemePicker themeId={themeId} setThemeId={setThemeId} />
+
+        {onWandelingen && (
+          <Card className="mt-4">
+            <button type="button" onClick={onWandelingen} className="flex items-center gap-3 w-full text-left focus:outline-none focus:ring-2 rounded-2xl">
+              <Tegel naam="wandeling" kleur={C.lucht} maat={44} />
+              <span className="flex-1">
+                <span className="block font-bold" style={{ color: C.ink }}>Mijn wandelingen</span>
+                <span className="block text-xs" style={{ color: C.muted }}>Route, afstand en tijd opnemen.</span>
+              </span>
+              <span style={{ color: C.ink, fontSize: 24 }}>›</span>
+            </button>
+          </Card>
+        )}
+      </main>
     </div>
   );
 }
@@ -4185,52 +4138,28 @@ const SNELKNOPPEN = [
 function ZwevendeBalk({ tab, onGaNaar }) {
   return (
     <nav
-      className="fixed z-50"
+      className="fixed z-50 rounded-t-[24px]"
       style={{
         left: 0,
         right: 0,
         bottom: 0,
-        background: C.bg,
-        borderTop: "2px solid rgba(255,255,255,0.8)",
+        background: C.bone,
+        borderTop: `2px solid ${C.line}`,
+        boxShadow: "0 -8px 24px rgba(34,64,107,.10)",
         paddingTop: 10,
         paddingBottom: "calc(10px + env(safe-area-inset-bottom, 0px))",
       }}
     >
-      <div className="max-w-lg mx-auto px-4 flex justify-between items-start">
+      <div className="max-w-lg mx-auto px-4 flex justify-around items-start">
         {SNELKNOPPEN.map((k) => {
           const actief = tab === k.id;
+          const themakleur = k.id === "dagen" ? C.koraal : k.id === "fotos" ? C.lucht : k.id === "reis" ? C.munt : C.geel;
           return (
-            <button
-              key={k.id}
-              onClick={() => onGaNaar(k.id)}
-              aria-label={k.label}
-              className="flex flex-col items-center gap-2 focus:outline-none focus:ring-2 rounded-2xl"
-              style={{ width: 78 }}
-            >
-              <span
-                className="inline-flex items-center justify-center rounded-full"
-                style={{
-                  width: 48,
-                  height: 48,
-                  background: actief ? k.kleur + "33" : "#FFFFFF",
-                  border: `2px solid ${actief ? k.kleur : C.line}`,
-                  boxShadow: "0 4px 12px rgba(34,64,107,0.18)",
-                }}
-              >
-                <Icoon naam={k.id} kleur={k.kleur} maat={24} />
+            <button key={k.id} type="button" onClick={() => onGaNaar(k.id)} className="flex flex-col items-center gap-1.5 focus:outline-none focus:ring-2 rounded-2xl" style={{ width: 80 }}>
+              <span className="inline-flex items-center justify-center rounded-full" style={{ width: 48, height: 48, background: actief ? themakleur : "#FFFFFF", border: `2px solid ${themakleur}`, boxShadow: actief ? `0 6px 14px ${themakleur}55` : "0 3px 10px rgba(34,64,107,.12)" }}>
+                <Icoon naam={k.id} kleur={actief ? "#FFFFFF" : themakleur} maat={24} />
               </span>
-              <span
-                className="text-center"
-                style={{
-                  color: C.ink,
-                  fontFamily: FONT_TEKST,
-                  fontWeight: 700,
-                  fontSize: 10,
-                  lineHeight: 1.15,
-                }}
-              >
-                {k.label}
-              </span>
+              <span style={{ color: actief ? themakleur : C.ink, fontWeight: 800, fontSize: 11, textAlign: "center" }}>{k.label}</span>
             </button>
           );
         })}
@@ -4241,307 +4170,101 @@ function ZwevendeBalk({ tab, onGaNaar }) {
 
 /* ---------- hoofdscherm: dagen naast elkaar ---------- */
 function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, todos, photoIndex, images, loadImages, selected, setSelected, me, onGoTo, weer }) {
-  const scroller = useRef(null);
+  useEffect(() => { loadImages(); }, [photoIndex.length]);
+  if (!days.length) return <Empty>Nog geen reisdagen ingesteld.</Empty>;
 
-  useEffect(() => {
-    loadImages();
-  }, [photoIndex.length]);
-
-  useEffect(() => {
-    const houder = scroller.current;
-    const el = houder?.querySelector('[data-dag="true"]');
-    if (!el || !houder) return;
-    const a = el.getBoundingClientRect();
-    const b = houder.getBoundingClientRect();
-    if (Math.abs(a.left - b.left) > 40 && el.scrollIntoView) {
-      el.scrollIntoView({ block: "nearest", inline: "start", behavior: "smooth" });
-    }
-  }, [selected]);
-
-  /* Welke dagkaart staat er vooraan? Die wordt de gekozen dag. */
-  const scrollTimer = useRef(null);
-  const opScroll = () => {
-    clearTimeout(scrollTimer.current);
-    scrollTimer.current = setTimeout(() => {
-      const houder = scroller.current;
-      if (!houder) return;
-      const kaarten = Array.from(houder.querySelectorAll("section[data-iso]"));
-      const links = houder.getBoundingClientRect().left;
-      let beste = null;
-      let kleinste = Infinity;
-      kaarten.forEach((k) => {
-        const afstand = Math.abs(k.getBoundingClientRect().left - links);
-        if (afstand < kleinste) {
-          kleinste = afstand;
-          beste = k.getAttribute("data-iso");
-        }
-      });
-      if (beste && beste !== selected) setSelected(beste);
-    }, 140);
-  };
-
-  const index = days.indexOf(selected);
+  const index = Math.max(0, days.indexOf(selected));
+  const iso = days[index] || days[0];
+  const plannen = agenda
+    .filter((a) => a.date === iso)
+    .sort((a, b) => (a.heleDag ? "00" : a.time || "99").localeCompare(b.heleDag ? "00" : b.time || "99"));
+  const lijst = shopping.filter((s) => s.date === iso);
+  const kiekjes = photoIndex.filter((p) => p.date === iso);
+  const kleur = dagKleur(index);
   const today = localToday();
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-2">
-        <Eyebrow color={C.marigold}>
-          {days.length} dagen | veeg naar links voor later
-        </Eyebrow>
-        <div className="flex gap-1">
-          <button
-            onClick={() => index > 0 && setSelected(days[index - 1])}
-            disabled={index <= 0}
-            aria-label="Vorige dag"
-            className="font-mono px-2 py-1 rounded focus:outline-none focus:ring-2"
-            style={{ color: C.ink, opacity: index <= 0 ? 0.3 : 1 }}
-          >
-            &lt;
-          </button>
-          <button
-            onClick={() => index < days.length - 1 && setSelected(days[index + 1])}
-            disabled={index >= days.length - 1}
-            aria-label="Volgende dag"
-            className="font-mono px-2 py-1 rounded focus:outline-none focus:ring-2"
-            style={{ color: C.ink, opacity: index >= days.length - 1 ? 0.3 : 1 }}
-          >
-            &gt;
-          </button>
-        </div>
+      <div className="mb-4">
+        <DayStrip days={days} selected={iso} onSelect={setSelected} />
       </div>
 
-      <div
-        ref={scroller}
-        onScroll={opScroll}
-        className="flex gap-3 overflow-x-auto snap-x snap-mandatory -mx-4 px-4 pb-2"
-        style={{ alignItems: "flex-start" }}
+      <section
+        className="rounded-[24px] p-4"
+        style={{
+          background: C.bone,
+          border: `2px solid ${iso === today ? C.koraal : C.line}`,
+          boxShadow: SCHADUW.kaart,
+        }}
       >
-        {days.map((iso, n) => {
-          const plannen = agenda
-            .filter((a) => a.date === iso)
-            .sort((a, b) =>
-              (a.heleDag ? "00" : a.time || "99").localeCompare(b.heleDag ? "00" : b.time || "99")
-            );
-          const lijst = shopping.filter((s) => s.date === iso);
-          const kiekjes = photoIndex.filter((p) => p.date === iso);
-          const actief = iso === selected;
-          return (
-            <section
-              key={iso}
-              data-iso={iso}
-              data-dag={actief}
-              className="snap-start shrink-0 rounded-3xl p-4"
-              style={{
-                width: "88%",
-                maxWidth: 420,
-                maxHeight: "calc(100vh - 330px)",
-                overflowY: "auto",
-                background: dagKleur(n).tint,
-                color: C.ink,
-                opacity: actief ? 1 : 0.8,
-                border: `3px solid ${iso === today ? C.ember : dagKleur(n).rand}`,
-                boxShadow: actief ? `0 10px 26px ${dagKleur(n).schaduw}` : "none",
-              }}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <Eyebrow color={C.ink}>Dag {String(n + 1).padStart(2, "0")}</Eyebrow>
-                  <h2 className="font-serif text-2xl capitalize leading-tight">{fmtLong(iso)}</h2>
-                </div>
-                {weer && weer[iso] && (
-                  <span
-                    className="flex items-center gap-1 rounded-full px-3 py-1.5 shrink-0"
-                    style={{ background: C.boneSoft }}
-                    title={weerInfo(weer[iso].code).tekst}
-                  >
-                    <span style={{ fontSize: 18 }}>{weerInfo(weer[iso].code).emoji}</span>
-                    <span className="font-serif text-sm" style={{ color: C.ink }}>
-                      {weer[iso].max}?
-                    </span>
-                    <span className="text-xs" style={{ color: C.muted }}>
-                      / {weer[iso].min}?
-                    </span>
-                  </span>
-                )}
-              </div>
+        <div className="flex items-start justify-between gap-3 pb-3" style={{ borderBottom: `1px solid ${C.line}` }}>
+          <div className="flex items-start gap-3">
+            <span className="inline-flex items-center justify-center rounded-full shrink-0" style={{ width: 46, height: 46, background: kleur.tint, color: kleur.rand, fontSize: 24 }}>☀</span>
+            <div>
+              <h2 className="font-serif text-2xl capitalize leading-tight" style={{ color: C.ink }}>Dag {index + 1} – {iso === today ? "Vandaag" : fmtLong(iso)}</h2>
+              <p className="text-base capitalize" style={{ color: C.muted }}>{fmtLong(iso)}</p>
+            </div>
+          </div>
+          {weer && weer[iso] && (
+            <span className="rounded-xl px-2.5 py-2 shrink-0" style={{ border: `2px solid ${C.koraal}`, color: C.marigold, fontWeight: 800, background: "#FFFFFF" }}>
+              {weerInfo(weer[iso].code).emoji} {weer[iso].max}°C
+            </span>
+          )}
+        </div>
 
-              <div className="mt-3">
-                <Eyebrow color={C.ember}>Gebeurtenissen</Eyebrow>
-                <NamenOphalen agenda={agenda} setAgenda={setAgenda} dagIso={iso} auto={actief} />
-                {plannen.length === 0 ? (
-                  <p className="text-sm py-2" style={{ color: C.muted }}>
-                    Nog niets gepland.
-                  </p>
-                ) : (
-                  <ul className="space-y-2">
-                    {plannen.map((a) => (
-                      <AgendaRegel
-                        key={a.id}
-                        item={a}
-                        items={agenda}
-                        setItems={setAgenda}
-                        compact
-                        fotos={kiekjes}
-                        images={images}
-                      />
-                    ))}
-                  </ul>
-                )}
-                <DagToevoegen iso={iso} agenda={agenda} setAgenda={setAgenda} me={me} />
-              </div>
+        <div className="mt-4">
+          <Eyebrow color={C.marigold}>Gebeurtenissen</Eyebrow>
+          <NamenOphalen agenda={agenda} setAgenda={setAgenda} dagIso={iso} auto />
+          {plannen.length === 0 ? (
+            <div className="rounded-2xl p-4 mt-2" style={{ background: kleur.tint, color: C.muted }}>Nog niets gepland.</div>
+          ) : (
+            <ul className="space-y-2 mt-2">
+              {plannen.map((a) => (
+                <AgendaRegel key={a.id} item={a} items={agenda} setItems={setAgenda} compact fotos={kiekjes} images={images} />
+              ))}
+            </ul>
+          )}
+          <DagToevoegen iso={iso} agenda={agenda} setAgenda={setAgenda} me={me} />
+        </div>
 
-              {kiekjes.length > 0 && (
-                <div className="mt-4">
-                  <Eyebrow>Foto's ({kiekjes.length})</Eyebrow>
-                  <div className="flex gap-2 overflow-x-auto mt-2">
-                    {kiekjes.slice(0, 6).map((p) => (
-                      <button
-                        key={p.id}
-                        onClick={() => onGoTo("fotos")}
-                        className="shrink-0 rounded-lg overflow-hidden focus:outline-none focus:ring-2"
-                        style={{ width: 64, height: 64, background: C.boneSoft }}
-                      >
-                        {images[p.id] && (
-                          <img src={images[p.id]} alt={p.caption || "Foto"} className="w-full h-full object-cover" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+        {kiekjes.length > 0 && (
+          <div className="grid grid-cols-3 gap-2 mt-4">
+            {kiekjes.slice(0, 3).map((p) => (
+              <button key={p.id} type="button" onClick={() => onGoTo("fotos")} className="rounded-2xl overflow-hidden focus:outline-none focus:ring-2" style={{ height: 92, background: C.boneSoft, border: `2px solid ${C.line}` }}>
+                {images[p.id] ? <img src={images[p.id]} alt={p.caption || "Foto"} className="w-full h-full object-cover" /> : <span style={{ color: C.muted }}>Foto</span>}
+              </button>
+            ))}
+          </div>
+        )}
 
-              {(lijst.length > 0 || trip.travelDistanceM) && (
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  {lijst.length > 0 && (
-                    <div>
-                      <span className="flex items-center gap-1.5">
-                        <Icoon naam="lijst" kleur="#8DA56B" maat={16} />
-                        <Eyebrow>Boodschappen ({lijst.length})</Eyebrow>
-                      </span>
-                      <ul className="mt-1">
-                        {lijst.slice(0, 4).map((i) => (
-                          <li key={i.id} className="flex items-center gap-2 py-1">
-                            <input
-                              type="checkbox"
-                              checked={i.done}
-                              onChange={() =>
-                                setShopping(shopping.map((x) => (x.id === i.id ? { ...x, done: !x.done } : x)))
-                              }
-                              className="w-4 h-4"
-                              aria-label={i.text}
-                            />
-                            <span
-                              className="text-sm"
-                              style={{ textDecoration: i.done ? "line-through" : "none", color: i.done ? C.muted : C.ink }}
-                            >
-                              {i.text}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {trip.travelDistanceM && (
-                    <div>
-                      <span className="flex items-center gap-1.5">
-                        <Icoon naam="reis" kleur="#8DA56B" maat={16} />
-                        <Eyebrow>Reisdetails</Eyebrow>
-                      </span>
-                      <ul className="mt-1 space-y-1">
-                        <li className="flex items-center gap-2 text-sm">
-                          <Icoon naam="agenda" kleur={C.muted} maat={14} />
-                          {afstandTekst(trip.travelDistanceM)}
-                        </li>
-                        <li className="flex items-center gap-2 text-sm">
-                          <Icoon naam="agenda" kleur={C.muted} maat={14} />
-                          {duurTekst(trip.travelDurationS)} rijden
-                        </li>
-                        {(trip.stops || []).filter((s) => s.place).length > 0 && (
-                          <li className="flex items-center gap-2 text-sm">
-                            <Icoon naam="agenda" kleur={C.muted} maat={14} />
-                            {(trip.stops || []).filter((s) => s.place).length}{" "}
-                            {(trip.stops || []).filter((s) => s.place).length === 1 ? "tussenstop" : "tussenstops"}
-                          </li>
-                        )}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
+        <div className="grid grid-cols-2 mt-4 pt-4" style={{ borderTop: `1px solid ${C.line}` }}>
+          <div className="pr-4" style={{ borderRight: `1px solid ${C.line}` }}>
+            <div className="flex items-center gap-2 mb-2"><Icoon naam="lijst" kleur={C.koraal} maat={18} /><Eyebrow color={C.marigold}>Boodschappen ({lijst.length})</Eyebrow></div>
+            {lijst.length ? (
+              <ul className="space-y-2">
+                {lijst.slice(0, 4).map((i) => (
+                  <li key={i.id} className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={i.done} onChange={() => setShopping(shopping.map((x) => x.id === i.id ? { ...x, done: !x.done } : x))} style={{ accentColor: C.munt }} />
+                    <span style={{ color: i.done ? C.muted : C.ink, textDecoration: i.done ? "line-through" : "none" }}>{i.text}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="text-sm" style={{ color: C.muted }}>Nog niets nodig.</p>}
+          </div>
+          <div className="pl-4">
+            <div className="flex items-center gap-2 mb-2"><Icoon naam="reis" kleur={C.lucht} maat={18} /><Eyebrow color={C.ink}>Reisdetails</Eyebrow></div>
+            <ul className="space-y-2 text-sm" style={{ color: C.ink }}>
+              {trip.travelFrom && <li><strong style={{ color: C.munt }}>Vertrek</strong><br />{trip.travelDepart || "–"}<br />{trip.travelFrom}</li>}
+              {trip.travelDistanceM ? <li>{afstandTekst(trip.travelDistanceM)}</li> : null}
+              {trip.travelDurationS ? <li>{duurTekst(trip.travelDurationS)} rijden</li> : null}
+              {(trip.stops || []).filter((s) => s.place).length > 0 && <li>{(trip.stops || []).filter((s) => s.place).length} tussenstop{(trip.stops || []).filter((s) => s.place).length === 1 ? "" : "s"}</li>}
+            </ul>
+          </div>
+        </div>
+      </section>
 
-              {n === 0 && trip.travelFrom && (
-                <div className="mt-4 pt-3" style={{ borderTop: `1px solid ${C.line}` }}>
-                  <Eyebrow color={C.mint}>Heenreis</Eyebrow>
-                  <p className="text-sm mt-1">
-                    Vanaf {trip.travelFrom} met de {trip.travelMode || "auto"}
-                    {trip.travelDepart ? `, vertrek ${trip.travelDepart}` : ""}
-                    {trip.travelArrive ? `, aankomst ${trip.travelArrive}` : ""}.
-                  </p>
-                  {trip.travelNotes && (
-                    <p className="text-sm" style={{ color: C.muted }}>
-                      {trip.travelNotes}
-                    </p>
-                  )}
-                  {(trip.stops || []).filter((s) => s.place).length > 0 && (
-                    <ol className="mt-2 space-y-1">
-                      {(trip.stops || [])
-                        .filter((s) => s.place)
-                        .map((s, i) => (
-                          <li key={s.id} className="flex gap-2 text-sm">
-                            <span className="font-mono text-xs" style={{ color: C.muted, minWidth: 44 }}>
-                              {s.time || `${i + 1}.`}
-                            </span>
-                            <span className="flex-1">
-                              {(s.date || s.note) && (
-                                <span className="block text-sm">
-                                  {s.note}
-                                  {s.date && (
-                                    <span className="font-mono text-xs ml-2" style={{ color: C.muted }}>
-                                      {fmtLong(s.date)}
-                                    </span>
-                                  )}
-                                </span>
-                              )}
-                              <PlaatsBeeld place={s.place} hoogte={80} />
-                            </span>
-                          </li>
-                        ))}
-                    </ol>
-                  )}
-                  <a
-                    href={mapsRouteVia(
-                      trip.travelFrom,
-                      trip.base || trip.destination,
-                      (trip.stops || []).map((s) => s.place),
-                      trip.travelMode
-                    )}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Btn tone="ghost" className="mt-2">
-                      Route starten
-                    </Btn>
-                  </a>
-                </div>
-              )}
-            </section>
-          );
-        })}
-      </div>
-
-      <div className="flex gap-3 mt-3">
-        <Btn tone="ghost" onClick={() => onGoTo("lijst")}>
-          Boodschappen
-        </Btn>
-        <Btn tone="ghost" onClick={() => onGoTo("agenda")}>
-          Hele agenda
-        </Btn>
-      </div>
       {todos.filter((t) => !t.done).length > 0 && (
-        <p className="font-mono text-xs mt-3" style={{ color: C.ink }}>
-          Nog {todos.filter((t) => !t.done).length} open taken op de to-do lijst.
-        </p>
+        <p className="text-xs text-center mt-3" style={{ color: C.muted }}>Nog {todos.filter((t) => !t.done).length} open taken.</p>
       )}
     </div>
   );
@@ -6153,109 +5876,42 @@ function VakantieApp() {
       <Letters />
       <header
         className="sticky top-0 z-40"
-        style={{
-          background: C.head,
-          borderBottom: "2px solid rgba(255,255,255,0.75)",
-          boxShadow: "0 4px 18px rgba(34,64,107,0.08)",
-        }}
+        style={{ background: C.head, borderBottom: "2px solid rgba(255,255,255,.78)", boxShadow: "0 4px 16px rgba(34,64,107,.08)" }}
       >
-        <div className="max-w-lg mx-auto px-4 pt-4 pb-3">
-          <div className="flex items-start justify-between gap-2">
-            <div className="relative">
-              <button
-                onClick={() => setMenuOpen(!menuOpen)}
-                aria-label="Menu"
-                className="flex items-center gap-2 rounded-2xl px-3 h-10 focus:outline-none focus:ring-2"
-                style={{ background: "#FFFBF5", border: `2px solid ${C.line}`, minWidth: 104 }}
-              >
-                <Icoon naam="menu" kleur={C.koraal} maat={18} dikte={2.3} />
-                <span className="font-mono uppercase text-[10px] tracking-widest" style={{ color: C.marigold }}>
-                  {menuOpen ? "Sluit" : ((TABS.find((t) => t.id === tab)?.label) || "Menu")}
-                </span>
-              </button>
-              {menuOpen && (
-                <div
-                  className="absolute left-0 top-full mt-3 rounded-[24px] overflow-hidden z-50"
-                  style={{
-                    background: C.bone,
-                    width: 320,
-                    maxWidth: "calc(100vw - 32px)",
-                    border: `2px solid ${C.line}`,
-                    boxShadow: "0 14px 30px rgba(34,64,107,0.18)",
-                  }}
-                >
-                  <div className="px-4 pt-4 pb-2">
-                    <Logo size={92} />
-                  </div>
-                  <div className="pb-2">
-                    {TABS.map((t) => (
-                      <button
-                        key={t.id}
-                        onClick={() => {
-                          setTab(t.id);
-                          setMenuOpen(false);
-                        }}
-                        className="flex items-center gap-3 w-full text-left px-4 py-3 focus:outline-none focus:ring-2"
-                        style={{ background: tab === t.id ? t.kleur + "1A" : "transparent", borderBottom: `1px solid ${C.line}` }}
-                      >
-                        <Tegel naam={t.id} kleur={t.kleur} maat={34} />
-                        <span style={{ color: C.ink, fontFamily: FONT_TEKST, fontWeight: 700, fontSize: 15 }}>{t.label}</span>
-                      </button>
-                    ))}
-                    <button
-                      onClick={() => {
-                        setMenuOpen(false);
-                        setEditingProfile(true);
-                      }}
-                      className="flex items-center gap-3 w-full text-left px-4 py-3 focus:outline-none focus:ring-2"
-                      style={{ borderBottom: `1px solid ${C.line}` }}
-                    >
-                      <Tegel naam="profiel" kleur={C.ink} maat={34} />
-                      <span style={{ color: C.ink, fontFamily: FONT_TEKST, fontWeight: 700, fontSize: 15 }}>Mijn profiel</span>
-                    </button>
-                    <button
-                      onClick={logout}
-                      className="flex items-center gap-3 w-full text-left px-4 py-3 focus:outline-none focus:ring-2"
-                    >
-                      <Tegel naam="uit" kleur={C.koraal} maat={34} />
-                      <span style={{ color: C.marigold, fontFamily: FONT_TEKST, fontWeight: 700, fontSize: 15 }}>Uitloggen</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex-1 flex justify-center pt-1">
-              <Logo size={116} />
-            </div>
-
-            <button
-              onClick={pullAll}
-              disabled={syncing}
-              aria-label="Vernieuw"
-              className="rounded-full px-4 h-10 focus:outline-none focus:ring-2 disabled:opacity-50"
-              style={{ background: C.ink, color: "#FFFFFF", fontFamily: FONT_TEKST, fontWeight: 700, fontSize: 10, letterSpacing: "1px" }}
-            >
-              VERNIEUW
+        <div className="max-w-lg mx-auto px-5 flex items-center justify-between" style={{ height: 86 }}>
+          <div className="relative">
+            <button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu" className="rounded-full flex items-center justify-center focus:outline-none focus:ring-2" style={{ width: 42, height: 42 }}>
+              <Icoon naam="menu" kleur={C.marigold} maat={25} dikte={2.2} />
             </button>
+            {menuOpen && (
+              <div className="absolute left-0 top-full mt-3 rounded-[24px] overflow-hidden z-50" style={{ background: C.bone, width: 320, maxWidth: "calc(100vw - 32px)", border: `2px solid ${C.line}`, boxShadow: "0 14px 30px rgba(34,64,107,.18)" }}>
+                <div className="flex justify-center px-4 py-4" style={{ background: C.head }}><Logo size={130} /></div>
+                {TABS.map((t) => (
+                  <button key={t.id} type="button" onClick={() => { setTab(t.id); setMenuOpen(false); }} className="flex items-center gap-3 w-full text-left px-4 py-3 focus:outline-none focus:ring-2" style={{ background: tab === t.id ? t.kleur + "18" : "transparent", borderBottom: `1px solid ${C.line}` }}>
+                    <Tegel naam={t.id} kleur={t.kleur} maat={34} />
+                    <span style={{ color: C.ink, fontWeight: 700 }}>{t.label}</span>
+                    <span className="ml-auto" style={{ color: C.muted }}>›</span>
+                  </button>
+                ))}
+                <button type="button" onClick={() => { setMenuOpen(false); setEditingProfile(true); }} className="flex items-center gap-3 w-full text-left px-4 py-3" style={{ borderBottom: `1px solid ${C.line}` }}>
+                  <Tegel naam="profiel" kleur={C.ink} maat={34} /><span style={{ color: C.ink, fontWeight: 700 }}>Mijn profiel</span><span className="ml-auto" style={{ color: C.muted }}>›</span>
+                </button>
+                <button type="button" onClick={logout} className="flex items-center gap-3 w-full text-left px-4 py-3">
+                  <Tegel naam="uit" kleur={C.koraal} maat={34} /><span style={{ color: C.marigold, fontWeight: 700 }}>Uitloggen</span>
+                </button>
+              </div>
+            )}
           </div>
-          {trip && (
-            <div className="mt-2 text-center">
-              <div className="font-mono uppercase text-[10px] tracking-widest" style={{ color: C.marigold }}>
-                {members.length} reisgenoot{members.length === 1 ? "" : "en"}
-              </div>
-              <div style={{ color: C.ink, fontFamily: FONT_KOP, fontWeight: 800, fontSize: 26, lineHeight: 1.1 }}>
-                {trip.name || "Family Trip"}
-              </div>
-
-            </div>
-          )}
+          <Logo size={150} />
+          <button type="button" onClick={pullAll} disabled={syncing} aria-label="Vernieuwen" className="rounded-full flex items-center justify-center focus:outline-none focus:ring-2 disabled:opacity-50" style={{ width: 42, height: 42 }}>
+            <Icoon naam="vernieuw" kleur={C.marigold} maat={25} dikte={2.2} />
+          </button>
         </div>
       </header>
 
       <main
         className="p-4 max-w-lg mx-auto"
-        style={{ paddingBottom: "calc(126px + env(safe-area-inset-bottom, 0px))" }}
+        style={{ paddingBottom: "calc(112px + env(safe-area-inset-bottom, 0px))" }}
       >
         {notice && (
           <p className="text-sm mb-3" style={{ color: C.marigold }}>
