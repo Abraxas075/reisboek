@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-38" />
+<meta name="reisboek-versie" content="familytrip-39" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
@@ -1051,6 +1051,86 @@ const REISWIJZE = {
 };
 
 /* Reistijd opvragen bij Google. Vereist dat Routes API aanstaat. */
+/* ---------- weerbericht voor de bestemming ---------- */
+
+/* Eerst het adres opzoeken bij Google (dezelfde key als de kaarten). */
+async function geocodeerTekst(key, tekst) {
+  const punt = alsCoordinaat(tekst);
+  if (punt) return punt;
+  if (!key || !tekst) return null;
+  try {
+    const res = await fetch("https://places.googleapis.com/v1/places:searchText", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": key,
+        "X-Goog-FieldMask": "places.location",
+      },
+      body: JSON.stringify({ textQuery: tekst, languageCode: "nl" }),
+    });
+    const data = await res.json();
+    const loc = data?.places?.[0]?.location;
+    if (!loc) return null;
+    return `${loc.latitude.toFixed(6)},${loc.longitude.toFixed(6)}`;
+  } catch (e) {
+    return null;
+  }
+}
+
+/* Simpele vertaling van de weercode naar iets herkenbaars. */
+const WEER_CODES = {
+  0: { emoji: "\u2600\uFE0F", tekst: "zonnig" },
+  1: { emoji: "\u{1F324}\uFE0F", tekst: "overwegend zonnig" },
+  2: { emoji: "\u26C5", tekst: "half bewolkt" },
+  3: { emoji: "\u2601\uFE0F", tekst: "bewolkt" },
+  45: { emoji: "\u{1F32B}\uFE0F", tekst: "mist" },
+  48: { emoji: "\u{1F32B}\uFE0F", tekst: "mist" },
+  51: { emoji: "\u{1F326}\uFE0F", tekst: "motregen" },
+  53: { emoji: "\u{1F326}\uFE0F", tekst: "motregen" },
+  55: { emoji: "\u{1F327}\uFE0F", tekst: "motregen" },
+  61: { emoji: "\u{1F327}\uFE0F", tekst: "regen" },
+  63: { emoji: "\u{1F327}\uFE0F", tekst: "regen" },
+  65: { emoji: "\u{1F327}\uFE0F", tekst: "flinke regen" },
+  71: { emoji: "\u2744\uFE0F", tekst: "sneeuw" },
+  73: { emoji: "\u2744\uFE0F", tekst: "sneeuw" },
+  75: { emoji: "\u2744\uFE0F", tekst: "veel sneeuw" },
+  80: { emoji: "\u{1F326}\uFE0F", tekst: "buien" },
+  81: { emoji: "\u{1F327}\uFE0F", tekst: "buien" },
+  82: { emoji: "\u26C8\uFE0F", tekst: "zware buien" },
+  95: { emoji: "\u26C8\uFE0F", tekst: "onweer" },
+  96: { emoji: "\u26C8\uFE0F", tekst: "onweer met hagel" },
+  99: { emoji: "\u26C8\uFE0F", tekst: "onweer met hagel" },
+};
+const weerInfo = (code) => WEER_CODES[code] || { emoji: "\u{1F324}\uFE0F", tekst: "wisselend" };
+
+/* Open-Meteo: gratis, geen sleutel nodig, geeft dagcijfers per dag terug. */
+async function haalWeerbericht(punt, vanISO, totISO) {
+  if (!punt) return { perDag: {}, fout: "" };
+  const [lat, lng] = punt.split(",").map(Number);
+  try {
+    const url =
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}` +
+      `&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto` +
+      `&start_date=${vanISO}&end_date=${totISO}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!data || !data.daily || !data.daily.time) {
+      return { perDag: {}, fout: "Voor deze reisdata is nog geen voorspelling beschikbaar." };
+    }
+    const perDag = {};
+    data.daily.time.forEach((iso, i) => {
+      perDag[iso] = {
+        max: Math.round(data.daily.temperature_2m_max[i]),
+        min: Math.round(data.daily.temperature_2m_min[i]),
+        code: data.daily.weathercode[i],
+      };
+    });
+    return { perDag, fout: "" };
+  } catch (e) {
+    return { perDag: {}, fout: "Het weerbericht kon niet opgehaald worden." };
+  }
+}
+
 async function berekenReis(key, van, naar, stops, vertrekISO, vervoer) {
   const wijze = REISWIJZE[String(vervoer || "auto").toLowerCase()];
   if (!wijze) return { fout: "Voor een vlucht kan Google geen reistijd berekenen." };
@@ -4002,7 +4082,7 @@ function ZwevendeBalk({ tab, onGaNaar }) {
 }
 
 /* ---------- hoofdscherm: dagen naast elkaar ---------- */
-function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, todos, photoIndex, images, loadImages, selected, setSelected, me, onGoTo }) {
+function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, todos, photoIndex, images, loadImages, selected, setSelected, me, onGoTo, weer }) {
   const scroller = useRef(null);
 
   useEffect(() => {
@@ -4106,8 +4186,27 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
                 boxShadow: actief ? `0 10px 26px ${dagKleur(n).schaduw}` : "none",
               }}
             >
-              <Eyebrow color={C.ink}>Dag {String(n + 1).padStart(2, "0")}</Eyebrow>
-              <h2 className="font-serif text-2xl capitalize leading-tight">{fmtLong(iso)}</h2>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <Eyebrow color={C.ink}>Dag {String(n + 1).padStart(2, "0")}</Eyebrow>
+                  <h2 className="font-serif text-2xl capitalize leading-tight">{fmtLong(iso)}</h2>
+                </div>
+                {weer && weer[iso] && (
+                  <span
+                    className="flex items-center gap-1 rounded-full px-3 py-1.5 shrink-0"
+                    style={{ background: C.boneSoft }}
+                    title={weerInfo(weer[iso].code).tekst}
+                  >
+                    <span style={{ fontSize: 18 }}>{weerInfo(weer[iso].code).emoji}</span>
+                    <span className="font-serif text-sm" style={{ color: C.ink }}>
+                      {weer[iso].max}?
+                    </span>
+                    <span className="text-xs" style={{ color: C.muted }}>
+                      / {weer[iso].min}?
+                    </span>
+                  </span>
+                )}
+              </div>
 
               <div className="mt-3">
                 <Eyebrow color={C.ember}>Gebeurtenissen</Eyebrow>
@@ -5513,8 +5612,35 @@ function VakantieApp() {
   const [locatieFout, setLocatieFout] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [notice, setNotice] = useState("");
+  const [weer, setWeer] = useState({});
+  const [weerFout, setWeerFout] = useState("");
 
   const days = useMemo(() => (trip ? dayList(trip.start, trip.end) : []), [trip]);
+
+  /* Het weerbericht voor de bestemming, eenmaal per bezoek opgehaald. */
+  useEffect(() => {
+    if (!trip || !days.length) return;
+    let gestopt = false;
+    (async () => {
+      const punt = await geocodeerTekst(apiKey, trip.base || trip.destination);
+      if (gestopt) return;
+      if (!punt) {
+        setWeerFout(
+          apiKey
+            ? "Kon de bestemming niet vinden voor het weerbericht."
+            : "Vul een Google Maps-key in om het weerbericht te zien."
+        );
+        return;
+      }
+      const r = await haalWeerbericht(punt, days[0], days[days.length - 1]);
+      if (gestopt) return;
+      setWeer(r.perDag);
+      setWeerFout(r.fout);
+    })();
+    return () => {
+      gestopt = true;
+    };
+  }, [trip?.base, trip?.destination, apiKey, days.length]);
 
   const pullAll = async () => {
     setSyncing(true);
@@ -5967,6 +6093,7 @@ function VakantieApp() {
             setSelected={setSelected}
             me={me}
             onGoTo={setTab}
+            weer={weer}
           />
         )}
         {tab === "reis" && (
