@@ -4,13 +4,13 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-34" />
+<meta name="reisboek-versie" content="familytrip-37" />
 <title>Reisboek</title>
 <style>
   body { margin: 0; background: #F8C9A4; }
-  #laden { color: #22406B; font-family: ui-monospace, monospace; padding: 1.5rem; line-height: 1.6; }
+  #laden { color: #173F6B; font-family: ui-monospace, monospace; padding: 1.5rem; line-height: 1.6; }
   #laden b { color: #C75B45; }
-  #laden code { color: #22406B; word-break: break-all; font-size: 0.8rem; }
+  #laden code { color: #173F6B; word-break: break-all; font-size: 0.8rem; }
 </style>
 <script>
 /* Meldingen op het scherm, want op een telefoon is er geen console. */
@@ -218,31 +218,33 @@ const { useState, useEffect, useMemo, useRef } = React;
 
 /* ---------- palet en letters, afgeleid uit het Family Trip-logo ---------- */
 const C = {
-  bg: "#F8C9A4", // perzik: de achtergrond van de app
-  deep: "#F2B58C", // diepperzik: de kopregel
-  bone: "#FFFBF5", // creme: de kaarten
-  boneSoft: "#F3E7DA",
-  ink: "#22406B", // inkt: alle tekst
+  bg: "#FFF4E8", // zachte achtergrond: de achtergrond van de app
+  deep: "#F2B58C", // (niet meer gebruikt voor de kopregel, blijft als accent elders)
+  bone: "#FFFDF9", // kaarten: hoofdkaarten en invoervelden
+  boneSoft: "#F7ECDF",
+  ink: "#173F6B", // donkerblauw: titels, tekst en belangrijke pictogrammen
   muted: "#5B7BA6",
-  marigold: "#C75B45", // accenttekst, leesbaar op perzik en op creme
-  mint: "#8CC9A8",
-  ember: "#C75B45",
-  line: "#EADFD2",
+  marigold: "#EF765D",
+  mint: "#8DA56B", // olijfgroen: reis, bevestigingen, afgeronde onderdelen
+  ember: "#EF765D", // koraal: actieve dag, primaire knoppen, waarschuwingen
+  line: "#EEDFD0",
   perzik: "#F8C9A4",
-  roze: "#F2A9A5",
-  koraal: "#E98D7E",
-  lucht: "#A9CDE8",
-  munt: "#A5D6B7",
+  roze: "#F5B88F", // zacht perzik: dag 2
+  koraal: "#EF765D", // koraal: actieve dag, primaire knoppen, waarschuwingen
+  lucht: "#76A9CF", // lichtblauw: foto's, informatie, secundaire knoppen
+  munt: "#8DA56B", // olijfgroen: reis, bevestigingen, afgeronde onderdelen
+  geel: "#F2B84B", // zonnig geel: locatie, agenda, highlights
+  lila: "#B79BC8", // zacht lila: dag 6, rustige accenten
 };
 
 /* Iedere vakantiedag zijn eigen kleur; na zes begint de reeks opnieuw. */
 const DAGKLEUREN = [
-  { rand: "#F0A98E", tint: "#FCE6D6", schaduw: "rgba(240,169,142,0.40)" },
-  { rand: "#F2A9A5", tint: "#FBDFDD", schaduw: "rgba(242,169,165,0.40)" },
-  { rand: "#8FBCDF", tint: "#DFEDF8", schaduw: "rgba(143,188,223,0.40)" },
-  { rand: "#8CC9A8", tint: "#DFF0E7", schaduw: "rgba(140,201,168,0.40)" },
-  { rand: "#E0B978", tint: "#F7EBD5", schaduw: "rgba(224,185,120,0.40)" },
-  { rand: "#E98D7E", tint: "#FBDDD5", schaduw: "rgba(233,141,126,0.40)" },
+  { rand: "#EF765D", tint: "#FFFDF9", schaduw: "rgba(23,63,107,0.10)" }, // dag 1: koraal
+  { rand: "#F5B88F", tint: "#FFFDF9", schaduw: "rgba(23,63,107,0.10)" }, // dag 2: zacht perzik
+  { rand: "#76A9CF", tint: "#FFFDF9", schaduw: "rgba(23,63,107,0.10)" }, // dag 3: lichtblauw
+  { rand: "#8DA56B", tint: "#FFFDF9", schaduw: "rgba(23,63,107,0.10)" }, // dag 4: olijfgroen
+  { rand: "#F2B84B", tint: "#FFFDF9", schaduw: "rgba(23,63,107,0.10)" }, // dag 5: zonnig geel
+  { rand: "#B79BC8", tint: "#FFFDF9", schaduw: "rgba(23,63,107,0.10)" }, // dag 6: zacht lila
 ];
 const dagKleur = (i) => DAGKLEUREN[((i % DAGKLEUREN.length) + DAGKLEUREN.length) % DAGKLEUREN.length];
 
@@ -255,7 +257,7 @@ const SCHADUW = {
 const FONT_KOP =
   "'Baloo 2','Nunito','Quicksand',ui-rounded,'Segoe UI Rounded','Hiragino Maru Gothic ProN',system-ui,sans-serif";
 const FONT_TEKST = "'Nunito','Quicksand',ui-rounded,system-ui,sans-serif";
-const VERLOOP = `linear-gradient(160deg, ${"#F8C9A4"} 0%, ${"#F2A9A5"} 35%, ${"#A9CDE8"} 75%, ${"#A5D6B7"} 100%)`;
+const VERLOOP = `linear-gradient(160deg, ${"#F8C9A4"} 0%, ${"#F5B88F"} 35%, ${"#76A9CF"} 75%, ${"#8DA56B"} 100%)`;
 
 /* Laadt de letters en laat font-serif de ronde kopletter gebruiken. */
 function Letters() {
@@ -304,7 +306,7 @@ function Logo({ size = 104, tekst = true, kleur = C.ink }) {
         <rect x="0" y="0" width="100" height="100" fill={`url(#lucht-${id})`} />
         <path d="M-5 74 C15 58 34 62 48 72 C62 82 80 84 105 72 L105 100 L-5 100 Z" fill={C.lucht} opacity="0.85" />
         <path d="M-5 82 C18 68 38 74 54 84 C68 92 88 92 105 84 L105 100 L-5 100 Z" fill={C.munt} />
-        <path d="M-5 90 C20 80 40 86 58 92 C72 96 90 96 105 92 L105 100 L-5 100 Z" fill="#6FB894" opacity="0.75" />
+        <path d="M-5 90 C20 80 40 86 58 92 C72 96 90 96 105 92 L105 100 L-5 100 Z" fill="#8DA56B" opacity="0.75" />
         <path
           d="M50 62 C42 52 30 47 30 36 C30 29 36 24 42 24 C46 24 49 26 50 29 C51 26 54 24 58 24 C64 24 70 29 70 36 C70 47 58 52 50 62 Z"
           fill="#FFFFFF"
@@ -420,6 +422,19 @@ const ICOON = {
       <path d="M12 12h8M17 9l3 3-3 3" />
     </>
   ),
+  menu: (
+    <>
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </>
+  ),
+  vernieuw: (
+    <>
+      <path d="M4 12a8 8 0 0 1 13.66-5.66L20 8" />
+      <path d="M20 4v4h-4" />
+      <path d="M20 12a8 8 0 0 1-13.66 5.66L4 16" />
+      <path d="M4 20v-4h4" />
+    </>
+  ),
 };
 
 const Icoon = ({ naam, kleur = C.ink, maat = 22, dikte = 2 }) => (
@@ -441,23 +456,23 @@ const Icoon = ({ naam, kleur = C.ink, maat = 22, dikte = 2 }) => (
 /* Wit tegeltje met het pictogram in de eigen kleur. */
 const Tegel = ({ naam, kleur, maat = 38 }) => (
   <span
-    className="inline-flex items-center justify-center rounded-2xl shrink-0"
-    style={{ width: maat, height: maat, background: "#FFFFFF", border: `2px solid ${C.line}` }}
+    className="inline-flex items-center justify-center rounded-full shrink-0"
+    style={{ width: maat, height: maat, background: kleur }}
   >
-    <Icoon naam={naam} kleur={kleur} maat={Math.round(maat * 0.58)} />
+    <Icoon naam={naam} kleur="#FFFFFF" maat={Math.round(maat * 0.56)} />
   </span>
 );
 
 const TABS = [
-  { id: "dagen", label: "Dagen", kleur: "#F0A98E" },
-  { id: "reis", label: "Reis", kleur: "#E98D7E" },
-  { id: "agenda", label: "Agenda", kleur: "#E0B978" },
-  { id: "buurt", label: "In de buurt", kleur: "#8CC9A8" },
-  { id: "fotos", label: "Foto's en video", kleur: "#8FBCDF" },
-  { id: "notities", label: "Notities", kleur: "#F2A9A5" },
-  { id: "todo", label: "To-do", kleur: "#5B7BA6" },
-  { id: "lijst", label: "Boodschappen", kleur: "#6FB894" },
-  { id: "wandeling", label: "Mijn wandelingen", kleur: "#7FA9C9" },
+  { id: "dagen", label: "Dagen", kleur: "#EF765D" },
+  { id: "reis", label: "Reis", kleur: "#8DA56B" },
+  { id: "agenda", label: "Agenda", kleur: "#F2B84B" },
+  { id: "buurt", label: "In de buurt", kleur: "#F2B84B" },
+  { id: "fotos", label: "Foto's en video", kleur: "#76A9CF" },
+  { id: "notities", label: "Notities", kleur: "#B79BC8" },
+  { id: "todo", label: "To-do", kleur: "#8DA56B" },
+  { id: "lijst", label: "Boodschappen", kleur: "#8DA56B" },
+  { id: "wandeling", label: "Mijn wandelingen", kleur: "#76A9CF" },
 ];
 
 /* ---------- storage helpers ---------- */
@@ -1929,7 +1944,7 @@ function ProfileView({ me, photo, onSave, onSkip, onWandelingen }) {
             onClick={onWandelingen}
             className="flex items-center gap-3 w-full text-left mt-2 focus:outline-none focus:ring-2 rounded-2xl"
           >
-            <Tegel naam="wandeling" kleur="#7FA9C9" maat={44} />
+            <Tegel naam="wandeling" kleur="#76A9CF" maat={44} />
             <span>
               <span className="block text-sm" style={{ color: C.ink }}>
                 Mijn wandelingen
@@ -2627,12 +2642,12 @@ function TripView({
         </p>
         <div className="grid grid-cols-2 gap-3">
           {[
-            ["agenda", "Agenda-items", stats.agenda, "#E0B978"],
-            ["fotos", "Foto's en video", stats.photos, "#8FBCDF"],
-            ["notities", "Notities", stats.notes, "#F2A9A5"],
-            ["todo", "To-do open", stats.todosOpen, "#5B7BA6"],
-            ["lijst", "Boodschappen open", stats.shopOpen, "#6FB894"],
-            ["buurt", "In de buurt", stats.plekken, "#8CC9A8"],
+            ["agenda", "Agenda-items", stats.agenda, "#F2B84B"],
+            ["fotos", "Foto's en video", stats.photos, "#76A9CF"],
+            ["notities", "Notities", stats.notes, "#B79BC8"],
+            ["todo", "To-do open", stats.todosOpen, "#8DA56B"],
+            ["lijst", "Boodschappen open", stats.shopOpen, "#8DA56B"],
+            ["buurt", "In de buurt", stats.plekken, "#F2B84B"],
           ].map(([id, label, aantal, kleur]) => (
             <button
               key={id}
@@ -3900,42 +3915,26 @@ function NamenOphalen({ agenda, setAgenda, dagIso, auto }) {
 
 /* ---------- zwevende balk onderaan ---------- */
 const SNELKNOPPEN = [
-  { id: "dagen", label: "Dagen", kleur: "#F0A98E" },
-  { id: "fotos", label: "Foto's", kleur: "#8FBCDF" },
-  { id: "reis", label: "Reis", kleur: "#E98D7E" },
-  { id: "buurt", label: "In de buurt", kleur: "#8CC9A8" },
+  { id: "dagen", label: "Dagen", kleur: "#EF765D" },
+  { id: "fotos", label: "Foto's", kleur: "#76A9CF" },
+  { id: "reis", label: "Reis", kleur: "#8DA56B" },
+  { id: "buurt", label: "In de buurt", kleur: "#F2B84B" },
 ];
 
 function ZwevendeBalk({ tab, onGaNaar }) {
   return (
-    <>
-    <div
-      className="fixed"
-      style={{
-        left: 0,
-        right: 0,
-        bottom: 0,
-        height: "calc(96px + env(safe-area-inset-bottom, 0px))",
-        background: C.bg,
-        borderTop: "2px solid rgba(255,255,255,0.75)",
-        boxShadow: "0 -6px 18px rgba(34,64,107,0.12)",
-        zIndex: 45,
-      }}
-      aria-hidden="true"
-    />
     <nav
       className="fixed z-50 flex justify-around items-center"
       style={{
         left: 12,
         right: 12,
-        bottom: "calc(10px + env(safe-area-inset-bottom, 0px))",
+        bottom: "calc(14px + env(safe-area-inset-bottom, 0px))",
         maxWidth: 460,
         marginLeft: "auto",
         marginRight: "auto",
         background: "transparent",
         border: "none",
         padding: 0,
-        pointerEvents: "none",
       }}
     >
       {SNELKNOPPEN.map((k) => {
@@ -3946,19 +3945,21 @@ function ZwevendeBalk({ tab, onGaNaar }) {
             onClick={() => onGaNaar(k.id)}
             aria-label={k.label}
             className="flex flex-col items-center gap-1 focus:outline-none focus:ring-2 rounded-2xl px-1"
-            style={{ width: 76, pointerEvents: "auto" }}
+            style={{ width: 76 }}
           >
             <span
               className="inline-flex items-center justify-center rounded-full"
               style={{
                 width: 48,
                 height: 48,
-                background: actief ? k.kleur + "33" : "#FFFFFF",
-                border: `2px solid ${actief ? k.kleur : C.line}`,
-                boxShadow: "0 6px 16px rgba(34,64,107,0.26)",
+                background: k.kleur,
+                boxShadow: actief
+                  ? `0 6px 16px ${k.kleur}88`
+                  : "0 4px 12px rgba(34,64,107,0.22)",
+                border: actief ? `2px solid ${C.ink}` : "none",
               }}
             >
-              <Icoon naam={k.id} kleur={k.kleur} maat={24} />
+              <Icoon naam={k.id} kleur="#FFFFFF" maat={24} />
             </span>
             <span
               className="text-center"
@@ -3977,7 +3978,6 @@ function ZwevendeBalk({ tab, onGaNaar }) {
         );
       })}
     </nav>
-    </>
   );
 }
 
@@ -5785,38 +5785,26 @@ function VakantieApp() {
     <div className="min-h-screen" style={{ background: C.bg }}>
       <Letters />
       <header
-        className="px-4 pt-5 pb-3 sticky top-0 z-40"
+        className="px-4 py-4 sticky top-0 z-40"
         style={{
-          background: C.deep,
-          borderBottom: "2px solid rgba(255,255,255,0.65)",
-          boxShadow: SCHADUW.kop,
+          background: C.bone,
+          borderBottom: `1px solid ${C.line}`,
         }}
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className="relative">
-              <button
-                onClick={() => setMenuOpen(!menuOpen)}
-                aria-label="Menu"
-                className="rounded-md px-3 py-2 focus:outline-none focus:ring-2"
-                style={{ background: C.bone, color: C.deep }}
+        <div className="flex items-center justify-between gap-3">
+          <div className="relative">
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-label="Menu"
+              className="p-1 focus:outline-none focus:ring-2 rounded"
+            >
+              <Icoon naam="menu" kleur={C.koraal} maat={24} dikte={2.4} />
+            </button>
+            {menuOpen && (
+              <div
+                className="absolute left-0 mt-2 rounded-lg overflow-hidden z-50"
+                style={{ background: C.bone, minWidth: 200, border: `1px solid ${C.line}`, boxShadow: "0 12px 28px rgba(34,64,107,0.18)" }}
               >
-                <span className="flex items-center gap-2">
-                  <Icoon
-                    naam={tab}
-                    kleur={TABS.find((t) => t.id === tab)?.kleur || C.ink}
-                    maat={18}
-                  />
-                  <span className="font-mono uppercase text-xs tracking-widest">
-                    {TABS.find((t) => t.id === tab)?.label || "Menu"} v
-                  </span>
-                </span>
-              </button>
-              {menuOpen && (
-                <div
-                  className="absolute left-0 mt-2 rounded-lg overflow-hidden z-50"
-                  style={{ background: C.bone, minWidth: 200, border: `1px solid ${C.line}` }}
-                >
                   {TABS.map((t) => (
                     <button
                       key={t.id}
@@ -5847,7 +5835,7 @@ function VakantieApp() {
                     className="flex items-center gap-3 w-full text-left px-3 py-2 focus:outline-none focus:ring-2"
                     style={{ borderBottom: `1px solid ${C.line}` }}
                   >
-                    <Tegel naam="profiel" kleur={C.muted} maat={34} />
+                    <Tegel naam="profiel" kleur={C.ink} maat={34} />
                     <span className="font-mono uppercase text-xs tracking-widest" style={{ color: C.ink }}>
                       Mijn profiel
                     </span>
@@ -5856,34 +5844,41 @@ function VakantieApp() {
                     onClick={logout}
                     className="flex items-center gap-3 w-full text-left px-3 py-2 focus:outline-none focus:ring-2"
                   >
-                    <Tegel naam="uit" kleur={C.ember} maat={34} />
+                    <Tegel naam="uit" kleur={C.koraal} maat={34} />
                     <span className="font-mono uppercase text-xs tracking-widest" style={{ color: C.ember }}>
                       Uitloggen
                     </span>
                   </button>
-                </div>
-              )}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <Logo size={26} tekst={false} />
-                <Eyebrow color={C.marigold}>{members.length} reisgenoten</Eyebrow>
               </div>
-              <h1 className="font-serif text-xl mt-1" style={{ color: C.ink }}>
-                {trip.name}
-              </h1>
-            </div>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex -space-x-2">
-              {members.slice(0, 4).map((m) => (
-                <Avatar key={m.email} member={m} size={26} />
-              ))}
-            </div>
-            <Btn tone="dark" onClick={pullAll} disabled={syncing} className="shrink-0">
-              {syncing ? "..." : "Vernieuw"}
-            </Btn>
-          </div>
+
+          <span className="flex items-center gap-2">
+            <Logo size={30} tekst={false} />
+            <span className="leading-none">
+              <span
+                className="block"
+                style={{ color: C.ink, fontFamily: FONT_KOP, fontWeight: 800, fontSize: 15 }}
+              >
+                FAMILY
+              </span>
+              <span
+                className="block"
+                style={{ color: C.koraal, fontFamily: FONT_KOP, fontWeight: 800, fontSize: 15 }}
+              >
+                TRIP
+              </span>
+            </span>
+          </span>
+
+          <button
+            onClick={pullAll}
+            disabled={syncing}
+            aria-label="Vernieuw"
+            className="p-1 focus:outline-none focus:ring-2 rounded disabled:opacity-50"
+          >
+            <Icoon naam="vernieuw" kleur={C.koraal} maat={22} dikte={2.4} />
+          </button>
         </div>
       </header>
 
