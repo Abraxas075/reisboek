@@ -4,10 +4,10 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-39" />
+<meta name="reisboek-versie" content="familytrip-40-themas-profiel" />
 <title>Reisboek</title>
 <style>
-  body { margin: 0; background: #F8C9A4; }
+  body { margin: 0; background: #F8C9A4; transition: background 0.25s ease; }
   #laden { color: #173F6B; font-family: ui-monospace, monospace; padding: 1.5rem; line-height: 1.6; }
   #laden b { color: #C75B45; }
   #laden code { color: #173F6B; word-break: break-all; font-size: 0.8rem; }
@@ -217,47 +217,152 @@ window.__firebaseNodig = function () {
 const { useState, useEffect, useMemo, useRef } = React;
 
 /* ---------- palet en letters, afgeleid uit het Family Trip-logo ---------- */
-const C = {
-  bg: "#FFF4E8", // zachte achtergrond: de achtergrond van de app
-  deep: "#F2B58C", // (niet meer gebruikt voor de kopregel, blijft als accent elders)
-  bone: "#FFFDF9", // kaarten: hoofdkaarten en invoervelden
-  boneSoft: "#F7ECDF",
-  ink: "#173F6B", // donkerblauw: titels, tekst en belangrijke pictogrammen
-  muted: "#5B7BA6",
-  marigold: "#EF765D",
-  mint: "#8DA56B", // olijfgroen: reis, bevestigingen, afgeronde onderdelen
-  ember: "#EF765D", // koraal: actieve dag, primaire knoppen, waarschuwingen
-  line: "#EEDFD0",
-  perzik: "#F8C9A4",
-  roze: "#F5B88F", // zacht perzik: dag 2
-  koraal: "#EF765D", // koraal: actieve dag, primaire knoppen, waarschuwingen
-  lucht: "#76A9CF", // lichtblauw: foto's, informatie, secundaire knoppen
-  munt: "#8DA56B", // olijfgroen: reis, bevestigingen, afgeronde onderdelen
-  geel: "#F2B84B", // zonnig geel: locatie, agenda, highlights
-  lila: "#B79BC8", // zacht lila: dag 6, rustige accenten
+const THEMA_TYPES = {
+  warm: {
+    label: "Optie A – Warme strandlook",
+    short: "A Warm",
+    C: {
+      bg: "#F8C9A4",
+      head: "#F2B58C",
+      bone: "#FFFBF5",
+      boneSoft: "rgba(255,255,255,0.82)",
+      ink: "#22406B",
+      muted: "#5B7BA6",
+      marigold: "#C75B45",
+      mint: "#DFF0E7",
+      ember: "#E98D7E",
+      line: "#EADFD2",
+      perzik: "#F8C9A4",
+      roze: "#F2A9A5",
+      koraal: "#E98D7E",
+      lucht: "#8FBCDF",
+      munt: "#8CC9A8",
+      geel: "#E0B978",
+      lila: "#C9B7DE",
+    },
+    day: ["#E98D7E", "#F2A9A5", "#8FBCDF", "#8CC9A8", "#E0B978", "#C9B7DE"],
+    tints: ["#FBDFDD", "#FBE8E3", "#DFEDF8", "#DFF0E7", "#F8E8C6", "#EEE6F5"],
+  },
+  breeze: {
+    label: "Optie B – Frisse zee breeze",
+    short: "B Zee",
+    C: {
+      bg: "#DDF1FA",
+      head: "#CFE8F5",
+      bone: "#F8FDFF",
+      boneSoft: "rgba(255,255,255,0.88)",
+      ink: "#1F4E79",
+      muted: "#5E88A7",
+      marigold: "#2F8DB2",
+      mint: "#D8F3EF",
+      ember: "#4CB9D4",
+      line: "#D7E8EF",
+      perzik: "#DDF1FA",
+      roze: "#CFEAF7",
+      koraal: "#4CB9D4",
+      lucht: "#73AEE6",
+      munt: "#8CC9BC",
+      geel: "#E8CA7A",
+      lila: "#CAD8F3",
+    },
+    day: ["#2FB7C8", "#B6D7F2", "#73AEE6", "#B9D7C5", "#E8CA7A", "#CAD8F3"],
+    tints: ["#D7F3F5", "#EAF4FB", "#E0ECFA", "#EAF5EF", "#F7EEC9", "#EFF2FA"],
+  },
+  lavender: {
+    label: "Optie C – Lavender Sunset",
+    short: "C Lavendel",
+    C: {
+      bg: "#EEDFF1",
+      head: "#E9D9EF",
+      bone: "#FFF9FD",
+      boneSoft: "rgba(255,255,255,0.88)",
+      ink: "#5A4682",
+      muted: "#7F6FA6",
+      marigold: "#D68677",
+      mint: "#EEE6F6",
+      ember: "#F0A086",
+      line: "#E8DDEE",
+      perzik: "#F4D4C8",
+      roze: "#E7C0D3",
+      koraal: "#F0A086",
+      lucht: "#9CB4DD",
+      munt: "#B9A3D6",
+      geel: "#F0C9A8",
+      lila: "#CDBBE8",
+    },
+    day: ["#F0A086", "#D2C3E7", "#AAB9E1", "#B8C1E5", "#F0C9A8", "#CDBBE8"],
+    tints: ["#FCE5DC", "#F0E9F7", "#E8EDF9", "#EAEAF8", "#FBEDD9", "#F1EBF8"],
+  },
+  mintcoral: {
+    label: "Optie D – Tropical Mint & Coral",
+    short: "D Mint",
+    C: {
+      bg: "#D9F5EF",
+      head: "#CFF3EA",
+      bone: "#FBFEFD",
+      boneSoft: "rgba(255,255,255,0.9)",
+      ink: "#147A7E",
+      muted: "#4B9AA0",
+      marigold: "#EC7C69",
+      mint: "#D8F6EB",
+      ember: "#F08A6C",
+      line: "#D7EEE7",
+      perzik: "#FAD0BE",
+      roze: "#F7C2B8",
+      koraal: "#F08A6C",
+      lucht: "#67D0D6",
+      munt: "#7ED4B4",
+      geel: "#F1C98B",
+      lila: "#BCE4DB",
+    },
+    day: ["#F08A6C", "#8ED9C7", "#67D0D6", "#7ED4B4", "#F1C98B", "#AFE4D6"],
+    tints: ["#FDE4DD", "#E4F9F4", "#E1F7F9", "#E3F7EF", "#FBF0DA", "#E8F8F3"],
+  },
+  olive: {
+    label: "Optie E – Golden Olive Coast",
+    short: "E Olive",
+    C: {
+      bg: "#F3E2B3",
+      head: "#ECD9A0",
+      bone: "#FFFDF7",
+      boneSoft: "rgba(255,255,255,0.88)",
+      ink: "#355C4A",
+      muted: "#6A7D67",
+      marigold: "#B7902A",
+      mint: "#EEF3E2",
+      ember: "#D8AE3B",
+      line: "#E8DEC6",
+      perzik: "#F3E2B3",
+      roze: "#E8D3A1",
+      koraal: "#D8AE3B",
+      lucht: "#7EA6B9",
+      munt: "#9EAA70",
+      geel: "#E0B134",
+      lila: "#D9D8B8",
+    },
+    day: ["#E0B134", "#E8D8B7", "#7EA6B9", "#9EAA70", "#F0D28B", "#D9D8B8"],
+    tints: ["#FBF1D8", "#F8F1E5", "#E8F1F6", "#EEF2E1", "#FBF1D9", "#F2F2E3"],
+  },
 };
-
-/* Iedere vakantiedag zijn eigen kleur; na zes begint de reeks opnieuw. */
-const DAGKLEUREN = [
-  { rand: "#EF765D", tint: "#FFFDF9", schaduw: "rgba(23,63,107,0.10)" }, // dag 1: koraal
-  { rand: "#F5B88F", tint: "#FFFDF9", schaduw: "rgba(23,63,107,0.10)" }, // dag 2: zacht perzik
-  { rand: "#76A9CF", tint: "#FFFDF9", schaduw: "rgba(23,63,107,0.10)" }, // dag 3: lichtblauw
-  { rand: "#8DA56B", tint: "#FFFDF9", schaduw: "rgba(23,63,107,0.10)" }, // dag 4: olijfgroen
-  { rand: "#F2B84B", tint: "#FFFDF9", schaduw: "rgba(23,63,107,0.10)" }, // dag 5: zonnig geel
-  { rand: "#B79BC8", tint: "#FFFDF9", schaduw: "rgba(23,63,107,0.10)" }, // dag 6: zacht lila
-];
+let C = THEMA_TYPES.warm.C;
+let DAGKLEUREN = THEMA_TYPES.warm.day.map((rand, i) => ({ rand, tint: THEMA_TYPES.warm.tints[i], schaduw: "rgba(34,64,107,0.12)" }));
+const zetThema = (id) => {
+  const t = THEMA_TYPES[id] || THEMA_TYPES.warm;
+  C = t.C;
+  DAGKLEUREN = t.day.map((rand, i) => ({ rand, tint: t.tints[i], schaduw: "rgba(34,64,107,0.12)" }));
+};
 const dagKleur = (i) => DAGKLEUREN[((i % DAGKLEUREN.length) + DAGKLEUREN.length) % DAGKLEUREN.length];
 
 const SCHADUW = {
-  kaart: "0 8px 22px rgba(34,64,107,0.14)",
-  knop: "0 5px 14px rgba(233,141,126,0.40)",
-  kop: "0 4px 18px rgba(34,64,107,0.16)",
+  kaart: "0 8px 22px rgba(34,64,107,0.10)",
+  knop: "0 6px 16px rgba(233,141,126,0.30)",
+  kop: "0 4px 18px rgba(34,64,107,0.14)",
 };
 
 const FONT_KOP =
   "'Baloo 2','Nunito','Quicksand',ui-rounded,'Segoe UI Rounded','Hiragino Maru Gothic ProN',system-ui,sans-serif";
 const FONT_TEKST = "'Nunito','Quicksand',ui-rounded,system-ui,sans-serif";
-const VERLOOP = `linear-gradient(160deg, ${"#F8C9A4"} 0%, ${"#F5B88F"} 35%, ${"#76A9CF"} 75%, ${"#8DA56B"} 100%)`;
+const VERLOOP = `linear-gradient(180deg, #F8C9A4 0%, #FFF4E8 34%, #FFF4E8 100%)`;
 
 /* Laadt de letters en laat font-serif de ronde kopletter gebruiken. */
 function Letters() {
@@ -282,64 +387,35 @@ function Letters() {
 }
 
 /* ---------- het logo, nagetekend als SVG ---------- */
-function Logo({ size = 104, tekst = true, kleur = C.ink }) {
-  const id = React.useId();
+function Logo({ size = 132, tekst = true }) {
+  const iconOnly = !tekst;
+  const fullWidth = 220;
+  const fullHeight = 58;
+  const width = size;
+  const height = iconOnly ? size : Math.round((fullHeight / fullWidth) * size);
   return (
     <svg
-      width={size}
-      height={tekst ? size * 1.42 : size}
-      viewBox={tekst ? "0 0 100 142" : "0 0 100 100"}
+      width={width}
+      height={height}
+      viewBox={iconOnly ? "0 0 52 52" : "0 0 220 58"}
       role="img"
       aria-label="Family Trip"
     >
-      <defs>
-        <linearGradient id={`lucht-${id}`} x1="0" y1="0" x2="0.4" y2="1">
-          <stop offset="0%" stopColor={C.perzik} />
-          <stop offset="45%" stopColor={C.roze} />
-          <stop offset="100%" stopColor="#FBE3D6" />
-        </linearGradient>
-        <clipPath id={`pin-${id}`}>
-          <path d="M50 4 C29 4 12 21 12 42 C12 66 50 96 50 96 C50 96 88 66 88 42 C88 21 71 4 50 4 Z" />
-        </clipPath>
-      </defs>
-      <g clipPath={`url(#pin-${id})`}>
-        <rect x="0" y="0" width="100" height="100" fill={`url(#lucht-${id})`} />
-        <path d="M-5 74 C15 58 34 62 48 72 C62 82 80 84 105 72 L105 100 L-5 100 Z" fill={C.lucht} opacity="0.85" />
-        <path d="M-5 82 C18 68 38 74 54 84 C68 92 88 92 105 84 L105 100 L-5 100 Z" fill={C.munt} />
-        <path d="M-5 90 C20 80 40 86 58 92 C72 96 90 96 105 92 L105 100 L-5 100 Z" fill="#8DA56B" opacity="0.75" />
-        <path
-          d="M50 62 C42 52 30 47 30 36 C30 29 36 24 42 24 C46 24 49 26 50 29 C51 26 54 24 58 24 C64 24 70 29 70 36 C70 47 58 52 50 62 Z"
-          fill="#FFFFFF"
-          opacity="0.95"
-        />
+      <g transform={iconOnly ? "translate(0,0)" : "translate(2,3)"}>
+        <path d="M18 8c-5.2 0-9.5 4.2-9.5 9.5 0 6.4 9.5 14.7 9.5 14.7S27.5 23.9 27.5 17.5C27.5 12.2 23.2 8 18 8Z" fill="#E98D7E"/>
+        <circle cx="18" cy="17.5" r="4.6" fill="#FFF6EE"/>
+        <circle cx="34.5" cy="11.5" r="5.2" fill="#F5C85A"/>
+        <path d="M34.5 2.8v4.2M34.5 16v4.2M26 11.5h4.2M38.8 11.5H43M28.4 5.4l2.9 2.9M37.7 14.7l2.9 2.9M28.4 17.6l2.9-2.9M37.7 8.3l2.9-2.9" stroke="#F5C85A" strokeWidth="1.8" strokeLinecap="round"/>
+        <path d="M4.6 33.6c4-3 8.1-3.8 12.2-2.3 3.1 1.2 5.4 3.1 8.3 4 4.6 1.6 10.5 1 17.5-2v4.8c-5.5 2.9-11.1 3.5-16.4 2.1-3.6-.9-6.3-2.8-9-4-3.6-1.6-7.3-1.2-12.6 1.5Z" fill="#7DB8DE"/>
+        <path d="M4.4 39.8c4.5-2.7 8.4-3.1 12.5-1.8 3 1 5.5 2.8 8.4 3.6 5 1.5 10.6.9 17.3-1.7v4.4H4.4Z" fill="#8CC9A8"/>
+        <path d="M6.5 27.5c1.3-6 4.9-10.2 9.8-12.4" stroke="#8CC9A8" strokeWidth="2.3" strokeLinecap="round"/>
+        <path d="M14.8 15.3c1.8 2 3.7 4 5.5 6.1" stroke="#8CC9A8" strokeWidth="2.1" strokeLinecap="round"/>
       </g>
-      <path
-        d="M50 4 C29 4 12 21 12 42 C12 66 50 96 50 96 C50 96 88 66 88 42 C88 21 71 4 50 4 Z"
-        fill="none"
-        stroke="#FFFFFF"
-        strokeWidth="3.5"
-      />
-      {tekst && (
-        <>
-          <text
-            x="50"
-            y="122"
-            textAnchor="middle"
-            fill={kleur}
-            style={{ font: `800 24px ${FONT_KOP}` }}
-          >
-            FAMILY
-          </text>
-          <text
-            x="50"
-            y="137"
-            textAnchor="middle"
-            fill={kleur}
-            style={{ font: `600 11px ${FONT_TEKST}`, letterSpacing: "6px" }}
-          >
-            TRIP
-          </text>
-        </>
+      {!iconOnly && (
+        <g transform="translate(56,0)">
+          <text x="0" y="26" fill="#22406B" style={{ fontFamily: FONT_KOP, fontWeight: 800, fontSize: 27 }}>FAMILY</text>
+          <text x="0" y="50" fill="#E98D7E" style={{ fontFamily: FONT_KOP, fontWeight: 800, fontSize: 27 }}>TRIP</text>
+        </g>
       )}
     </svg>
   );
@@ -961,17 +1037,14 @@ const initials = (name, email) => {
 
 /* ---------- atoms ---------- */
 const Eyebrow = ({ children, color = C.muted }) => (
-  <div
-    className="font-mono uppercase text-xs tracking-widest"
-    style={{ color }}
-  >
+  <div className="font-mono uppercase text-xs tracking-widest" style={{ color, letterSpacing: "1.4px" }}>
     {children}
   </div>
 );
 
 const Card = ({ children, className = "", style = {} }) => (
   <div
-    className={"rounded-3xl p-4 " + className}
+    className={"rounded-[24px] p-4 " + className}
     style={{
       background: C.bone,
       color: C.ink,
@@ -998,14 +1071,14 @@ const Perforation = () => (
 
 const Btn = ({ children, onClick, tone = "solid", disabled, className = "", type }) => {
   const base =
-    "font-mono uppercase text-xs tracking-widest px-4 py-2 rounded-2xl focus:outline-none focus:ring-2 focus:ring-offset-1 transition-colors";
+    "font-mono uppercase text-xs tracking-widest px-4 py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-offset-1 transition-colors";
   const styles =
     tone === "solid"
-      ? { background: C.koraal, color: C.ink, boxShadow: SCHADUW.knop }
+      ? { background: C.koraal, color: "#FFFFFF", boxShadow: SCHADUW.knop }
       : tone === "dark"
-      ? { background: C.ink, color: "#FFFFFF" }
+      ? { background: C.ink, color: "#FFFFFF", boxShadow: "0 6px 18px rgba(34,64,107,0.22)" }
       : tone === "danger"
-      ? { background: "#FFFFFF", color: C.ember, border: `2px solid ${C.ember}` }
+      ? { background: "#FFFFFF", color: C.marigold, border: `2px solid ${C.koraal}` }
       : { background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` };
   return (
     <button
@@ -1741,29 +1814,28 @@ const DayStrip = ({ days, selected, onSelect, counts = {} }) => {
     <div ref={ref} className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
       {days.map((iso, i) => {
         const active = iso === selected;
+        const kleur = dagKleur(i);
         return (
           <button
             key={iso}
             data-active={active}
             onClick={() => onSelect(iso)}
-            className="shrink-0 rounded-2xl px-3 py-2 text-left focus:outline-none focus:ring-2"
+            className="shrink-0 rounded-2xl text-center focus:outline-none focus:ring-2"
             style={{
-              minWidth: 74,
-              background: active ? dagKleur(i).rand : "rgba(255,255,255,0.70)",
+              width: 54,
+              height: 44,
+              background: active ? kleur.rand : "rgba(255,255,255,0.70)",
               color: active ? "#FFFFFF" : C.ink,
-              border: `2px solid ${iso === today ? C.ember : dagKleur(i).rand}`,
-              boxShadow: active ? `0 5px 14px ${dagKleur(i).schaduw}` : "none",
+              border: `2px solid ${active ? kleur.rand : iso === today ? C.koraal : kleur.rand}`,
+              boxShadow: active ? `0 5px 14px ${kleur.schaduw}` : "none",
             }}
           >
-            <span className="block font-mono text-xs tracking-widest uppercase">
-              Dag {String(i + 1).padStart(2, "0")}
+            <span className="block" style={{ fontFamily: FONT_TEKST, fontWeight: 700, fontSize: 13, lineHeight: 1.2 }}>
+              {String(i + 1).padStart(2, "0")}
             </span>
-            <span className="block text-sm capitalize">{fmtShort(iso)}</span>
-            {counts[iso] ? (
-              <span className="block font-mono text-xs" style={{ opacity: 0.8 }}>
-                {counts[iso]} item{counts[iso] > 1 ? "s" : ""}
-              </span>
-            ) : null}
+            <span className="block lowercase" style={{ fontFamily: FONT_TEKST, fontWeight: 600, fontSize: 11, lineHeight: 1.1, opacity: active ? 1 : 0.75 }}>
+              {fmtShort(iso).split(' ')[0]}
+            </span>
           </button>
         );
       })}
@@ -1831,7 +1903,7 @@ function LoginView({ onLogin }) {
           </p>
         </div>
 
-        <div className="rounded-3xl p-5" style={{ background: "rgba(255,255,255,0.96)" }}>
+        <div className="rounded-3xl p-5" style={{ background: "rgba(255,251,245,0.98)", border: `2px solid ${C.line}`, boxShadow: SCHADUW.kaart }}>
           {metGoogle && (
             <div className="mb-4">
               <button
@@ -1922,8 +1994,95 @@ function LoginView({ onLogin }) {
   );
 }
 
+/* ---------- thema kiezen ---------- */
+function ThemePicker({ themeId, setThemeId }) {
+  const huidig = THEMA_TYPES[themeId] || THEMA_TYPES.warm;
+  return (
+    <Card className="mt-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <Eyebrow color={C.marigold}>Weergave</Eyebrow>
+          <h3 className="font-serif text-xl mt-1" style={{ color: C.ink }}>
+            Kies je appstijl
+          </h3>
+          <p className="text-sm mt-1" style={{ color: C.muted }}>
+            De keuze geldt op dit apparaat en kan later altijd worden aangepast.
+          </p>
+        </div>
+        <div
+          className="shrink-0 rounded-full"
+          style={{ width: 44, height: 44, background: C.head, border: `2px solid ${C.line}` }}
+          aria-hidden="true"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 mt-4">
+        {Object.entries(THEMA_TYPES).map(([id, thema]) => {
+          const actief = id === themeId;
+          const kleuren = thema.C;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setThemeId(id)}
+              className="w-full rounded-2xl p-3 text-left focus:outline-none focus:ring-2"
+              style={{
+                background: actief ? kleuren.bone : "#FFFFFF",
+                border: `3px solid ${actief ? kleuren.ink : C.line}`,
+                boxShadow: actief ? `0 8px 18px ${kleuren.ink}24` : "none",
+              }}
+              aria-pressed={actief}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex gap-1 shrink-0">
+                  {[kleuren.koraal, kleuren.lucht, kleuren.munt, kleuren.geel, kleuren.lila].map((kleur, i) => (
+                    <span
+                      key={i}
+                      className="rounded-full"
+                      style={{ width: 16, height: 16, background: kleur, border: "1px solid rgba(34,64,107,0.10)" }}
+                    />
+                  ))}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div style={{ color: kleuren.ink, fontFamily: FONT_KOP, fontWeight: 800, fontSize: 16 }}>
+                    {thema.label}
+                  </div>
+                  <div className="text-xs mt-0.5" style={{ color: kleuren.muted }}>
+                    {id === "warm" && "Zand, perzik, koraal en zacht zeeblauw"}
+                    {id === "breeze" && "Fris blauw, aqua en lichte zeetinten"}
+                    {id === "lavender" && "Lavendel, perzik en zachte zonsondergang"}
+                    {id === "mintcoral" && "Tropisch mintgroen met warme koraalaccenten"}
+                    {id === "olive" && "Goud, olijfgroen en mediterrane crèmetinten"}
+                  </div>
+                </div>
+                <span
+                  className="inline-flex items-center justify-center rounded-full shrink-0"
+                  style={{
+                    width: 26,
+                    height: 26,
+                    background: actief ? kleuren.ink : "transparent",
+                    border: `2px solid ${actief ? kleuren.ink : C.line}`,
+                    color: actief ? "#FFFFFF" : C.muted,
+                    fontWeight: 800,
+                  }}
+                >
+                  {actief ? "✓" : ""}
+                </span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-3 text-sm" style={{ color: C.muted }}>
+        Gekozen: <strong style={{ color: C.ink }}>{huidig.label}</strong>
+      </div>
+    </Card>
+  );
+}
+
 /* ---------- profiel ---------- */
-function ProfileView({ me, photo, onSave, onSkip, onWandelingen }) {
+function ProfileView({ me, photo, onSave, onSkip, onWandelingen, themeId, setThemeId }) {
   const [name, setName] = useState(me.name || "");
   const [phone, setPhone] = useState(me.phone || "");
   const [about, setAbout] = useState(me.about || "");
@@ -2016,6 +2175,8 @@ function ProfileView({ me, photo, onSave, onSkip, onWandelingen }) {
           </div>
         </div>
       </Card>
+
+      <ThemePicker themeId={themeId} setThemeId={setThemeId} />
 
       {onWandelingen && (
         <Card className="mt-4">
@@ -4015,68 +4176,65 @@ function NamenOphalen({ agenda, setAgenda, dagIso, auto }) {
 
 /* ---------- zwevende balk onderaan ---------- */
 const SNELKNOPPEN = [
-  { id: "dagen", label: "Dagen", kleur: "#EF765D" },
-  { id: "fotos", label: "Foto's", kleur: "#76A9CF" },
-  { id: "reis", label: "Reis", kleur: "#8DA56B" },
-  { id: "buurt", label: "In de buurt", kleur: "#F2B84B" },
+  { id: "dagen", label: "Dagen", kleur: "#F0A98E" },
+  { id: "fotos", label: "Foto's", kleur: "#8FBCDF" },
+  { id: "reis", label: "Reis", kleur: "#E98D7E" },
+  { id: "buurt", label: "In de buurt", kleur: "#8CC9A8" },
 ];
 
 function ZwevendeBalk({ tab, onGaNaar }) {
   return (
     <nav
-      className="fixed z-50 flex justify-around items-center"
+      className="fixed z-50"
       style={{
-        left: 12,
-        right: 12,
-        bottom: "calc(14px + env(safe-area-inset-bottom, 0px))",
-        maxWidth: 460,
-        marginLeft: "auto",
-        marginRight: "auto",
-        background: "transparent",
-        border: "none",
-        padding: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: C.bg,
+        borderTop: "2px solid rgba(255,255,255,0.8)",
+        paddingTop: 10,
+        paddingBottom: "calc(10px + env(safe-area-inset-bottom, 0px))",
       }}
     >
-      {SNELKNOPPEN.map((k) => {
-        const actief = tab === k.id;
-        return (
-          <button
-            key={k.id}
-            onClick={() => onGaNaar(k.id)}
-            aria-label={k.label}
-            className="flex flex-col items-center gap-1 focus:outline-none focus:ring-2 rounded-2xl px-1"
-            style={{ width: 76 }}
-          >
-            <span
-              className="inline-flex items-center justify-center rounded-full"
-              style={{
-                width: 48,
-                height: 48,
-                background: k.kleur,
-                boxShadow: actief
-                  ? `0 6px 16px ${k.kleur}88`
-                  : "0 4px 12px rgba(34,64,107,0.22)",
-                border: actief ? `2px solid ${C.ink}` : "none",
-              }}
+      <div className="max-w-lg mx-auto px-4 flex justify-between items-start">
+        {SNELKNOPPEN.map((k) => {
+          const actief = tab === k.id;
+          return (
+            <button
+              key={k.id}
+              onClick={() => onGaNaar(k.id)}
+              aria-label={k.label}
+              className="flex flex-col items-center gap-2 focus:outline-none focus:ring-2 rounded-2xl"
+              style={{ width: 78 }}
             >
-              <Icoon naam={k.id} kleur="#FFFFFF" maat={24} />
-            </span>
-            <span
-              className="text-center"
-              style={{
-                color: C.ink,
-                fontFamily: FONT_TEKST,
-                fontWeight: 700,
-                fontSize: 10,
-                lineHeight: 1.1,
-                textShadow: "0 1px 3px rgba(255,255,255,0.95), 0 0 6px rgba(255,255,255,0.85)",
-              }}
-            >
-              {k.label}
-            </span>
-          </button>
-        );
-      })}
+              <span
+                className="inline-flex items-center justify-center rounded-full"
+                style={{
+                  width: 48,
+                  height: 48,
+                  background: actief ? k.kleur + "33" : "#FFFFFF",
+                  border: `2px solid ${actief ? k.kleur : C.line}`,
+                  boxShadow: "0 4px 12px rgba(34,64,107,0.18)",
+                }}
+              >
+                <Icoon naam={k.id} kleur={k.kleur} maat={24} />
+              </span>
+              <span
+                className="text-center"
+                style={{
+                  color: C.ink,
+                  fontFamily: FONT_TEKST,
+                  fontWeight: 700,
+                  fontSize: 10,
+                  lineHeight: 1.15,
+                }}
+              >
+                {k.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </nav>
   );
 }
@@ -5614,6 +5772,27 @@ function VakantieApp() {
   const [notice, setNotice] = useState("");
   const [weer, setWeer] = useState({});
   const [weerFout, setWeerFout] = useState("");
+  const [themeId, setThemeId] = useState(() => {
+    try { return localStorage.getItem("familytrip-theme") || "warm"; } catch (e) { return "warm"; }
+  });
+  zetThema(themeId);
+  useEffect(() => {
+    if (!me?.email) return;
+    try {
+      const persoonlijk = localStorage.getItem(`familytrip-theme:${me.email}`);
+      if (persoonlijk && THEMA_TYPES[persoonlijk] && persoonlijk !== themeId) setThemeId(persoonlijk);
+    } catch (e) {}
+  }, [me?.email]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("familytrip-theme", themeId);
+      if (me?.email) localStorage.setItem(`familytrip-theme:${me.email}`, themeId);
+      const meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', C.bg);
+      document.body.style.background = C.bg;
+    } catch (e) {}
+  }, [themeId, me?.email]);
 
   const days = useMemo(() => (trip ? dayList(trip.start, trip.end) : []), [trip]);
 
@@ -5926,6 +6105,8 @@ function VakantieApp() {
                   }
                 : null
             }
+            themeId={themeId}
+            setThemeId={setThemeId}
           />
         </div>
       </AvatarsContext.Provider>
@@ -5971,100 +6152,104 @@ function VakantieApp() {
     <div className="min-h-screen" style={{ background: C.bg }}>
       <Letters />
       <header
-        className="px-4 py-4 sticky top-0 z-40"
+        className="sticky top-0 z-40"
         style={{
-          background: C.bone,
-          borderBottom: `1px solid ${C.line}`,
+          background: C.head,
+          borderBottom: "2px solid rgba(255,255,255,0.75)",
+          boxShadow: "0 4px 18px rgba(34,64,107,0.08)",
         }}
       >
-        <div className="flex items-center justify-between gap-3">
-          <div className="relative">
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              aria-label="Menu"
-              className="p-1 focus:outline-none focus:ring-2 rounded"
-            >
-              <Icoon naam="menu" kleur={C.koraal} maat={24} dikte={2.4} />
-            </button>
-            {menuOpen && (
-              <div
-                className="absolute left-0 mt-2 rounded-lg overflow-hidden z-50"
-                style={{ background: C.bone, minWidth: 200, border: `1px solid ${C.line}`, boxShadow: "0 12px 28px rgba(34,64,107,0.18)" }}
+        <div className="max-w-lg mx-auto px-4 pt-4 pb-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="relative">
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                aria-label="Menu"
+                className="flex items-center gap-2 rounded-2xl px-3 h-10 focus:outline-none focus:ring-2"
+                style={{ background: "#FFFBF5", border: `2px solid ${C.line}`, minWidth: 104 }}
               >
-                  {TABS.map((t) => (
-                    <button
-                      key={t.id}
-                      onClick={() => {
-                        setTab(t.id);
-                        setMenuOpen(false);
-                      }}
-                      className="flex items-center gap-3 w-full text-left px-3 py-2 focus:outline-none focus:ring-2"
-                      style={{
-                        background: tab === t.id ? t.kleur + "33" : "transparent",
-                        borderBottom: `1px solid ${C.line}`,
-                      }}
-                    >
-                      <Tegel naam={t.id} kleur={t.kleur} maat={34} />
-                      <span
-                        className="font-mono uppercase text-xs tracking-widest"
-                        style={{ color: C.ink }}
+                <Icoon naam="menu" kleur={C.koraal} maat={18} dikte={2.3} />
+                <span className="font-mono uppercase text-[10px] tracking-widest" style={{ color: C.marigold }}>
+                  {menuOpen ? "Sluit" : ((TABS.find((t) => t.id === tab)?.label) || "Menu")}
+                </span>
+              </button>
+              {menuOpen && (
+                <div
+                  className="absolute left-0 top-full mt-3 rounded-[24px] overflow-hidden z-50"
+                  style={{
+                    background: C.bone,
+                    width: 320,
+                    maxWidth: "calc(100vw - 32px)",
+                    border: `2px solid ${C.line}`,
+                    boxShadow: "0 14px 30px rgba(34,64,107,0.18)",
+                  }}
+                >
+                  <div className="px-4 pt-4 pb-2">
+                    <Logo size={92} />
+                  </div>
+                  <div className="pb-2">
+                    {TABS.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => {
+                          setTab(t.id);
+                          setMenuOpen(false);
+                        }}
+                        className="flex items-center gap-3 w-full text-left px-4 py-3 focus:outline-none focus:ring-2"
+                        style={{ background: tab === t.id ? t.kleur + "1A" : "transparent", borderBottom: `1px solid ${C.line}` }}
                       >
-                        {t.label}
-                      </span>
+                        <Tegel naam={t.id} kleur={t.kleur} maat={34} />
+                        <span style={{ color: C.ink, fontFamily: FONT_TEKST, fontWeight: 700, fontSize: 15 }}>{t.label}</span>
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setEditingProfile(true);
+                      }}
+                      className="flex items-center gap-3 w-full text-left px-4 py-3 focus:outline-none focus:ring-2"
+                      style={{ borderBottom: `1px solid ${C.line}` }}
+                    >
+                      <Tegel naam="profiel" kleur={C.ink} maat={34} />
+                      <span style={{ color: C.ink, fontFamily: FONT_TEKST, fontWeight: 700, fontSize: 15 }}>Mijn profiel</span>
                     </button>
-                  ))}
-                  <button
-                    onClick={() => {
-                      setMenuOpen(false);
-                      setEditingProfile(true);
-                    }}
-                    className="flex items-center gap-3 w-full text-left px-3 py-2 focus:outline-none focus:ring-2"
-                    style={{ borderBottom: `1px solid ${C.line}` }}
-                  >
-                    <Tegel naam="profiel" kleur={C.ink} maat={34} />
-                    <span className="font-mono uppercase text-xs tracking-widest" style={{ color: C.ink }}>
-                      Mijn profiel
-                    </span>
-                  </button>
-                  <button
-                    onClick={logout}
-                    className="flex items-center gap-3 w-full text-left px-3 py-2 focus:outline-none focus:ring-2"
-                  >
-                    <Tegel naam="uit" kleur={C.koraal} maat={34} />
-                    <span className="font-mono uppercase text-xs tracking-widest" style={{ color: C.ember }}>
-                      Uitloggen
-                    </span>
-                  </button>
-              </div>
-            )}
+                    <button
+                      onClick={logout}
+                      className="flex items-center gap-3 w-full text-left px-4 py-3 focus:outline-none focus:ring-2"
+                    >
+                      <Tegel naam="uit" kleur={C.koraal} maat={34} />
+                      <span style={{ color: C.marigold, fontFamily: FONT_TEKST, fontWeight: 700, fontSize: 15 }}>Uitloggen</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1 flex justify-center pt-1">
+              <Logo size={116} />
+            </div>
+
+            <button
+              onClick={pullAll}
+              disabled={syncing}
+              aria-label="Vernieuw"
+              className="rounded-full px-4 h-10 focus:outline-none focus:ring-2 disabled:opacity-50"
+              style={{ background: C.ink, color: "#FFFFFF", fontFamily: FONT_TEKST, fontWeight: 700, fontSize: 10, letterSpacing: "1px" }}
+            >
+              VERNIEUW
+            </button>
           </div>
+          {trip && (
+            <div className="mt-2 text-center">
+              <div className="font-mono uppercase text-[10px] tracking-widest" style={{ color: C.marigold }}>
+                {members.length} reisgenoot{members.length === 1 ? "" : "en"}
+              </div>
+              <div style={{ color: C.ink, fontFamily: FONT_KOP, fontWeight: 800, fontSize: 26, lineHeight: 1.1 }}>
+                {trip.name || "Family Trip"}
+              </div>
 
-          <span className="flex items-center gap-2">
-            <Logo size={30} tekst={false} />
-            <span className="leading-none">
-              <span
-                className="block"
-                style={{ color: C.ink, fontFamily: FONT_KOP, fontWeight: 800, fontSize: 15 }}
-              >
-                FAMILY
-              </span>
-              <span
-                className="block"
-                style={{ color: C.koraal, fontFamily: FONT_KOP, fontWeight: 800, fontSize: 15 }}
-              >
-                TRIP
-              </span>
-            </span>
-          </span>
-
-          <button
-            onClick={pullAll}
-            disabled={syncing}
-            aria-label="Vernieuw"
-            className="p-1 focus:outline-none focus:ring-2 rounded disabled:opacity-50"
-          >
-            <Icoon naam="vernieuw" kleur={C.koraal} maat={22} dikte={2.4} />
-          </button>
+            </div>
+          )}
         </div>
       </header>
 
