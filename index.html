@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-52-exact-ui" />
+<meta name="reisboek-versie" content="familytrip-53-horizontal-days" />
 <title>Family Trip</title>
 <style>
   body { margin: 0; background: #F8C9A4; transition: background 0.25s ease; }
@@ -4569,37 +4569,143 @@ function ZwevendeBalk({ tab, onGaNaar }) {
 
 /* ---------- hoofdscherm: dagen naast elkaar ---------- */
 function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, todos, photoIndex, images, loadImages, selected, setSelected, me, onGoTo, weer }) {
-  const [addOpen, setAddOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(null);
+  const dagScroller = useRef(null);
+  const scrollTimer = useRef(null);
+
   useEffect(() => { loadImages(); }, [photoIndex.length]);
+
+  /* Tikken op een dag bovenaan schuift de volledige dagkaart naar die dag. */
+  useEffect(() => {
+    const scroller = dagScroller.current;
+    if (!scroller || !selected) return;
+    const kaart = scroller.querySelector(`[data-dagkaart="${selected}"]`);
+    if (!kaart) return;
+    const doel = kaart.offsetLeft - 16;
+    if (Math.abs(scroller.scrollLeft - doel) > 4) {
+      scroller.scrollTo({ left: doel, behavior: "smooth" });
+    }
+  }, [selected, days.length]);
+
   if (!days.length) return <Empty>Nog geen reisdagen ingesteld.</Empty>;
-  const index = Math.max(0, days.indexOf(selected));
-  const iso = days[index] || days[0];
-  const plannen = agenda.filter((a) => a.date === iso).sort((a,b) => (a.heleDag ? "00" : a.time || "99").localeCompare(b.heleDag ? "00" : b.time || "99"));
-  const lijst = shopping.filter((s) => s.date === iso);
-  const kiekjes = photoIndex.filter((p) => p.date === iso);
-  const stops = (trip.stops || []).filter((s) => s.place).length;
-  return (
-    <div>
-      <div style={{ marginBottom: 12 }}><DayStrip days={days} selected={iso} onSelect={setSelected} /></div>
-      <section className="rounded-[24px]" style={{ background: C.bone, border: `2px solid ${C.line}`, boxShadow: SCHADUW.kaart, padding: 14 }}>
+
+  /* Na een veeg wordt de dag die het dichtst in het midden staat geselecteerd. */
+  const onthoudZichtbareDag = () => {
+    const scroller = dagScroller.current;
+    if (!scroller) return;
+    clearTimeout(scrollTimer.current);
+    scrollTimer.current = setTimeout(() => {
+      const midden = scroller.getBoundingClientRect().left + scroller.clientWidth / 2;
+      let beste = null;
+      let afstand = Infinity;
+      scroller.querySelectorAll('[data-dagkaart]').forEach((kaart) => {
+        const r = kaart.getBoundingClientRect();
+        const verschil = Math.abs(r.left + r.width / 2 - midden);
+        if (verschil < afstand) {
+          afstand = verschil;
+          beste = kaart;
+        }
+      });
+      const iso = beste && beste.getAttribute('data-dagkaart');
+      if (iso && iso !== selected) setSelected(iso);
+    }, 100);
+  };
+
+  const renderDag = (iso, index) => {
+    const plannen = agenda
+      .filter((a) => a.date === iso)
+      .sort((a,b) => (a.heleDag ? "00" : a.time || "99").localeCompare(b.heleDag ? "00" : b.time || "99"));
+    const lijst = shopping.filter((s) => s.date === iso);
+    const kiekjes = photoIndex.filter((p) => p.date === iso);
+    const stops = (trip.stops || []).filter((s) => s.place).length;
+    const open = addOpen === iso;
+
+    return (
+      <section
+        key={iso}
+        data-dagkaart={iso}
+        className="rounded-[24px] shrink-0"
+        style={{
+          flex: "0 0 calc(100% - 18px)",
+          scrollSnapAlign: "center",
+          scrollSnapStop: "always",
+          background: C.bone,
+          border: `2px solid ${C.line}`,
+          boxShadow: SCHADUW.kaart,
+          padding: 14,
+          minWidth: 0,
+        }}
+      >
         <div className="flex items-start justify-between gap-3">
-          <div><Eyebrow color={C.marigold}>Dag {String(index + 1).padStart(2,"0")}</Eyebrow><h2 className="font-serif capitalize" style={{ color: C.ink, fontSize: 25, lineHeight: 1.15, marginTop: 3 }}>{fmtLong(iso)}</h2></div>
-          {weer && weer[iso] && <span className="rounded-xl" style={{ padding: "6px 9px", background: "#FFFFFF", border: `2px solid ${C.koraal}`, color: C.marigold, fontSize: 13, fontWeight: 800 }}>{weerInfo(weer[iso].code).emoji} {weer[iso].max}°C</span>}
+          <div>
+            <Eyebrow color={C.marigold}>Dag {String(index + 1).padStart(2,"0")}</Eyebrow>
+            <h2 className="font-serif capitalize" style={{ color: C.ink, fontSize: 25, lineHeight: 1.15, marginTop: 3 }}>{fmtLong(iso)}</h2>
+          </div>
+          {weer && weer[iso] && (
+            <span className="rounded-xl" style={{ padding: "6px 9px", background: "#FFFFFF", border: `2px solid ${C.koraal}`, color: C.marigold, fontSize: 13, fontWeight: 800 }}>
+              {weerInfo(weer[iso].code).emoji} {weer[iso].max}°C
+            </span>
+          )}
         </div>
-        <div className="flex items-center justify-between" style={{ marginTop: 14 }}><Eyebrow color={C.marigold}>Gebeurtenissen</Eyebrow><button type="button" onClick={() => setAddOpen(!addOpen)} aria-label="Plan toevoegen" className="rounded-full" style={{ width: 28, height: 28, background: C.koraal, color: "#FFFFFF", border: 0, fontSize: 20, lineHeight: 1 }}>{addOpen ? "−" : "+"}</button></div>
+
+        <div className="flex items-center justify-between" style={{ marginTop: 14 }}>
+          <Eyebrow color={C.marigold}>Gebeurtenissen</Eyebrow>
+          <button
+            type="button"
+            onClick={() => setAddOpen(open ? null : iso)}
+            aria-label="Plan toevoegen"
+            className="rounded-full"
+            style={{ width: 28, height: 28, background: C.koraal, color: "#FFFFFF", border: 0, fontSize: 20, lineHeight: 1 }}
+          >
+            {open ? "−" : "+"}
+          </button>
+        </div>
+
         <NamenOphalen agenda={agenda} setAgenda={setAgenda} dagIso={iso} auto />
-        {plannen.length ? <ul className="space-y-2 mt-2">{plannen.map((a) => <AgendaRegel key={a.id} item={a} items={agenda} setItems={setAgenda} compact fotos={[]} images={images} />)}</ul> : <div className="rounded-2xl mt-2" style={{ padding: 14, background: `${C.koraal}0D`, color: C.muted }}>Nog niets gepland.</div>}
-        {addOpen && <div className="mt-3"><DagToevoegen iso={iso} agenda={agenda} setAgenda={setAgenda} me={me} /></div>}
+        {plannen.length ? (
+          <ul className="space-y-2 mt-2">
+            {plannen.map((a) => <AgendaRegel key={a.id} item={a} items={agenda} setItems={setAgenda} compact fotos={[]} images={images} />)}
+          </ul>
+        ) : (
+          <div className="rounded-2xl mt-2" style={{ padding: 14, background: `${C.koraal}0D`, color: C.muted }}>Nog niets gepland.</div>
+        )}
+
+        {open && <div className="mt-3"><DagToevoegen iso={iso} agenda={agenda} setAgenda={setAgenda} me={me} /></div>}
+
         <div className="grid grid-cols-3 gap-2" style={{ marginTop: 12 }}>
-          {[0,1,2].map((n) => { const p = kiekjes[n]; return <button key={n} type="button" onClick={() => onGoTo("fotos")} className="rounded-2xl overflow-hidden" style={{ height: 76, background: C.boneSoft, border: `1.5px solid ${C.line}`, padding: 0 }}>{p && images[p.id] ? <img src={images[p.id]} alt={p.caption || "Foto"} className="w-full h-full object-cover" /> : <DecorThumb variant={n} />}</button>; })}
+          {[0,1,2].map((n) => {
+            const p = kiekjes[n];
+            return (
+              <button key={n} type="button" onClick={() => onGoTo("fotos")} className="rounded-2xl overflow-hidden" style={{ height: 76, background: C.boneSoft, border: `1.5px solid ${C.line}`, padding: 0 }}>
+                {p && images[p.id] ? <img src={images[p.id]} alt={p.caption || "Foto"} className="w-full h-full object-cover" /> : <DecorThumb variant={n} />}
+              </button>
+            );
+          })}
         </div>
+
         <div className="grid grid-cols-2" style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.line}` }}>
           <div style={{ paddingRight: 13, borderRight: `1px solid ${C.line}` }}>
-            <div className="flex items-center gap-2 mb-2"><Icoon naam="lijst" kleur={C.koraal} maat={18} /><Eyebrow color={C.marigold}>Boodschappen ({lijst.filter((x) => !x.done).length || lijst.length})</Eyebrow></div>
-            {lijst.length ? <ul className="space-y-2">{lijst.slice(0,4).map((i) => <li key={i.id} className="flex items-center gap-2" style={{ fontSize: 13 }}><input type="checkbox" checked={i.done} onChange={() => setShopping(shopping.map((x) => x.id === i.id ? { ...x, done: !x.done } : x))} style={{ width: 17, height: 17, accentColor: C.lucht }} /><span style={{ color: C.ink, textDecoration: i.done ? "line-through" : "none" }}>{i.text}</span></li>)}</ul> : <p className="text-sm" style={{ color: C.muted }}>Nog niets nodig.</p>}
+            <div className="flex items-center gap-2 mb-2">
+              <Icoon naam="lijst" kleur={C.koraal} maat={18} />
+              <Eyebrow color={C.marigold}>Boodschappen ({lijst.filter((x) => !x.done).length || lijst.length})</Eyebrow>
+            </div>
+            {lijst.length ? (
+              <ul className="space-y-2">
+                {lijst.slice(0,4).map((i) => (
+                  <li key={i.id} className="flex items-center gap-2" style={{ fontSize: 13 }}>
+                    <input type="checkbox" checked={i.done} onChange={() => setShopping(shopping.map((x) => x.id === i.id ? { ...x, done: !x.done } : x))} style={{ width: 17, height: 17, accentColor: C.lucht }} />
+                    <span style={{ color: C.ink, textDecoration: i.done ? "line-through" : "none" }}>{i.text}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="text-sm" style={{ color: C.muted }}>Nog niets nodig.</p>}
           </div>
+
           <div style={{ paddingLeft: 13 }}>
-            <div className="flex items-center gap-2 mb-2"><Icoon naam="reis" kleur={C.ink} maat={18} /><Eyebrow color={C.ink}>Reis details</Eyebrow></div>
+            <div className="flex items-center gap-2 mb-2">
+              <Icoon naam="reis" kleur={C.ink} maat={18} />
+              <Eyebrow color={C.ink}>Reis details</Eyebrow>
+            </div>
             <ul className="space-y-2" style={{ color: C.ink, fontSize: 13 }}>
               {trip.travelDistanceM ? <li className="flex gap-2"><span>◷</span><strong>{afstandTekst(trip.travelDistanceM)}</strong></li> : null}
               {trip.travelDurationS ? <li className="flex gap-2"><span>◷</span><strong>{duurTekst(trip.travelDurationS)} rijden</strong></li> : null}
@@ -4608,6 +4714,39 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
           </div>
         </div>
       </section>
+    );
+  };
+
+  return (
+    <div>
+      <div style={{ marginBottom: 12 }}>
+        <DayStrip days={days} selected={selected} onSelect={setSelected} />
+      </div>
+
+      <div
+        ref={dagScroller}
+        onScroll={onthoudZichtbareDag}
+        className="ft-scrollbar flex overflow-x-auto"
+        aria-label="Veeg door de reisdagen"
+        style={{
+          gap: 12,
+          marginLeft: -16,
+          marginRight: -16,
+          paddingLeft: 16,
+          paddingRight: 16,
+          paddingBottom: 10,
+          scrollSnapType: "x mandatory",
+          WebkitOverflowScrolling: "touch",
+          overscrollBehaviorX: "contain",
+          touchAction: "pan-x pan-y",
+        }}
+      >
+        {days.map(renderDag)}
+      </div>
+
+      <p className="text-center" style={{ color: C.muted, fontSize: 11, fontWeight: 700, marginTop: 2 }}>
+        Veeg naar links of rechts voor een andere dag
+      </p>
     </div>
   );
 }
