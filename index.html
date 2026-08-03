@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-51-firebase-herstel" />
+<meta name="reisboek-versie" content="familytrip-52-exact-ui" />
 <title>Family Trip</title>
 <style>
   body { margin: 0; background: #F8C9A4; transition: background 0.25s ease; }
@@ -262,6 +262,733 @@ window.__firebaseNodig = function () {
   return !!(f.projectId && f.apiKey);
 };
 </script>
+
+<style id="tailwind-fallback">
+/*! tailwindcss v4.1.10 | MIT License | https://tailwindcss.com */
+@layer properties;
+:root, :host {
+  --font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+    'Noto Color Emoji';
+  --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
+  --spacing: 0.25rem;
+  --container-lg: 32rem;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: calc(1 / 0.75);
+  --text-sm: 0.875rem;
+  --text-sm--line-height: calc(1.25 / 0.875);
+  --text-base: 1rem;
+  --text-base--line-height: calc(1.5 / 1);
+  --text-lg: 1.125rem;
+  --text-lg--line-height: calc(1.75 / 1.125);
+  --text-xl: 1.25rem;
+  --text-xl--line-height: calc(1.75 / 1.25);
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: calc(2 / 1.5);
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: calc(2.25 / 1.875);
+  --tracking-widest: 0.1em;
+  --leading-tight: 1.25;
+  --leading-relaxed: 1.625;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --default-transition-duration: 150ms;
+  --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  --default-font-family: var(--font-sans);
+  --default-mono-font-family: var(--font-mono);
+}
+*, ::after, ::before, ::backdrop, ::file-selector-button {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0 solid;
+}
+html, :host {
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  tab-size: 4;
+  font-family: var(--default-font-family, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji');
+  font-feature-settings: var(--default-font-feature-settings, normal);
+  font-variation-settings: var(--default-font-variation-settings, normal);
+  -webkit-tap-highlight-color: transparent;
+}
+hr {
+  height: 0;
+  color: inherit;
+  border-top-width: 1px;
+}
+abbr:where([title]) {
+  -webkit-text-decoration: underline dotted;
+  text-decoration: underline dotted;
+}
+h1, h2, h3, h4, h5, h6 {
+  font-size: inherit;
+  font-weight: inherit;
+}
+a {
+  color: inherit;
+  -webkit-text-decoration: inherit;
+  text-decoration: inherit;
+}
+b, strong {
+  font-weight: bolder;
+}
+code, kbd, samp, pre {
+  font-family: var(--default-mono-font-family, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace);
+  font-feature-settings: var(--default-mono-font-feature-settings, normal);
+  font-variation-settings: var(--default-mono-font-variation-settings, normal);
+  font-size: 1em;
+}
+small {
+  font-size: 80%;
+}
+sub, sup {
+  font-size: 75%;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+sub {
+  bottom: -0.25em;
+}
+sup {
+  top: -0.5em;
+}
+table {
+  text-indent: 0;
+  border-color: inherit;
+  border-collapse: collapse;
+}
+:-moz-focusring {
+  outline: auto;
+}
+progress {
+  vertical-align: baseline;
+}
+summary {
+  display: list-item;
+}
+ol, ul, menu {
+  list-style: none;
+}
+img, svg, video, canvas, audio, iframe, embed, object {
+  display: block;
+  vertical-align: middle;
+}
+img, video {
+  max-width: 100%;
+  height: auto;
+}
+button, input, select, optgroup, textarea, ::file-selector-button {
+  font: inherit;
+  font-feature-settings: inherit;
+  font-variation-settings: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  border-radius: 0;
+  background-color: transparent;
+  opacity: 1;
+}
+:where(select:is([multiple], [size])) optgroup {
+  font-weight: bolder;
+}
+:where(select:is([multiple], [size])) optgroup option {
+  padding-inline-start: 20px;
+}
+::file-selector-button {
+  margin-inline-end: 4px;
+}
+::placeholder {
+  opacity: 1;
+}
+@supports (not (-webkit-appearance: -apple-pay-button))  or (contain-intrinsic-size: 1px) {
+  ::placeholder {
+    color: currentcolor;
+    @supports (color: color-mix(in lab, red, red)) {
+      color: color-mix(in oklab, currentcolor 50%, transparent);
+    }
+  }
+}
+textarea {
+  resize: vertical;
+}
+::-webkit-search-decoration {
+  -webkit-appearance: none;
+}
+::-webkit-date-and-time-value {
+  min-height: 1lh;
+  text-align: inherit;
+}
+::-webkit-datetime-edit {
+  display: inline-flex;
+}
+::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+::-webkit-datetime-edit, ::-webkit-datetime-edit-year-field, ::-webkit-datetime-edit-month-field, ::-webkit-datetime-edit-day-field, ::-webkit-datetime-edit-hour-field, ::-webkit-datetime-edit-minute-field, ::-webkit-datetime-edit-second-field, ::-webkit-datetime-edit-millisecond-field, ::-webkit-datetime-edit-meridiem-field {
+  padding-block: 0;
+}
+:-moz-ui-invalid {
+  box-shadow: none;
+}
+button, input:where([type='button'], [type='reset'], [type='submit']), ::file-selector-button {
+  appearance: button;
+}
+::-webkit-inner-spin-button, ::-webkit-outer-spin-button {
+  height: auto;
+}
+[hidden]:where(:not([hidden='until-found'])) {
+  display: none !important;
+}
+.pointer-events-none {
+  pointer-events: none;
+}
+.absolute {
+  position: absolute;
+}
+.fixed {
+  position: fixed;
+}
+.relative {
+  position: relative;
+}
+.sticky {
+  position: sticky;
+}
+.inset-0 {
+  inset: calc(var(--spacing) * 0);
+}
+.top-0 {
+  top: calc(var(--spacing) * 0);
+}
+.top-full {
+  top: 100%;
+}
+.left-0 {
+  left: calc(var(--spacing) * 0);
+}
+.z-40 {
+  z-index: 40;
+}
+.z-50 {
+  z-index: 50;
+}
+.col-span-2 {
+  grid-column: span 2 / span 2;
+}
+.-mx-4 {
+  margin-inline: calc(var(--spacing) * -4);
+}
+.mx-auto {
+  margin-inline: auto;
+}
+.my-3 {
+  margin-block: calc(var(--spacing) * 3);
+}
+.mt-0\.5 {
+  margin-top: calc(var(--spacing) * 0.5);
+}
+.mt-1 {
+  margin-top: calc(var(--spacing) * 1);
+}
+.mt-2 {
+  margin-top: calc(var(--spacing) * 2);
+}
+.mt-3 {
+  margin-top: calc(var(--spacing) * 3);
+}
+.mt-4 {
+  margin-top: calc(var(--spacing) * 4);
+}
+.mb-1 {
+  margin-bottom: calc(var(--spacing) * 1);
+}
+.mb-2 {
+  margin-bottom: calc(var(--spacing) * 2);
+}
+.mb-3 {
+  margin-bottom: calc(var(--spacing) * 3);
+}
+.ml-auto {
+  margin-left: auto;
+}
+.block {
+  display: block;
+}
+.flex {
+  display: flex;
+}
+.grid {
+  display: grid;
+}
+.hidden {
+  display: none;
+}
+.inline-block {
+  display: inline-block;
+}
+.inline-flex {
+  display: inline-flex;
+}
+.h-5 {
+  height: calc(var(--spacing) * 5);
+}
+.h-full {
+  height: 100%;
+}
+.max-h-96 {
+  max-height: calc(var(--spacing) * 96);
+}
+.min-h-screen {
+  min-height: 100vh;
+}
+.w-5 {
+  width: calc(var(--spacing) * 5);
+}
+.w-full {
+  width: 100%;
+}
+.max-w-lg {
+  max-width: var(--container-lg);
+}
+.min-w-0 {
+  min-width: calc(var(--spacing) * 0);
+}
+.flex-1 {
+  flex: 1;
+}
+.shrink-0 {
+  flex-shrink: 0;
+}
+.transform {
+  transform: var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,);
+}
+.cursor-pointer {
+  cursor: pointer;
+}
+.grid-cols-1 {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+.grid-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.grid-cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.grid-cols-6 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+.flex-col {
+  flex-direction: column;
+}
+.flex-wrap {
+  flex-wrap: wrap;
+}
+.items-baseline {
+  align-items: baseline;
+}
+.items-center {
+  align-items: center;
+}
+.items-end {
+  align-items: flex-end;
+}
+.items-start {
+  align-items: flex-start;
+}
+.justify-around {
+  justify-content: space-around;
+}
+.justify-between {
+  justify-content: space-between;
+}
+.justify-center {
+  justify-content: center;
+}
+.justify-end {
+  justify-content: flex-end;
+}
+.justify-start {
+  justify-content: flex-start;
+}
+.gap-1 {
+  gap: calc(var(--spacing) * 1);
+}
+.gap-2 {
+  gap: calc(var(--spacing) * 2);
+}
+.gap-3 {
+  gap: calc(var(--spacing) * 3);
+}
+.gap-4 {
+  gap: calc(var(--spacing) * 4);
+}
+.gap-5 {
+  gap: calc(var(--spacing) * 5);
+}
+.space-y-1 {
+  :where(& > :not(:last-child)) {
+    --tw-space-y-reverse: 0;
+    margin-block-start: calc(calc(var(--spacing) * 1) * var(--tw-space-y-reverse));
+    margin-block-end: calc(calc(var(--spacing) * 1) * calc(1 - var(--tw-space-y-reverse)));
+  }
+}
+.space-y-2 {
+  :where(& > :not(:last-child)) {
+    --tw-space-y-reverse: 0;
+    margin-block-start: calc(calc(var(--spacing) * 2) * var(--tw-space-y-reverse));
+    margin-block-end: calc(calc(var(--spacing) * 2) * calc(1 - var(--tw-space-y-reverse)));
+  }
+}
+.space-y-3 {
+  :where(& > :not(:last-child)) {
+    --tw-space-y-reverse: 0;
+    margin-block-start: calc(calc(var(--spacing) * 3) * var(--tw-space-y-reverse));
+    margin-block-end: calc(calc(var(--spacing) * 3) * calc(1 - var(--tw-space-y-reverse)));
+  }
+}
+.space-y-4 {
+  :where(& > :not(:last-child)) {
+    --tw-space-y-reverse: 0;
+    margin-block-start: calc(calc(var(--spacing) * 4) * var(--tw-space-y-reverse));
+    margin-block-end: calc(calc(var(--spacing) * 4) * calc(1 - var(--tw-space-y-reverse)));
+  }
+}
+.divide-y {
+  :where(& > :not(:last-child)) {
+    --tw-divide-y-reverse: 0;
+    border-bottom-style: var(--tw-border-style);
+    border-top-style: var(--tw-border-style);
+    border-top-width: calc(1px * var(--tw-divide-y-reverse));
+    border-bottom-width: calc(1px * calc(1 - var(--tw-divide-y-reverse)));
+  }
+}
+.self-center {
+  align-self: center;
+}
+.overflow-hidden {
+  overflow: hidden;
+}
+.overflow-x-auto {
+  overflow-x: auto;
+}
+.overflow-y-auto {
+  overflow-y: auto;
+}
+.rounded {
+  border-radius: 0.25rem;
+}
+.rounded-2xl {
+  border-radius: var(--radius-2xl);
+}
+.rounded-3xl {
+  border-radius: var(--radius-3xl);
+}
+.rounded-full {
+  border-radius: calc(infinity * 1px);
+}
+.rounded-lg {
+  border-radius: var(--radius-lg);
+}
+.rounded-md {
+  border-radius: var(--radius-md);
+}
+.rounded-xl {
+  border-radius: var(--radius-xl);
+}
+.object-contain {
+  object-fit: contain;
+}
+.object-cover {
+  object-fit: cover;
+}
+.p-2 {
+  padding: calc(var(--spacing) * 2);
+}
+.p-3 {
+  padding: calc(var(--spacing) * 3);
+}
+.p-4 {
+  padding: calc(var(--spacing) * 4);
+}
+.p-5 {
+  padding: calc(var(--spacing) * 5);
+}
+.p-6 {
+  padding: calc(var(--spacing) * 6);
+}
+.px-1 {
+  padding-inline: calc(var(--spacing) * 1);
+}
+.px-2 {
+  padding-inline: calc(var(--spacing) * 2);
+}
+.px-3 {
+  padding-inline: calc(var(--spacing) * 3);
+}
+.px-4 {
+  padding-inline: calc(var(--spacing) * 4);
+}
+.py-1 {
+  padding-block: calc(var(--spacing) * 1);
+}
+.py-2 {
+  padding-block: calc(var(--spacing) * 2);
+}
+.py-3 {
+  padding-block: calc(var(--spacing) * 3);
+}
+.py-4 {
+  padding-block: calc(var(--spacing) * 4);
+}
+.py-6 {
+  padding-block: calc(var(--spacing) * 6);
+}
+.pt-2 {
+  padding-top: calc(var(--spacing) * 2);
+}
+.pb-1 {
+  padding-bottom: calc(var(--spacing) * 1);
+}
+.text-center {
+  text-align: center;
+}
+.text-left {
+  text-align: left;
+}
+.font-mono {
+  font-family: var(--font-mono);
+}
+.font-serif {
+  font-family: var(--font-serif);
+}
+.text-2xl {
+  font-size: var(--text-2xl);
+  line-height: var(--tw-leading, var(--text-2xl--line-height));
+}
+.text-3xl {
+  font-size: var(--text-3xl);
+  line-height: var(--tw-leading, var(--text-3xl--line-height));
+}
+.text-base {
+  font-size: var(--text-base);
+  line-height: var(--tw-leading, var(--text-base--line-height));
+}
+.text-lg {
+  font-size: var(--text-lg);
+  line-height: var(--tw-leading, var(--text-lg--line-height));
+}
+.text-sm {
+  font-size: var(--text-sm);
+  line-height: var(--tw-leading, var(--text-sm--line-height));
+}
+.text-xl {
+  font-size: var(--text-xl);
+  line-height: var(--tw-leading, var(--text-xl--line-height));
+}
+.text-xs {
+  font-size: var(--text-xs);
+  line-height: var(--tw-leading, var(--text-xs--line-height));
+}
+.leading-relaxed {
+  --tw-leading: var(--leading-relaxed);
+  line-height: var(--leading-relaxed);
+}
+.leading-tight {
+  --tw-leading: var(--leading-tight);
+  line-height: var(--leading-tight);
+}
+.tracking-widest {
+  --tw-tracking: var(--tracking-widest);
+  letter-spacing: var(--tracking-widest);
+}
+.whitespace-pre-wrap {
+  white-space: pre-wrap;
+}
+.capitalize {
+  text-transform: capitalize;
+}
+.lowercase {
+  text-transform: lowercase;
+}
+.uppercase {
+  text-transform: uppercase;
+}
+.underline {
+  text-decoration-line: underline;
+}
+.transition-colors {
+  transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to;
+  transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+  transition-duration: var(--tw-duration, var(--default-transition-duration));
+}
+.focus\:ring-2 {
+  &:focus {
+    --tw-ring-shadow: var(--tw-ring-inset,) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+}
+.focus\:ring-offset-1 {
+  &:focus {
+    --tw-ring-offset-width: 1px;
+    --tw-ring-offset-shadow: var(--tw-ring-inset,) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+  }
+}
+.focus\:outline-none {
+  &:focus {
+    --tw-outline-style: none;
+    outline-style: none;
+  }
+}
+.disabled\:opacity-50 {
+  &:disabled {
+    opacity: 50%;
+  }
+}
+@property --tw-rotate-x {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-rotate-y {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-rotate-z {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-skew-x {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-skew-y {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-space-y-reverse {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0;
+}
+@property --tw-divide-y-reverse {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0;
+}
+@property --tw-border-style {
+  syntax: "*";
+  inherits: false;
+  initial-value: solid;
+}
+@property --tw-leading {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-tracking {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-shadow {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0 0 #0000;
+}
+@property --tw-shadow-color {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-shadow-alpha {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 100%;
+}
+@property --tw-inset-shadow {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0 0 #0000;
+}
+@property --tw-inset-shadow-color {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-inset-shadow-alpha {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 100%;
+}
+@property --tw-ring-color {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-ring-shadow {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0 0 #0000;
+}
+@property --tw-inset-ring-color {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-inset-ring-shadow {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0 0 #0000;
+}
+@property --tw-ring-inset {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-ring-offset-width {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@property --tw-ring-offset-color {
+  syntax: "*";
+  inherits: false;
+  initial-value: #fff;
+}
+@property --tw-ring-offset-shadow {
+  syntax: "*";
+  inherits: false;
+  initial-value: 0 0 #0000;
+}
+@layer properties {
+  @supports ((-webkit-hyphens: none) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color:rgb(from red r g b)))) {
+    *, ::before, ::after, ::backdrop {
+      --tw-rotate-x: initial;
+      --tw-rotate-y: initial;
+      --tw-rotate-z: initial;
+      --tw-skew-x: initial;
+      --tw-skew-y: initial;
+      --tw-space-y-reverse: 0;
+      --tw-divide-y-reverse: 0;
+      --tw-border-style: solid;
+      --tw-leading: initial;
+      --tw-tracking: initial;
+      --tw-shadow: 0 0 #0000;
+      --tw-shadow-color: initial;
+      --tw-shadow-alpha: 100%;
+      --tw-inset-shadow: 0 0 #0000;
+      --tw-inset-shadow-color: initial;
+      --tw-inset-shadow-alpha: 100%;
+      --tw-ring-color: initial;
+      --tw-ring-shadow: 0 0 #0000;
+      --tw-inset-ring-color: initial;
+      --tw-inset-ring-shadow: 0 0 #0000;
+      --tw-ring-inset: initial;
+      --tw-ring-offset-width: 0px;
+      --tw-ring-offset-color: #fff;
+      --tw-ring-offset-shadow: 0 0 #0000;
+    }
+  }
+}
+
+</style>
 </head>
 <body>
 <div id="root"><div id="laden">Reisboek wordt geladen...</div></div>
@@ -436,6 +1163,8 @@ function Letters() {
       .font-mono { font-family: ${FONT_TEKST}; font-weight: 700; }
       .hide-scrollbar { scrollbar-width: none; }
       .hide-scrollbar::-webkit-scrollbar { display: none; }
+      .ft-scrollbar { scrollbar-width: none; }
+      .ft-scrollbar::-webkit-scrollbar { display: none; }
       @media (min-width: 560px) {
         body:before { content: ""; position: fixed; inset: 0; background: radial-gradient(circle at 50% 5%, rgba(255,255,255,.62), transparent 40%); pointer-events: none; }
         #root { width: 100%; }
@@ -465,61 +1194,82 @@ function Logo({ size = 132, tekst = true }) {
       aria-label="Family Trip"
     >
       <g transform={iconOnly ? "translate(0,0)" : "translate(2,3)"}>
-        <path d="M18 8c-5.2 0-9.5 4.2-9.5 9.5 0 6.4 9.5 14.7 9.5 14.7S27.5 23.9 27.5 17.5C27.5 12.2 23.2 8 18 8Z" fill="#E98D7E"/>
+        <path d="M18 8c-5.2 0-9.5 4.2-9.5 9.5 0 6.4 9.5 14.7 9.5 14.7S27.5 23.9 27.5 17.5C27.5 12.2 23.2 8 18 8Z" fill={C.koraal}/>
         <circle cx="18" cy="17.5" r="4.6" fill="#FFF6EE"/>
         <circle cx="34.5" cy="11.5" r="5.2" fill="#F5C85A"/>
         <path d="M34.5 2.8v4.2M34.5 16v4.2M26 11.5h4.2M38.8 11.5H43M28.4 5.4l2.9 2.9M37.7 14.7l2.9 2.9M28.4 17.6l2.9-2.9M37.7 8.3l2.9-2.9" stroke="#F5C85A" strokeWidth="1.8" strokeLinecap="round"/>
-        <path d="M4.6 33.6c4-3 8.1-3.8 12.2-2.3 3.1 1.2 5.4 3.1 8.3 4 4.6 1.6 10.5 1 17.5-2v4.8c-5.5 2.9-11.1 3.5-16.4 2.1-3.6-.9-6.3-2.8-9-4-3.6-1.6-7.3-1.2-12.6 1.5Z" fill="#7DB8DE"/>
-        <path d="M4.4 39.8c4.5-2.7 8.4-3.1 12.5-1.8 3 1 5.5 2.8 8.4 3.6 5 1.5 10.6.9 17.3-1.7v4.4H4.4Z" fill="#8CC9A8"/>
-        <path d="M6.5 27.5c1.3-6 4.9-10.2 9.8-12.4" stroke="#8CC9A8" strokeWidth="2.3" strokeLinecap="round"/>
-        <path d="M14.8 15.3c1.8 2 3.7 4 5.5 6.1" stroke="#8CC9A8" strokeWidth="2.1" strokeLinecap="round"/>
+        <path d="M4.6 33.6c4-3 8.1-3.8 12.2-2.3 3.1 1.2 5.4 3.1 8.3 4 4.6 1.6 10.5 1 17.5-2v4.8c-5.5 2.9-11.1 3.5-16.4 2.1-3.6-.9-6.3-2.8-9-4-3.6-1.6-7.3-1.2-12.6 1.5Z" fill={C.lucht}/>
+        <path d="M4.4 39.8c4.5-2.7 8.4-3.1 12.5-1.8 3 1 5.5 2.8 8.4 3.6 5 1.5 10.6.9 17.3-1.7v4.4H4.4Z" fill={C.munt}/>
+        <path d="M6.5 27.5c1.3-6 4.9-10.2 9.8-12.4" stroke={C.munt} strokeWidth="2.3" strokeLinecap="round"/>
+        <path d="M14.8 15.3c1.8 2 3.7 4 5.5 6.1" stroke={C.munt} strokeWidth="2.1" strokeLinecap="round"/>
       </g>
       {!iconOnly && (
         <g transform="translate(56,0)">
-          <text x="0" y="26" fill="#22406B" style={{ fontFamily: FONT_KOP, fontWeight: 800, fontSize: 27 }}>FAMILY</text>
-          <text x="0" y="50" fill="#E98D7E" style={{ fontFamily: FONT_KOP, fontWeight: 800, fontSize: 27 }}>TRIP</text>
+          <text x="0" y="26" fill={C.ink} style={{ fontFamily: FONT_KOP, fontWeight: 800, fontSize: 27 }}>FAMILY</text>
+          <text x="0" y="50" fill={C.koraal} style={{ fontFamily: FONT_KOP, fontWeight: 800, fontSize: 27 }}>TRIP</text>
         </g>
       )}
     </svg>
   );
 }
 
+function LoginIllustratie() {
+  return (
+    <svg viewBox="0 0 420 210" width="100%" height="100%" role="img" aria-label="Familie op vakantie aan zee">
+      <rect width="420" height="210" fill="#FFF6E8" />
+      <circle cx="342" cy="46" r="25" fill="#F5C85A" />
+      <path d="M0 142 C82 112 133 138 210 124 C287 109 330 125 420 92 V210 H0Z" fill="#B9DDF0" />
+      <path d="M0 164 C93 143 166 165 242 149 C322 132 356 151 420 132 V210 H0Z" fill="#7DB8DE" opacity=".86" />
+      <path d="M0 182 C87 164 179 184 262 166 C324 153 370 169 420 156 V210 H0Z" fill="#F1D7AA" />
+      <path d="M42 169 Q55 75 93 45" fill="none" stroke="#8CC9A8" strokeWidth="8" strokeLinecap="round" />
+      <path d="M89 47 q-42 5-58 29 q40 1 58-13 q-5 29 16 49 q12-36-2-59 q34 8 48-5 q-33-15-62-1Z" fill="#79B58F" />
+      <g transform="translate(152 58)">
+        <circle cx="31" cy="29" r="19" fill="#D89567" />
+        <path d="M9 29 Q10 1 31 1 Q53 3 54 30 Q40 18 9 29Z" fill="#6A4435" />
+        <rect x="7" y="48" width="49" height="82" rx="20" fill="#E98D7E" />
+        <path d="M14 63 Q-3 93 7 124" fill="none" stroke="#D89567" strokeWidth="10" strokeLinecap="round" />
+      </g>
+      <g transform="translate(213 42)">
+        <circle cx="36" cy="35" r="21" fill="#B9784D" />
+        <path d="M13 31 Q20 2 52 16 Q58 29 55 38 Q33 23 13 31Z" fill="#4B352C" />
+        <rect x="8" y="56" width="57" height="94" rx="22" fill="#2E6C8E" />
+        <rect x="19" y="31" width="15" height="8" rx="4" fill="#223A4E" /><rect x="39" y="31" width="15" height="8" rx="4" fill="#223A4E" /><path d="M34 35h5" stroke="#223A4E" strokeWidth="3" />
+      </g>
+      <g transform="translate(279 83)">
+        <circle cx="27" cy="24" r="16" fill="#D89567" />
+        <path d="M10 24 Q11 2 30 4 Q44 7 44 27 Q28 14 10 24Z" fill="#7B4A36" />
+        <rect x="7" y="40" width="43" height="67" rx="18" fill="#E0B978" />
+      </g>
+      <rect x="104" y="147" width="32" height="45" rx="7" fill="#E0B978" /><path d="M110 147v-8h20v8" fill="none" stroke="#22406B" strokeWidth="4" />
+      <path d="M334 141h58v42h-58z" fill="#FFF9F0" /><path d="M328 141l36-31 36 31" fill="#E98D7E" /><rect x="354" y="157" width="15" height="26" fill="#8FBCDF" />
+    </svg>
+  );
+}
+
+function DecorThumb({ variant = 0 }) {
+  const id = React.useId();
+  const skies = [C.lucht, "#9FD0E7", "#F4B69E"];
+  return (
+    <svg viewBox="0 0 160 100" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs><linearGradient id={`g-${id}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={skies[variant % 3]} /><stop offset="1" stopColor="#FFF4E8" /></linearGradient></defs>
+      <rect width="160" height="100" fill={`url(#g-${id})`} />
+      {variant % 3 === 0 && <><path d="M0 59 Q30 36 61 61 T121 54 T160 58 V100 H0Z" fill="#6FAF89" /><path d="M0 70 Q40 58 83 72 T160 65 V100 H0Z" fill="#68B7D4" /><path d="M0 83 Q45 72 85 84 T160 78 V100 H0Z" fill="#F4D9A9" /></>}
+      {variant % 3 === 1 && <><path d="M0 64 Q31 44 61 65 T118 61 T160 58 V100 H0Z" fill="#77A877" /><rect x="63" y="40" width="33" height="30" fill="#FFF4E8" /><path d="M59 40h41l-21-18z" fill="#E98D7E" /><path d="M0 73 Q40 62 87 72 T160 68 V100 H0Z" fill="#6FB5D2" /></>}
+      {variant % 3 === 2 && <><circle cx="126" cy="27" r="14" fill="#F5C85A" /><path d="M0 63 Q35 43 72 64 T131 58 T160 55 V100 H0Z" fill="#D88968" /><path d="M0 71 Q45 61 90 75 T160 66 V100 H0Z" fill="#5B9EBD" /><path d="M0 82 Q42 71 91 84 T160 77 V100 H0Z" fill="#EFC89D" /></>}
+    </svg>
+  );
+}
+
 function SchermKop({ onBack, onMenu, onRefresh, compact = false }) {
   return (
-    <header
-      className="sticky top-0 z-40"
-      style={{
-        background: C.head,
-        borderBottom: "2px solid rgba(255,255,255,0.78)",
-        boxShadow: "0 4px 16px rgba(34,64,107,0.08)",
-      }}
-    >
-      <div
-        className="max-w-lg mx-auto px-5 flex items-center justify-between"
-        style={{ height: compact ? 72 : 86 }}
-      >
-        <button
-          type="button"
-          onClick={onBack || onMenu}
-          aria-label={onBack ? "Terug" : "Menu"}
-          className="rounded-full flex items-center justify-center focus:outline-none focus:ring-2"
-          style={{ width: 42, height: 42, color: C.marigold }}
-        >
-          {onBack ? (
-            <span style={{ fontSize: 28, lineHeight: 1 }}>&larr;</span>
-          ) : (
-            <Icoon naam="menu" kleur={C.marigold} maat={25} dikte={2.2} />
-          )}
+    <header className="sticky top-0 z-40" style={{ background: C.head, borderBottom: `1px solid ${C.line}` }}>
+      <div className="max-w-lg mx-auto px-4 flex items-center justify-between" style={{ height: compact ? 70 : 78, maxWidth: 430 }}>
+        <button type="button" onClick={onBack || onMenu} aria-label={onBack ? "Terug" : "Menu"} className="flex items-center justify-center" style={{ width: 40, height: 40, color: C.marigold, background: "transparent", border: 0 }}>
+          {onBack ? <span style={{ fontSize: 27, lineHeight: 1 }}>←</span> : <Icoon naam="menu" kleur={C.marigold} maat={24} dikte={2.1} />}
         </button>
-        <Logo size={150} />
-        <button
-          type="button"
-          onClick={onRefresh}
-          aria-label={onRefresh ? "Vernieuwen" : ""}
-          className="rounded-full flex items-center justify-center focus:outline-none focus:ring-2"
-          style={{ width: 42, height: 42, visibility: onRefresh ? "visible" : "hidden" }}
-        >
-          <Icoon naam="vernieuw" kleur={C.marigold} maat={25} dikte={2.2} />
+        <Logo size={132} />
+        <button type="button" onClick={onRefresh} aria-label={onRefresh ? "Vernieuwen" : ""} className="flex items-center justify-center" style={{ width: 40, height: 40, visibility: onRefresh ? "visible" : "hidden", background: "transparent", border: 0 }}>
+          <Icoon naam="vernieuw" kleur={C.marigold} maat={24} dikte={2.1} />
         </button>
       </div>
     </header>
@@ -1203,8 +1953,7 @@ const Field = ({ label, ...rest }) => (
     {label && <Eyebrow>{label}</Eyebrow>}
     <input
       {...rest}
-      className="w-full mt-1 px-4 py-3 rounded-2xl text-base focus:outline-none focus:ring-2"
-      style={{ background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}
+      className="w-full mt-1 px-4 rounded-2xl text-base focus:outline-none focus:ring-2" style={{ height: 46, background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}
     />
   </label>
 );
@@ -1908,42 +2657,30 @@ function resizeImage(file, max = 1200, quality = 0.72) {
 
 /* ---------- day strip (the spine of the app) ---------- */
 const DayStrip = ({ days, selected, onSelect, counts = {} }) => {
-  const today = localToday();
   const ref = useRef(null);
   useEffect(() => {
     const el = ref.current?.querySelector('[data-active="true"]');
-    if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest", inline: "center" });
+    if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest", inline: "center", behavior: "smooth" });
   }, [selected]);
   if (!days.length) return null;
+  const huidig = Math.max(0, days.indexOf(selected));
+  const volgende = () => onSelect(days[Math.min(days.length - 1, huidig + 1)]);
   return (
-    <div ref={ref} className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
-      {days.map((iso, i) => {
-        const active = iso === selected;
-        const kleur = dagKleur(i);
-        return (
-          <button
-            key={iso}
-            data-active={active}
-            onClick={() => onSelect(iso)}
-            className="shrink-0 rounded-2xl text-center focus:outline-none focus:ring-2"
-            style={{
-              width: 54,
-              height: 44,
-              background: active ? kleur.rand : "rgba(255,255,255,0.70)",
-              color: active ? "#FFFFFF" : C.ink,
-              border: `2px solid ${active ? kleur.rand : iso === today ? C.koraal : kleur.rand}`,
-              boxShadow: active ? `0 5px 14px ${kleur.schaduw}` : "none",
-            }}
-          >
-            <span className="block" style={{ fontFamily: FONT_TEKST, fontWeight: 700, fontSize: 13, lineHeight: 1.2 }}>
-              {String(i + 1).padStart(2, "0")}
-            </span>
-            <span className="block lowercase" style={{ fontFamily: FONT_TEKST, fontWeight: 600, fontSize: 11, lineHeight: 1.1, opacity: active ? 1 : 0.75 }}>
-              {fmtShort(iso).split(' ')[0]}
-            </span>
-          </button>
-        );
-      })}
+    <div className="flex items-center gap-2" style={{ width: "100%" }}>
+      <div ref={ref} className="ft-scrollbar flex gap-2 overflow-x-auto flex-1" style={{ padding: "1px 0" }}>
+        {days.map((iso, i) => {
+          const active = iso === selected;
+          const kleur = dagKleur(i);
+          const d = asDate(iso);
+          return (
+            <button key={iso} data-active={active} type="button" onClick={() => onSelect(iso)} className="shrink-0 rounded-2xl text-center" style={{ width: 54, height: 48, background: active ? kleur.rand : kleur.tint, color: active ? "#FFFFFF" : C.ink, border: `2px solid ${active ? kleur.rand : kleur.rand + "70"}`, boxShadow: active ? `0 5px 12px ${kleur.schaduw}` : "none" }}>
+              <span className="block" style={{ fontWeight: 800, fontSize: 14, lineHeight: 1.1 }}>{String(d.getDate()).padStart(2, "0")}</span>
+              <span className="block lowercase" style={{ fontWeight: 700, fontSize: 10, lineHeight: 1.1 }}>{d.toLocaleDateString("nl-NL", { weekday: "short" }).replace(".", "")}</span>
+            </button>
+          );
+        })}
+      </div>
+      <button type="button" onClick={volgende} aria-label="Volgende dag" style={{ flex: "0 0 34px", height: 48, background: "transparent", border: 0, color: C.ink, fontSize: 34, lineHeight: 1 }}>›</button>
     </div>
   );
 };
@@ -1952,89 +2689,42 @@ const DayStrip = ({ days, selected, onSelect, counts = {} }) => {
 function LoginView({ onLogin }) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
   const [blijf, setBlijf] = useState(true);
   const [error, setError] = useState("");
   const [bezig, setBezig] = useState(false);
   const metGoogle = typeof window !== "undefined" && window.AppAuth && window.AppAuth.beschikbaar;
-
   const googleAanmelden = async () => {
-    setError("");
-    setBezig(true);
-    try {
-      const p = await window.AppAuth.inloggenMetGoogle();
-      onLogin({ email: p.email, name: p.name }, blijf, p.foto);
-    } catch (e) {
-      setError((e && e.message) || "Inloggen met Google lukte niet.");
-    }
+    setError(""); setBezig(true);
+    try { const p = await window.AppAuth.inloggenMetGoogle(); onLogin({ email: p.email, name: p.name }, blijf, p.foto); }
+    catch (e) { setError((e && e.message) || "Inloggen met Google lukte niet."); }
     setBezig(false);
   };
-
   const submit = () => {
     const mail = email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) {
-      setError("Vul een geldig e-mailadres in.");
-      return;
-    }
-    if (!name.trim()) {
-      setError("Vul je naam in.");
-      return;
-    }
+    if (!name.trim()) return setError("Vul je naam in.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return setError("Vul een geldig e-mailadres in.");
     onLogin({ email: mail, name: name.trim() }, blijf);
   };
-
   return (
     <div className="min-h-screen" style={{ background: C.bg }}>
       <Letters />
-      <div className="max-w-lg mx-auto min-h-screen" style={{ background: C.bone }}>
-        <div className="px-5 pt-6 pb-4 flex justify-center" style={{ background: C.head }}>
-          <Logo size={180} />
-        </div>
-        <div
-          className="relative overflow-hidden"
-          style={{
-            height: 190,
-            background: `linear-gradient(180deg, ${C.head} 0%, #FFF7E9 48%, ${C.lucht} 49%, ${C.lucht} 68%, #F1D2A5 69%, #F8E2BD 100%)`,
-          }}
-          aria-hidden="true"
-        >
-          <div style={{ position: "absolute", width: 74, height: 74, borderRadius: "50%", background: "#F6C85E", right: 32, top: 22, boxShadow: "0 0 0 12px rgba(246,200,94,.18)" }} />
-          <div style={{ position: "absolute", left: 28, bottom: 20, width: 80, height: 110, borderLeft: `7px solid ${C.munt}`, transform: "rotate(8deg)", borderRadius: 30 }} />
-          <div style={{ position: "absolute", left: 8, bottom: 94, width: 70, height: 32, borderRadius: "80% 10%", background: C.munt, transform: "rotate(-18deg)" }} />
-          <div style={{ position: "absolute", left: 56, bottom: 80, width: 68, height: 30, borderRadius: "10% 80%", background: C.munt, transform: "rotate(22deg)" }} />
-          <div style={{ position: "absolute", left: "50%", bottom: 10, transform: "translateX(-50%)", display: "flex", gap: 10, alignItems: "end" }}>
-            {[78, 100, 72].map((h, i) => (
-              <div key={i} style={{ width: 48, height: h, borderRadius: "24px 24px 14px 14px", background: i === 1 ? C.ink : i === 0 ? C.koraal : C.geel, opacity: .92 }} />
-            ))}
-          </div>
-        </div>
-
-        <main className="px-5 pb-8" style={{ marginTop: -8 }}>
-          <div className="rounded-[24px] p-5" style={{ background: C.bone, border: `2px solid ${C.line}`, boxShadow: SCHADUW.kaart }}>
-            {metGoogle && (
-              <button
-                type="button"
-                onClick={googleAanmelden}
-                disabled={bezig}
-                className="w-full py-3 rounded-2xl flex items-center justify-center gap-3 focus:outline-none focus:ring-2"
-                style={{ background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}`, fontWeight: 800 }}
-              >
-                <span style={{ fontSize: 20, fontWeight: 900, color: "#4285F4" }}>G</span>
-                {bezig ? "Bezig…" : "Inloggen met Google"}
-              </button>
-            )}
-            {metGoogle && <div className="text-center text-sm my-3" style={{ color: C.muted }}>of</div>}
-            <div className="space-y-3">
-              <Field label="Je naam" placeholder="Naam" value={name} onChange={(e) => { setName(e.target.value); setError(""); }} />
-              <Field label="Je e-mail" type="email" inputMode="email" placeholder="naam@email.com" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }} onKeyDown={(e) => e.key === "Enter" && submit()} />
-              {error && <p className="text-sm" style={{ color: C.marigold }}>{error}</p>}
-              <label className="flex items-center gap-3 py-1">
-                <input type="checkbox" checked={blijf} onChange={(e) => setBlijf(e.target.checked)} className="w-5 h-5" style={{ accentColor: C.koraal }} />
-                <span className="text-sm" style={{ color: C.ink }}>Ingelogd blijven op dit apparaat</span>
-              </label>
-              <button type="button" onClick={submit} className="w-full py-3 rounded-2xl focus:outline-none focus:ring-2" style={{ background: C.ink, color: "#FFFFFF", fontWeight: 800, letterSpacing: "1.2px", boxShadow: "0 6px 16px rgba(34,64,107,.22)" }}>
-                DOORGAAN
-              </button>
-            </div>
+      <div className="mx-auto min-h-screen" style={{ maxWidth: 430, background: C.bone }}>
+        <div className="flex justify-center" style={{ padding: "24px 16px 8px", background: C.bone }}><Logo size={132} /></div>
+        <div style={{ height: 176, overflow: "hidden" }}><LoginIllustratie /></div>
+        <main style={{ padding: "12px 18px 28px" }}>
+          <button type="button" onClick={metGoogle ? googleAanmelden : undefined} disabled={!metGoogle || bezig} className="w-full flex items-center justify-center gap-3 rounded-2xl" style={{ height: 46, background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}`, fontWeight: 800, opacity: metGoogle ? 1 : .58 }}>
+            <span style={{ fontSize: 20, fontWeight: 900, color: "#4285F4" }}>G</span>{bezig ? "Bezig…" : "Inloggen met Google"}
+          </button>
+          {!metGoogle && <p className="text-xs text-center mt-1" style={{ color: C.muted }}>Google-login wordt actief zodra Firebase verbonden is.</p>}
+          <div className="flex items-center gap-3 my-3"><span style={{ height: 1, flex: 1, background: C.line }} /><span className="text-sm" style={{ color: C.muted }}>of</span><span style={{ height: 1, flex: 1, background: C.line }} /></div>
+          <div className="space-y-3">
+            <Field label="Je naam" placeholder="Naam" value={name} onChange={(e) => { setName(e.target.value); setError(""); }} />
+            <Field label="Je e-mail" type="email" inputMode="email" placeholder="naam@email.com" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }} />
+            <Field label="Wachtwoord" type="password" placeholder="Wachtwoord" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} />
+            {error && <p className="text-sm" style={{ color: C.marigold }}>{error}</p>}
+            <label className="flex items-center gap-3 py-1"><input type="checkbox" checked={blijf} onChange={(e) => setBlijf(e.target.checked)} style={{ width: 20, height: 20, accentColor: C.koraal }} /><span className="text-sm" style={{ color: C.ink }}>Ingelogd blijven op dit apparaat</span></label>
+            <button type="button" onClick={submit} className="w-full rounded-2xl" style={{ height: 48, background: C.ink, color: "#FFFFFF", border: 0, fontWeight: 900, letterSpacing: "1.4px", boxShadow: "0 6px 15px rgba(34,64,107,.20)" }}>DOORGAAN</button>
           </div>
         </main>
       </div>
@@ -2046,8 +2736,9 @@ function LoginView({ onLogin }) {
 function ThemePicker({ themeId, setThemeId }) {
   const huidig = THEMA_TYPES[themeId] || THEMA_TYPES.warm;
   return (
-    <Card className="mt-4">
-      <div className="flex items-start justify-between gap-3">
+    <details className="mt-4 rounded-[24px]" style={{ background: C.bone, border: `2px solid ${C.line}`, boxShadow: SCHADUW.kaart, padding: 14 }}>
+      <summary style={{ color: C.ink, fontFamily: FONT_KOP, fontWeight: 800, fontSize: 18, cursor: "pointer" }}>Kies je appstijl</summary>
+      <div className="flex items-start justify-between gap-3 mt-3">
         <div>
           <Eyebrow color={C.marigold}>Weergave</Eyebrow>
           <h3 className="font-serif text-xl mt-1" style={{ color: C.ink }}>
@@ -2125,7 +2816,7 @@ function ThemePicker({ themeId, setThemeId }) {
       <div className="mt-3 text-sm" style={{ color: C.muted }}>
         Gekozen: <strong style={{ color: C.ink }}>{huidig.label}</strong>
       </div>
-    </Card>
+    </details>
   );
 }
 
@@ -2136,76 +2827,32 @@ function ProfileView({ me, photo, onSave, onSkip, onWandelingen, themeId, setThe
   const [about, setAbout] = useState(me.about || "");
   const [foto, setFoto] = useState(photo || "");
   const [busy, setBusy] = useState("");
-
   const kies = async (e) => {
-    const file = (e.target.files || [])[0];
-    if (!file) return;
+    const file = (e.target.files || [])[0]; if (!file) return;
     setBusy("Foto wordt klaargezet…");
-    try {
-      setFoto(await resizeImage(file, 480, 0.75));
-      setBusy("");
-    } catch (err) {
-      setBusy(err.message || "Deze foto lukte niet.");
-    }
+    try { setFoto(await resizeImage(file, 480, 0.75)); setBusy(""); } catch (err) { setBusy(err.message || "Deze foto lukte niet."); }
   };
-
   return (
     <div className="min-h-screen" style={{ background: C.bg }}>
-      <SchermKop onBack={onSkip} compact />
-      <main className="p-4 max-w-lg mx-auto" style={{ paddingBottom: 40 }}>
-        <Card>
-          <div>
-            <h2 className="font-serif text-2xl" style={{ color: C.ink }}>Jouw profiel</h2>
-            <p className="text-sm mt-0.5" style={{ color: C.muted }}>Vertel ons wie je bent!</p>
+      <SchermKop onBack={onSkip || (() => {})} compact />
+      <main className="mx-auto" style={{ maxWidth: 430, padding: "16px 18px 40px", background: C.bone, minHeight: "calc(100vh - 70px)" }}>
+        <h2 className="font-serif" style={{ color: C.ink, fontSize: 26, lineHeight: 1.15 }}>Jouw profiel</h2>
+        <p className="text-sm mt-1" style={{ color: C.muted }}>Vertel ons wie je bent!</p>
+        <div className="flex items-center gap-5" style={{ margin: "18px 0 20px" }}>
+          <div className="rounded-full overflow-hidden flex items-center justify-center shrink-0" style={{ width: 94, height: 94, background: C.perzik, border: `2px solid ${C.geel}`, boxShadow: `0 5px 14px ${C.geel}33` }}>
+            {foto ? <img src={foto} alt="Jouw foto" className="w-full h-full object-cover" /> : <span style={{ fontSize: 28, fontWeight: 900, color: C.ink }}>{initials(name, me.email)}</span>}
           </div>
-
-          <div className="flex items-center gap-4 mt-4">
-            <div
-              className="rounded-full overflow-hidden flex items-center justify-center shrink-0"
-              style={{ width: 92, height: 92, background: C.perzik, border: `2px solid ${C.geel}` }}
-            >
-              {foto ? <img src={foto} alt="Jouw foto" className="w-full h-full object-cover" /> : <span className="text-2xl font-bold" style={{ color: C.ink }}>{initials(name, me.email)}</span>}
-            </div>
-            <label className="flex-1 cursor-pointer">
-              <Eyebrow color={C.marigold}>Profielfoto</Eyebrow>
-              <div className="text-sm mt-1" style={{ color: C.muted }}>{foto ? "Andere foto kiezen" : "Voeg een foto toe"}</div>
-              <span className="inline-flex items-center gap-2 rounded-full px-3 py-2 mt-2 text-sm font-bold" style={{ background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}>
-                📷 Kies foto
-              </span>
-              <input type="file" accept="image/*" onChange={kies} className="hidden" />
-            </label>
-          </div>
-          {busy && <p className="text-xs mt-2" style={{ color: C.muted }}>{busy}</p>}
-
-          <div className="space-y-3 mt-5">
-            <Field label="Naam" value={name} onChange={(e) => setName(e.target.value)} />
-            <Field label="Telefoon" type="tel" placeholder="06 12345678" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            <Field label="Iets over jou" placeholder="Chauffeur en kok" value={about} onChange={(e) => setAbout(e.target.value)} />
-            <button
-              type="button"
-              onClick={() => onSave({ ...me, name: name.trim() || me.name, phone: phone.trim(), about: about.trim() }, foto)}
-              className="w-full py-3 rounded-2xl focus:outline-none focus:ring-2"
-              style={{ background: C.koraal, color: "#FFFFFF", fontWeight: 800, letterSpacing: "1px", boxShadow: SCHADUW.knop }}
-            >
-              PROFIEL OPSLAAN
-            </button>
-          </div>
-        </Card>
-
+          <label className="flex-1 cursor-pointer"><Eyebrow color={C.marigold}>Profielfoto</Eyebrow><div className="text-sm mt-1" style={{ color: C.muted }}>{foto ? "Andere foto kiezen" : "Voeg een foto toe"}</div><span className="inline-flex items-center gap-2 rounded-full px-3 mt-2" style={{ height: 36, background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}`, fontSize: 13, fontWeight: 800 }}>📷 Kies foto</span><input type="file" accept="image/*" onChange={kies} className="hidden" /></label>
+        </div>
+        {busy && <p className="text-xs mb-2" style={{ color: C.muted }}>{busy}</p>}
+        <div className="space-y-3">
+          <Field label="Naam" value={name} onChange={(e) => setName(e.target.value)} />
+          <Field label="Telefoon" type="tel" placeholder="06 12345678" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <Field label="Iets over jou" placeholder="Chauffeur en kok" value={about} onChange={(e) => setAbout(e.target.value)} />
+          <button type="button" onClick={() => onSave({ ...me, name: name.trim() || me.name, phone: phone.trim(), about: about.trim() }, foto)} className="w-full rounded-2xl" style={{ height: 48, background: C.koraal, color: "#FFFFFF", border: 0, fontWeight: 900, letterSpacing: "1px", boxShadow: SCHADUW.knop }}>PROFIEL OPSLAAN</button>
+        </div>
+        {onWandelingen && <button type="button" onClick={onWandelingen} className="w-full flex items-center gap-3 text-left rounded-2xl" style={{ marginTop: 14, padding: 14, background: "#FFFFFF", border: `2px solid ${C.line}`, boxShadow: SCHADUW.kaart }}><Tegel naam="wandeling" kleur={C.lucht} maat={40} /><span className="flex-1"><strong style={{ color: C.ink }}>Mijn wandelingen</strong><span className="block text-xs mt-0.5" style={{ color: C.muted }}>Route, afstand en tijd opnemen.</span></span><span style={{ color: C.ink, fontSize: 25 }}>›</span></button>}
         <ThemePicker themeId={themeId} setThemeId={setThemeId} />
-
-        {onWandelingen && (
-          <Card className="mt-4">
-            <button type="button" onClick={onWandelingen} className="flex items-center gap-3 w-full text-left focus:outline-none focus:ring-2 rounded-2xl">
-              <Tegel naam="wandeling" kleur={C.lucht} maat={44} />
-              <span className="flex-1">
-                <span className="block font-bold" style={{ color: C.ink }}>Mijn wandelingen</span>
-                <span className="block text-xs" style={{ color: C.muted }}>Route, afstand en tijd opnemen.</span>
-              </span>
-              <span style={{ color: C.ink, fontSize: 24 }}>›</span>
-            </button>
-          </Card>
-        )}
       </main>
     </div>
   );
@@ -2213,360 +2860,72 @@ function ProfileView({ me, photo, onSave, onSkip, onWandelingen, themeId, setThe
 
 /* ---------- trip setup ---------- */
 function SetupView({ me, initial, onSave, onCancel, apiKey, setApiKey, onImportTimeline }) {
-  const [trip, setTrip] = useState(
-    initial || {
-      name: "",
-      destination: "",
-      base: "",
-      start: localToday(),
-      end: localToday(),
-      summary: "",
-    }
-  );
+  const [trip, setTrip] = useState(initial || { name: "", destination: "", base: "", start: localToday(), end: localToday(), summary: "" });
   const [error, setError] = useState("");
-  const [preview, setPreview] = useState((initial && (initial.base || initial.destination)) || "");
-  useEffect(() => {
-    const t = setTimeout(() => setPreview(trip.base || trip.destination), 800);
-    return () => clearTimeout(t);
-  }, [trip.base, trip.destination]);
-  const set = (k) => (e) => setTrip({ ...trip, [k]: e.target.value });
-
-  const setStops = (lijst) => setTrip({ ...trip, stops: lijst });
-  const voegStopToe = () =>
-    setStops([...(trip.stops || []), { id: uid(), place: "", date: "", time: "", note: "" }]);
-  const wijzigStop = (id, veld, waarde) =>
-    setStops((trip.stops || []).map((s) => (s.id === id ? { ...s, [veld]: waarde } : s)));
-  const STOP_REDENEN = ["Overnachting", "Tanken", "Lunch", "Pauze", "Bezienswaardigheid", "Boodschappen"];
-
   const [rekenBezig, setRekenBezig] = useState(false);
   const [rekenUitslag, setRekenUitslag] = useState("");
-
-  const klokUit = (d) =>
-    `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-
+  const set = (k) => (e) => setTrip({ ...trip, [k]: e.target.value });
+  const setStops = (lijst) => setTrip({ ...trip, stops: lijst });
+  const voegStopToe = () => setStops([...(trip.stops || []), { id: uid(), place: "", date: "", time: "", note: "" }]);
+  const wijzigStop = (id, veld, waarde) => setStops((trip.stops || []).map((s) => s.id === id ? { ...s, [veld]: waarde } : s));
+  const klokUit = (d) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   const berekenAankomst = async () => {
-    const van = trip.travelFrom;
-    const naar = trip.base || trip.destination;
-    if (!apiKey) {
-      setRekenUitslag("Hiervoor is een Google Maps-key nodig.");
-      return;
-    }
-    if (!van || !naar) {
-      setRekenUitslag("Vul eerst het vertrekpunt en de bestemming in.");
-      return;
-    }
-    setRekenBezig(true);
-    setRekenUitslag("");
-
-    const vertrek = new Date(`${trip.start || new Date().toISOString().slice(0, 10)}T${trip.travelDepart || "08:00"}:00`);
-    const nu = new Date();
-    const vertrekISO = (vertrek > nu ? vertrek : new Date(nu.getTime() + 120000)).toISOString();
-
-    const r = await berekenReis(
-      apiKey,
-      van,
-      naar,
-      (trip.stops || []).map((x) => x.place),
-      vertrekISO,
-      trip.travelMode
-    );
-    setRekenBezig(false);
-    if (r.fout) {
-      setRekenUitslag(r.fout);
-      return;
-    }
-
-    /* De aankomsttijd, gerekend vanaf de ingevulde vertrektijd. */
+    if (!apiKey) return setRekenUitslag("Vul onder Geavanceerde instellingen eerst een Google Maps-key in.");
+    const van = trip.travelFrom, naar = trip.base || trip.destination;
+    if (!van || !naar) return setRekenUitslag("Vul eerst het vertrekpunt en de bestemming in.");
+    setRekenBezig(true); setRekenUitslag("");
+    const vertrek = new Date(`${trip.start || localToday()}T${trip.travelDepart || "08:00"}:00`);
+    const nu = new Date(); const vertrekISO = (vertrek > nu ? vertrek : new Date(nu.getTime() + 120000)).toISOString();
+    const r = await berekenReis(apiKey, van, naar, (trip.stops || []).map((x) => x.place), vertrekISO, trip.travelMode);
+    setRekenBezig(false); if (r.fout) return setRekenUitslag(r.fout);
     const basis = new Date(`${trip.start || "2000-01-01"}T${trip.travelDepart || "08:00"}:00`);
     const aankomst = new Date(basis.getTime() + r.seconden * 1000);
-
-    /* En meteen een schatting per tussenstop. */
-    const stops = [...(trip.stops || [])];
-    let loper = basis.getTime();
-    r.delen.slice(0, stops.length).forEach((deel, i) => {
-      loper += deel.seconden * 1000;
-      stops[i] = { ...stops[i], time: stops[i].time || klokUit(new Date(loper)) };
-    });
-
-    setTrip({
-      ...trip,
-      travelArrive: klokUit(aankomst),
-      stops,
-      travelDistanceM: r.meters,
-      travelDurationS: r.seconden,
-    });
-    const middernacht = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-    const dagenLater = Math.round((middernacht(aankomst) - middernacht(basis)) / 86400000);
-    setRekenUitslag(
-      `${afstandTekst(r.meters)} en ${duurTekst(r.seconden)} rijden${
-        dagenLater > 0 ? ` - je komt ${dagenLater} dag${dagenLater > 1 ? "en" : ""} later aan` : ""
-      }. Reken op pauzes bovenop deze tijd.`
-    );
+    setTrip({ ...trip, travelArrive: klokUit(aankomst), travelDistanceM: r.meters, travelDurationS: r.seconden });
+    setRekenUitslag(`${afstandTekst(r.meters)} · ${duurTekst(r.seconden)} rijden`);
   };
-
-  const verplaatsStop = (i, richting) => {
-    const lijst = [...(trip.stops || [])];
-    const j = i + richting;
-    if (j < 0 || j >= lijst.length) return;
-    [lijst[i], lijst[j]] = [lijst[j], lijst[i]];
-    setStops(lijst);
-  };
-
   const submit = () => {
-    if (!trip.name.trim() || !trip.destination.trim()) {
-      setError("Geef de reis een naam en een bestemming.");
-      return;
-    }
-    if (daysBetween(trip.start, trip.end) < 0) {
-      setError("De einddatum ligt voor de startdatum.");
-      return;
-    }
+    if (!trip.name.trim() || !trip.destination.trim()) return setError("Geef de reis een naam en een bestemming.");
+    if (daysBetween(trip.start, trip.end) < 0) return setError("De einddatum ligt voor de startdatum.");
     onSave({ ...trip, name: trip.name.trim(), destination: trip.destination.trim() });
   };
-
   return (
-    <div className="p-5 max-w-lg mx-auto">
-      <Eyebrow color={C.marigold}>{initial ? "Reis aanpassen" : "Nieuwe reis"}</Eyebrow>
-      <h2 className="font-serif text-3xl mt-1 mb-4" style={{ color: C.ink }}>
-        {initial ? "Gegevens bijwerken" : `Welkom, ${me.name.split(" ")[0]}`}
-      </h2>
-      <div className="mb-3">
-        <KeyCard apiKey={apiKey} setApiKey={setApiKey} />
-      </div>
-      <Card>
-        <div className="space-y-3">
-          <Field label="Naam van de reis" placeholder="Zomer in Puglia" value={trip.name} onChange={set("name")} />
-          <AddressField
-            label="Bestemming"
-            placeholder="Puglia, Italie"
-            value={trip.destination}
-            onChange={set("destination")}
-          />
-          <AddressField
-            label="Adres van je verblijf"
-            placeholder="Via Roma 12, Ostuni"
-            value={trip.base || ""}
-            onChange={set("base")}
-          />
-          {preview && (
-            <div>
-              <Eyebrow>Klopt dit?</Eyebrow>
-              <div className="mt-1">
-                <MapFrame query={preview} height={180} />
-              </div>
-              <a href={mapsLink(preview)} target="_blank" rel="noopener noreferrer">
-                <Btn tone="ghost" className="mt-2">
-                  Groter bekijken
-                </Btn>
-              </a>
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Van" type="date" value={trip.start} onChange={set("start")} />
-            <Field label="Tot en met" type="date" value={trip.end} onChange={set("end")} />
+    <div className="min-h-screen" style={{ background: C.bg }}>
+      <SchermKop onBack={onCancel || (() => {})} compact />
+      <main className="mx-auto" style={{ maxWidth: 430, padding: "14px 16px 34px", minHeight: "calc(100vh - 70px)", background: C.bone }}>
+        <h2 className="font-serif" style={{ color: C.ink, fontSize: 25, lineHeight: 1.15 }}>Reis plannen</h2>
+        <p className="text-sm mt-1" style={{ color: C.muted }}>Waar gaan we naartoe?</p>
+        <section className="space-y-3 mt-4">
+          <Field label="Reisnaam" placeholder="Vakantie Corsica" value={trip.name} onChange={set("name")} />
+          <AddressField label="Bestemming" placeholder="Ghisonaccia, Corsica" value={trip.destination} onChange={set("destination")} />
+          <AddressField label="Verblijfsadres" placeholder="Rue des Platanes 20240" value={trip.base || ""} onChange={set("base")} />
+          {(trip.base || trip.destination) && <div className="grid grid-cols-2 gap-2"><a href={mapsLink(trip.base || trip.destination)} target="_blank" rel="noopener noreferrer" className="rounded-2xl flex items-center justify-center" style={{ height: 42, background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}`, fontWeight: 800, fontSize: 13 }}>📍 Open in Google Maps</a><button type="button" onClick={() => navigator.clipboard?.writeText(mapsLink(trip.base || trip.destination))} className="rounded-2xl" style={{ height: 42, background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}`, fontWeight: 800, fontSize: 13 }}>🔗 Kopieer Maps-link</button></div>}
+        </section>
+        <section className="rounded-[24px] mt-4" style={{ padding: 14, background: "#FFFFFF", border: `2px solid ${C.line}`, boxShadow: SCHADUW.kaart }}>
+          <div className="flex items-center gap-2 mb-3"><Icoon naam="reis" kleur={C.koraal} maat={20} /><Eyebrow color={C.marigold}>Heenreis</Eyebrow></div>
+          <div className="grid grid-cols-2 gap-2">
+            <AddressField label="Vertrekpunt" placeholder="Zaandam" value={trip.travelFrom || ""} onChange={set("travelFrom")} />
+            <label className="block"><Eyebrow>Vervoermiddel</Eyebrow><select value={trip.travelMode || "auto"} onChange={set("travelMode")} className="w-full mt-1 rounded-2xl" style={{ height: 46, padding: "0 14px", background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}>{["auto","vliegtuig","trein","bus","camper","anders"].map((x) => <option key={x}>{x}</option>)}</select></label>
+            <Field label="Vertrektijd" type="time" value={trip.travelDepart || ""} onChange={set("travelDepart")} />
+            <Field label="Aankomsttijd" type="time" value={trip.travelArrive || ""} onChange={set("travelArrive")} />
+            <Field label="Tussenstops" placeholder="1 tussenstop" value={String((trip.stops || []).length || "")} readOnly />
+            <Field label="Activiteit onderweg" placeholder="Pauzes bovenop reistijd" value={trip.travelNotes || ""} onChange={set("travelNotes")} />
           </div>
-          <label className="block">
-            <Eyebrow>Korte omschrijving</Eyebrow>
-            <textarea
-              rows={3}
-              value={trip.summary}
-              onChange={set("summary")}
-              placeholder="Vlucht, huisje, wie er meegaat..."
-              className="w-full mt-1 px-4 py-3 rounded-2xl text-base focus:outline-none focus:ring-2"
-              style={{ background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}
-            />
-          </label>
-        </div>
-      </Card>
-
-      <div className="mt-3">
-        <Card>
-          <Eyebrow color={C.ember}>De heenreis</Eyebrow>
-          <div className="space-y-3 mt-2">
-            <AddressField
-              label="Vertrek vanaf"
-              placeholder="Utrecht Centraal"
-              value={trip.travelFrom || ""}
-              onChange={set("travelFrom")}
-            />
-            <label className="block">
-              <Eyebrow>Hoe gaan jullie</Eyebrow>
-              <select
-                value={trip.travelMode || "auto"}
-                onChange={set("travelMode")}
-                className="w-full mt-1 px-4 py-3 rounded-2xl text-base focus:outline-none focus:ring-2"
-                style={{ background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}
-              >
-                {["auto", "vliegtuig", "trein", "bus", "camper", "anders"].map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Vertrektijd" type="time" value={trip.travelDepart || ""} onChange={set("travelDepart")} />
-              <Field label="Aankomst" type="time" value={trip.travelArrive || ""} onChange={set("travelArrive")} />
-            </div>
-            <Btn tone="ghost" className="w-full" onClick={berekenAankomst} disabled={rekenBezig}>
-              {rekenBezig ? "Google rekent\u2026" : "Aankomst berekenen via Google Maps"}
-            </Btn>
-            {rekenUitslag && (
-              <p className="text-sm" style={{ color: C.ember }}>
-                {rekenUitslag}
-              </p>
-            )}
-            <Field
-              label="Onderweg (optioneel)"
-              placeholder="Tanken bij Metz, lunch onderweg"
-              value={trip.travelNotes || ""}
-              onChange={set("travelNotes")}
-            />
-
-            <div className="pt-2" style={{ borderTop: `1px solid ${C.line}` }}>
-              <Eyebrow>Tussenstops</Eyebrow>
-              {(trip.stops || []).length === 0 && (
-                <p className="text-sm py-2" style={{ color: C.muted }}>
-                  Nog geen tussenstops. Voeg er een toe en Google Maps rekent de route er langs.
-                </p>
-              )}
-              {(trip.stops || []).map((s, i) => (
-                <div key={s.id} className="py-2" style={{ borderBottom: `1px solid ${C.line}` }}>
-                  <div className="flex items-center justify-between">
-                    <Eyebrow color={C.ember}>Stop {i + 1}</Eyebrow>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => verplaatsStop(i, -1)}
-                        disabled={i === 0}
-                        aria-label="Naar boven"
-                        className="font-mono px-2 focus:outline-none focus:ring-2"
-                        style={{ color: C.ink, opacity: i === 0 ? 0.3 : 1 }}
-                      >
-                        ^
-                      </button>
-                      <button
-                        onClick={() => verplaatsStop(i, 1)}
-                        disabled={i === (trip.stops || []).length - 1}
-                        aria-label="Naar beneden"
-                        className="font-mono px-2 focus:outline-none focus:ring-2"
-                        style={{
-                          color: C.ink,
-                          opacity: i === (trip.stops || []).length - 1 ? 0.3 : 1,
-                        }}
-                      >
-                        v
-                      </button>
-                      <button
-                        onClick={() => setStops((trip.stops || []).filter((x) => x.id !== s.id))}
-                        aria-label={`Verwijder stop ${i + 1}`}
-                        className="font-mono px-2 focus:outline-none focus:ring-2"
-                        style={{ color: C.ember }}
-                      >
-                        x
-                      </button>
-                    </div>
-                  </div>
-                  <AddressField
-                    label=""
-                    placeholder="Plaats of adres"
-                    value={s.place || ""}
-                    onChange={(e) => wijzigStop(s.id, "place", e.target.value)}
-                  />
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    <Field
-                      label="Datum"
-                      type="date"
-                      value={s.date || ""}
-                      onChange={(e) => wijzigStop(s.id, "date", e.target.value)}
-                    />
-                    <Field
-                      label="Rond"
-                      type="time"
-                      value={s.time || ""}
-                      onChange={(e) => wijzigStop(s.id, "time", e.target.value)}
-                    />
-                  </div>
-                  <div className="mt-2">
-                    <Field
-                      label="Waarvoor"
-                      placeholder="Tanken en koffie"
-                      value={s.note || ""}
-                      onChange={(e) => wijzigStop(s.id, "note", e.target.value)}
-                    />
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {STOP_REDENEN.map((r) => (
-                        <button
-                          key={r}
-                          onClick={() => wijzigStop(s.id, "note", r)}
-                          className="rounded-full px-3 py-1 text-xs focus:outline-none focus:ring-2"
-                          style={{
-                            background: s.note === r ? C.koraal : "#FFFFFF",
-                            color: s.note === r ? "#FFFFFF" : C.ink,
-                            border: `2px solid ${s.note === r ? C.koraal : C.line}`,
-                          }}
-                        >
-                          {r}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              <Btn tone="ghost" className="mt-3" onClick={voegStopToe}>
-                Tussenstop toevoegen
-              </Btn>
-            </div>
-
-            {trip.travelFrom && (trip.base || trip.destination) && (
-              <div className="pt-2">
-                <Eyebrow>De route</Eyebrow>
-                <div className="mt-1">
-                  <RouteFrame
-                    from={trip.travelFrom}
-                    to={trip.base || trip.destination}
-                    stops={(trip.stops || []).map((s) => s.place)}
-                    mode={trip.travelMode}
-                  />
-                </div>
-                <a
-                  href={mapsRouteVia(
-                    trip.travelFrom,
-                    trip.base || trip.destination,
-                    (trip.stops || []).map((s) => s.place),
-                    trip.travelMode
-                  )}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Btn className="mt-2">Route openen in Google Maps</Btn>
-                </a>
-              </div>
-            )}
+          <button type="button" onClick={berekenAankomst} disabled={rekenBezig} className="w-full rounded-2xl mt-3" style={{ height: 44, background: C.koraal, color: "#FFFFFF", border: 0, fontWeight: 900, fontSize: 12, letterSpacing: ".5px" }}>{rekenBezig ? "GOOGLE REKENT…" : "AANKOMST BEREKENEN VIA GOOGLE MAPS"}</button>
+          {rekenUitslag && <p className="text-sm mt-2" style={{ color: C.marigold }}>{rekenUitslag}</p>}
+        </section>
+        <details className="rounded-2xl mt-4" style={{ background: "#FFFFFF", border: `2px solid ${C.line}`, padding: 12 }}>
+          <summary style={{ color: C.ink, fontWeight: 900, cursor: "pointer" }}>Geavanceerde reisinstellingen</summary>
+          <div className="space-y-3 mt-4">
+            <div className="grid grid-cols-2 gap-2"><Field label="Van" type="date" value={trip.start} onChange={set("start")} /><Field label="Tot en met" type="date" value={trip.end} onChange={set("end")} /></div>
+            <label className="block"><Eyebrow>Korte omschrijving</Eyebrow><textarea rows={2} value={trip.summary || ""} onChange={set("summary")} className="w-full mt-1 rounded-2xl" style={{ padding: 12, background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }} /></label>
+            <div><Eyebrow>Tussenstops</Eyebrow>{(trip.stops || []).map((s,i) => <div key={s.id} className="mt-2 rounded-2xl" style={{ padding: 10, border: `1px solid ${C.line}` }}><AddressField label={`Stop ${i+1}`} placeholder="Plaats of adres" value={s.place || ""} onChange={(e) => wijzigStop(s.id,"place",e.target.value)} /><button type="button" onClick={() => setStops((trip.stops || []).filter((x) => x.id !== s.id))} className="text-xs mt-2" style={{ color: C.marigold }}>Verwijderen</button></div>)}<Btn tone="ghost" className="mt-2" onClick={voegStopToe}>Tussenstop toevoegen</Btn></div>
+            <KeyCard apiKey={apiKey} setApiKey={setApiKey} />
+            <TijdlijnImport days={dayList(trip.start, trip.end)} onImport={onImportTimeline} />
           </div>
-        </Card>
-      </div>
-
-      <div className="mt-3">
-        <TijdlijnImport days={dayList(trip.start, trip.end)} onImport={onImportTimeline} />
-      </div>
-
-      <Card className="mt-3">
-        <div className="space-y-3">
-          {error && (
-            <p className="text-sm" style={{ color: C.ember }}>
-              {error}
-            </p>
-          )}
-          <div className="flex gap-2">
-            <Btn onClick={submit}>Reis opslaan</Btn>
-            {onCancel && (
-              <Btn tone="ghost" onClick={onCancel}>
-                Annuleren
-              </Btn>
-            )}
-          </div>
-        </div>
-      </Card>
+        </details>
+        {error && <p className="text-sm mt-3" style={{ color: C.marigold }}>{error}</p>}
+        <button type="button" onClick={submit} className="w-full rounded-2xl mt-4" style={{ height: 48, background: C.ink, color: "#FFFFFF", border: 0, fontWeight: 900, letterSpacing: "1.2px", boxShadow: "0 6px 16px rgba(34,64,107,.22)" }}>REIS OPSLAAN</button>
+      </main>
     </div>
   );
 }
@@ -2844,7 +3203,7 @@ function TripView({
             style={{ width: 20, height: 20, accentColor: C.koraal }}
           />
           <span>
-            <span className="block text-sm" style={{ color: C.ink }}>
+            <span className="block text-sm" style={{ color: C.ink, fontWeight: compact ? 800 : 600 }}>
               Deel mijn locatie met de groep
             </span>
             <span className="block text-xs" style={{ color: C.muted }}>
@@ -3658,15 +4017,14 @@ function AgendaRegel({ item, items, setItems, compact, fotos, images }) {
 
   return (
     <li
-      className="flex gap-3 px-3 py-2 rounded-2xl"
+      className="flex gap-3 px-3 py-3 rounded-2xl"
       style={{
-        background: compact ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.85)",
-        border: "1.5px solid rgba(255,255,255,0.9)",
+        background: compact ? `${C.koraal}0D` : "rgba(255,255,255,0.88)",
+        border: compact ? `1px solid ${C.koraal}12` : `1.5px solid ${C.line}`,
       }}
     >
       <span
-        className="font-mono text-xs w-12 shrink-0"
-        style={{ color: item.heleDag ? C.ember : C.muted, lineHeight: 1.2 }}
+        className="font-mono text-xs shrink-0" style={{ width: compact ? 60 : 48, color: item.heleDag ? C.marigold : C.ink, lineHeight: 1.3, fontWeight: 800 }}
       >
         {item.heleDag ? "Hele dag" : item.time || "-"}
       </span>
@@ -3675,7 +4033,7 @@ function AgendaRegel({ item, items, setItems, compact, fotos, images }) {
           onClick={() => setBewerken(true)}
           className="block text-left w-full focus:outline-none focus:ring-2 rounded"
         >
-          <span className="block text-sm" style={{ color: C.ink }}>
+          <span className="block text-sm" style={{ color: C.ink, fontWeight: compact ? 800 : 600 }}>
             {heenEnWeer ? (
               <>
                 {item.van || "Onbekend"}{" "}
@@ -3713,7 +4071,7 @@ function AgendaRegel({ item, items, setItems, compact, fotos, images }) {
             Bij aankomst: {naarRegel}
           </span>
         )}
-        {item.soort === "wandeling" ? null : item.naarInfo && fotos && fotos.length > 0 ? (
+        {compact ? null : item.soort === "wandeling" ? null : item.naarInfo && fotos && fotos.length > 0 ? (
           <div className="flex gap-2 mt-1">
             {fotos.slice(0, 3).map((p) =>
               images[p.id] ? (
@@ -3733,14 +4091,14 @@ function AgendaRegel({ item, items, setItems, compact, fotos, images }) {
           <PlaatsBeeld place={item.place} hoogte={compact ? 84 : 92} />
         )}
       </span>
-      <button
+      {!compact && <button
         onClick={() => setItems(items.filter((x) => x.id !== item.id))}
         aria-label={`Verwijder ${kop}`}
         className="font-mono px-1 focus:outline-none focus:ring-2"
         style={{ color: C.ember }}
       >
         x
-      </button>
+      </button>}
     </li>
   );
 }
@@ -4197,31 +4555,12 @@ const SNELKNOPPEN = [
 
 function ZwevendeBalk({ tab, onGaNaar }) {
   return (
-    <nav
-      className="fixed z-50 rounded-t-[24px]"
-      style={{
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: C.bone,
-        borderTop: `2px solid ${C.line}`,
-        boxShadow: "0 -8px 24px rgba(34,64,107,.10)",
-        paddingTop: 10,
-        paddingBottom: "calc(10px + env(safe-area-inset-bottom, 0px))",
-      }}
-    >
-      <div className="max-w-lg mx-auto px-4 flex justify-around items-start">
+    <nav className="fixed z-50" style={{ left: 0, right: 0, bottom: 0, background: C.bone, borderTop: `1px solid ${C.line}`, padding: "9px 0 calc(8px + env(safe-area-inset-bottom, 0px))", boxShadow: "0 -6px 20px rgba(34,64,107,.08)" }}>
+      <div className="mx-auto flex justify-around" style={{ maxWidth: 430, padding: "0 12px" }}>
         {SNELKNOPPEN.map((k) => {
           const actief = tab === k.id;
-          const themakleur = k.id === "dagen" ? C.koraal : k.id === "fotos" ? C.lucht : k.id === "reis" ? C.munt : C.geel;
-          return (
-            <button key={k.id} type="button" onClick={() => onGaNaar(k.id)} className="flex flex-col items-center gap-1.5 focus:outline-none focus:ring-2 rounded-2xl" style={{ width: 80 }}>
-              <span className="inline-flex items-center justify-center rounded-full" style={{ width: 48, height: 48, background: actief ? themakleur : "#FFFFFF", border: `2px solid ${themakleur}`, boxShadow: actief ? `0 6px 14px ${themakleur}55` : "0 3px 10px rgba(34,64,107,.12)" }}>
-                <Icoon naam={k.id} kleur={actief ? "#FFFFFF" : themakleur} maat={24} />
-              </span>
-              <span style={{ color: actief ? themakleur : C.ink, fontWeight: 800, fontSize: 11, textAlign: "center" }}>{k.label}</span>
-            </button>
-          );
+          const kleur = k.id === "dagen" ? C.koraal : k.id === "fotos" ? C.lucht : k.id === "reis" ? C.munt : C.geel;
+          return <button key={k.id} type="button" onClick={() => onGaNaar(k.id)} className="flex flex-col items-center gap-1" style={{ width: 78, background: "transparent", border: 0 }}><span className="inline-flex items-center justify-center rounded-full" style={{ width: 44, height: 44, background: kleur, border: `2px solid ${kleur}`, boxShadow: actief ? `0 5px 13px ${kleur}66` : "0 3px 8px rgba(34,64,107,.12)", transform: actief ? "translateY(-2px)" : "none" }}><Icoon naam={k.id} kleur="#FFFFFF" maat={23} /></span><span style={{ color: actief ? kleur : C.ink, fontWeight: 800, fontSize: 10.5 }}>{k.label}</span></button>;
         })}
       </div>
     </nav>
@@ -4230,102 +4569,45 @@ function ZwevendeBalk({ tab, onGaNaar }) {
 
 /* ---------- hoofdscherm: dagen naast elkaar ---------- */
 function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, todos, photoIndex, images, loadImages, selected, setSelected, me, onGoTo, weer }) {
+  const [addOpen, setAddOpen] = useState(false);
   useEffect(() => { loadImages(); }, [photoIndex.length]);
   if (!days.length) return <Empty>Nog geen reisdagen ingesteld.</Empty>;
-
   const index = Math.max(0, days.indexOf(selected));
   const iso = days[index] || days[0];
-  const plannen = agenda
-    .filter((a) => a.date === iso)
-    .sort((a, b) => (a.heleDag ? "00" : a.time || "99").localeCompare(b.heleDag ? "00" : b.time || "99"));
+  const plannen = agenda.filter((a) => a.date === iso).sort((a,b) => (a.heleDag ? "00" : a.time || "99").localeCompare(b.heleDag ? "00" : b.time || "99"));
   const lijst = shopping.filter((s) => s.date === iso);
   const kiekjes = photoIndex.filter((p) => p.date === iso);
-  const kleur = dagKleur(index);
-  const today = localToday();
-
+  const stops = (trip.stops || []).filter((s) => s.place).length;
   return (
     <div>
-      <div className="mb-4">
-        <DayStrip days={days} selected={iso} onSelect={setSelected} />
-      </div>
-
-      <section
-        className="rounded-[24px] p-4"
-        style={{
-          background: C.bone,
-          border: `2px solid ${iso === today ? C.koraal : C.line}`,
-          boxShadow: SCHADUW.kaart,
-        }}
-      >
-        <div className="flex items-start justify-between gap-3 pb-3" style={{ borderBottom: `1px solid ${C.line}` }}>
-          <div className="flex items-start gap-3">
-            <span className="inline-flex items-center justify-center rounded-full shrink-0" style={{ width: 46, height: 46, background: kleur.tint, color: kleur.rand, fontSize: 24 }}>☀</span>
-            <div>
-              <h2 className="font-serif text-2xl capitalize leading-tight" style={{ color: C.ink }}>Dag {index + 1} – {iso === today ? "Vandaag" : fmtLong(iso)}</h2>
-              <p className="text-base capitalize" style={{ color: C.muted }}>{fmtLong(iso)}</p>
-            </div>
-          </div>
-          {weer && weer[iso] && (
-            <span className="rounded-xl px-2.5 py-2 shrink-0" style={{ border: `2px solid ${C.koraal}`, color: C.marigold, fontWeight: 800, background: "#FFFFFF" }}>
-              {weerInfo(weer[iso].code).emoji} {weer[iso].max}°C
-            </span>
-          )}
+      <div style={{ marginBottom: 12 }}><DayStrip days={days} selected={iso} onSelect={setSelected} /></div>
+      <section className="rounded-[24px]" style={{ background: C.bone, border: `2px solid ${C.line}`, boxShadow: SCHADUW.kaart, padding: 14 }}>
+        <div className="flex items-start justify-between gap-3">
+          <div><Eyebrow color={C.marigold}>Dag {String(index + 1).padStart(2,"0")}</Eyebrow><h2 className="font-serif capitalize" style={{ color: C.ink, fontSize: 25, lineHeight: 1.15, marginTop: 3 }}>{fmtLong(iso)}</h2></div>
+          {weer && weer[iso] && <span className="rounded-xl" style={{ padding: "6px 9px", background: "#FFFFFF", border: `2px solid ${C.koraal}`, color: C.marigold, fontSize: 13, fontWeight: 800 }}>{weerInfo(weer[iso].code).emoji} {weer[iso].max}°C</span>}
         </div>
-
-        <div className="mt-4">
-          <Eyebrow color={C.marigold}>Gebeurtenissen</Eyebrow>
-          <NamenOphalen agenda={agenda} setAgenda={setAgenda} dagIso={iso} auto />
-          {plannen.length === 0 ? (
-            <div className="rounded-2xl p-4 mt-2" style={{ background: kleur.tint, color: C.muted }}>Nog niets gepland.</div>
-          ) : (
-            <ul className="space-y-2 mt-2">
-              {plannen.map((a) => (
-                <AgendaRegel key={a.id} item={a} items={agenda} setItems={setAgenda} compact fotos={kiekjes} images={images} />
-              ))}
-            </ul>
-          )}
-          <DagToevoegen iso={iso} agenda={agenda} setAgenda={setAgenda} me={me} />
+        <div className="flex items-center justify-between" style={{ marginTop: 14 }}><Eyebrow color={C.marigold}>Gebeurtenissen</Eyebrow><button type="button" onClick={() => setAddOpen(!addOpen)} aria-label="Plan toevoegen" className="rounded-full" style={{ width: 28, height: 28, background: C.koraal, color: "#FFFFFF", border: 0, fontSize: 20, lineHeight: 1 }}>{addOpen ? "−" : "+"}</button></div>
+        <NamenOphalen agenda={agenda} setAgenda={setAgenda} dagIso={iso} auto />
+        {plannen.length ? <ul className="space-y-2 mt-2">{plannen.map((a) => <AgendaRegel key={a.id} item={a} items={agenda} setItems={setAgenda} compact fotos={[]} images={images} />)}</ul> : <div className="rounded-2xl mt-2" style={{ padding: 14, background: `${C.koraal}0D`, color: C.muted }}>Nog niets gepland.</div>}
+        {addOpen && <div className="mt-3"><DagToevoegen iso={iso} agenda={agenda} setAgenda={setAgenda} me={me} /></div>}
+        <div className="grid grid-cols-3 gap-2" style={{ marginTop: 12 }}>
+          {[0,1,2].map((n) => { const p = kiekjes[n]; return <button key={n} type="button" onClick={() => onGoTo("fotos")} className="rounded-2xl overflow-hidden" style={{ height: 76, background: C.boneSoft, border: `1.5px solid ${C.line}`, padding: 0 }}>{p && images[p.id] ? <img src={images[p.id]} alt={p.caption || "Foto"} className="w-full h-full object-cover" /> : <DecorThumb variant={n} />}</button>; })}
         </div>
-
-        {kiekjes.length > 0 && (
-          <div className="grid grid-cols-3 gap-2 mt-4">
-            {kiekjes.slice(0, 3).map((p) => (
-              <button key={p.id} type="button" onClick={() => onGoTo("fotos")} className="rounded-2xl overflow-hidden focus:outline-none focus:ring-2" style={{ height: 92, background: C.boneSoft, border: `2px solid ${C.line}` }}>
-                {images[p.id] ? <img src={images[p.id]} alt={p.caption || "Foto"} className="w-full h-full object-cover" /> : <span style={{ color: C.muted }}>Foto</span>}
-              </button>
-            ))}
+        <div className="grid grid-cols-2" style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.line}` }}>
+          <div style={{ paddingRight: 13, borderRight: `1px solid ${C.line}` }}>
+            <div className="flex items-center gap-2 mb-2"><Icoon naam="lijst" kleur={C.koraal} maat={18} /><Eyebrow color={C.marigold}>Boodschappen ({lijst.filter((x) => !x.done).length || lijst.length})</Eyebrow></div>
+            {lijst.length ? <ul className="space-y-2">{lijst.slice(0,4).map((i) => <li key={i.id} className="flex items-center gap-2" style={{ fontSize: 13 }}><input type="checkbox" checked={i.done} onChange={() => setShopping(shopping.map((x) => x.id === i.id ? { ...x, done: !x.done } : x))} style={{ width: 17, height: 17, accentColor: C.lucht }} /><span style={{ color: C.ink, textDecoration: i.done ? "line-through" : "none" }}>{i.text}</span></li>)}</ul> : <p className="text-sm" style={{ color: C.muted }}>Nog niets nodig.</p>}
           </div>
-        )}
-
-        <div className="grid grid-cols-2 mt-4 pt-4" style={{ borderTop: `1px solid ${C.line}` }}>
-          <div className="pr-4" style={{ borderRight: `1px solid ${C.line}` }}>
-            <div className="flex items-center gap-2 mb-2"><Icoon naam="lijst" kleur={C.koraal} maat={18} /><Eyebrow color={C.marigold}>Boodschappen ({lijst.length})</Eyebrow></div>
-            {lijst.length ? (
-              <ul className="space-y-2">
-                {lijst.slice(0, 4).map((i) => (
-                  <li key={i.id} className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" checked={i.done} onChange={() => setShopping(shopping.map((x) => x.id === i.id ? { ...x, done: !x.done } : x))} style={{ accentColor: C.munt }} />
-                    <span style={{ color: i.done ? C.muted : C.ink, textDecoration: i.done ? "line-through" : "none" }}>{i.text}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : <p className="text-sm" style={{ color: C.muted }}>Nog niets nodig.</p>}
-          </div>
-          <div className="pl-4">
-            <div className="flex items-center gap-2 mb-2"><Icoon naam="reis" kleur={C.lucht} maat={18} /><Eyebrow color={C.ink}>Reisdetails</Eyebrow></div>
-            <ul className="space-y-2 text-sm" style={{ color: C.ink }}>
-              {trip.travelFrom && <li><strong style={{ color: C.munt }}>Vertrek</strong><br />{trip.travelDepart || "–"}<br />{trip.travelFrom}</li>}
-              {trip.travelDistanceM ? <li>{afstandTekst(trip.travelDistanceM)}</li> : null}
-              {trip.travelDurationS ? <li>{duurTekst(trip.travelDurationS)} rijden</li> : null}
-              {(trip.stops || []).filter((s) => s.place).length > 0 && <li>{(trip.stops || []).filter((s) => s.place).length} tussenstop{(trip.stops || []).filter((s) => s.place).length === 1 ? "" : "s"}</li>}
+          <div style={{ paddingLeft: 13 }}>
+            <div className="flex items-center gap-2 mb-2"><Icoon naam="reis" kleur={C.ink} maat={18} /><Eyebrow color={C.ink}>Reis details</Eyebrow></div>
+            <ul className="space-y-2" style={{ color: C.ink, fontSize: 13 }}>
+              {trip.travelDistanceM ? <li className="flex gap-2"><span>◷</span><strong>{afstandTekst(trip.travelDistanceM)}</strong></li> : null}
+              {trip.travelDurationS ? <li className="flex gap-2"><span>◷</span><strong>{duurTekst(trip.travelDurationS)} rijden</strong></li> : null}
+              <li className="flex gap-2"><span>◷</span><strong>{stops} tussenstop{stops === 1 ? "" : "s"}</strong></li>
             </ul>
           </div>
         </div>
       </section>
-
-      {todos.filter((t) => !t.done).length > 0 && (
-        <p className="text-xs text-center mt-3" style={{ color: C.muted }}>Nog {todos.filter((t) => !t.done).length} open taken.</p>
-      )}
     </div>
   );
 }
@@ -5936,9 +6218,9 @@ function VakantieApp() {
       <Letters />
       <header
         className="sticky top-0 z-40"
-        style={{ background: C.head, borderBottom: "2px solid rgba(255,255,255,.78)", boxShadow: "0 4px 16px rgba(34,64,107,.08)" }}
+        style={{ background: C.head, borderBottom: `1px solid ${C.line}` }}
       >
-        <div className="max-w-lg mx-auto px-5 flex items-center justify-between" style={{ height: 86 }}>
+        <div className="max-w-lg mx-auto px-4 flex items-center justify-between" style={{ height: 78, maxWidth: 430 }}>
           <div className="relative">
             <button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu" className="rounded-full flex items-center justify-center focus:outline-none focus:ring-2" style={{ width: 42, height: 42 }}>
               <Icoon naam="menu" kleur={C.marigold} maat={25} dikte={2.2} />
@@ -5962,7 +6244,7 @@ function VakantieApp() {
               </div>
             )}
           </div>
-          <Logo size={150} />
+          <Logo size={132} />
           <button type="button" onClick={pullAll} disabled={syncing} aria-label="Vernieuwen" className="rounded-full flex items-center justify-center focus:outline-none focus:ring-2 disabled:opacity-50" style={{ width: 42, height: 42 }}>
             <Icoon naam="vernieuw" kleur={C.marigold} maat={25} dikte={2.2} />
           </button>
@@ -5970,8 +6252,8 @@ function VakantieApp() {
       </header>
 
       <main
-        className="p-4 max-w-lg mx-auto"
-        style={{ paddingBottom: "calc(112px + env(safe-area-inset-bottom, 0px))" }}
+        className="max-w-lg mx-auto"
+        style={{ maxWidth: 430, padding: "12px 14px calc(105px + env(safe-area-inset-bottom, 0px))" }}
       >
         {notice && (
           <p className="text-sm mb-3" style={{ color: C.marigold }}>
@@ -6054,9 +6336,7 @@ function VakantieApp() {
         {tab === "lijst" && (
           <ShoppingView list={shopping} setList={persist("shopping", setShopping)} days={days} selected={selected} setSelected={setSelected} me={me} />
         )}
-        <p className="font-mono text-xs mt-8 text-center" style={{ color: C.muted }}>
-          Aangemeld als {me.name} | tik op Vernieuw voor wat anderen toevoegden
-        </p>
+
       </main>
       <ZwevendeBalk tab={tab} onGaNaar={setTab} />
     </div>
@@ -6136,9 +6416,8 @@ root.render(<VakantieApp />);
          "https://unpkg.com/@babel/standalone/babel.min.js"], "Babel");
     })
     .then(function () {
-      return laad(["https://cdn.tailwindcss.com"], "Tailwind").catch(function () {
-        /* zonder Tailwind is de app lelijk, maar wel bruikbaar */
-      });
+      window.tailwind = window.tailwind || { ingebouwd: true };
+      return Promise.resolve();
     })
     .then(function () {
       try {
