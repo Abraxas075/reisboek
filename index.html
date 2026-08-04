@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-55-stable-reis" />
+<meta name="reisboek-versie" content="familytrip-56-reisdetails" />
 <title>Family Trip</title>
 <style>
   html, body, #root { width: 100%; max-width: 100%; overflow-x: hidden; }
@@ -4719,17 +4719,38 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
             ) : <p className="text-sm" style={{ color: C.muted }}>Nog niets nodig.</p>}
           </div>
 
-          <div style={{ paddingLeft: 13 }}>
-            <div className="flex items-center gap-2 mb-2">
-              <Icoon naam="reis" kleur={C.ink} maat={18} />
-              <Eyebrow color={C.ink}>Reis details</Eyebrow>
+          <button
+            type="button"
+            onClick={() => onGoTo("reis")}
+            aria-label="Open alle reisdetails"
+            className="text-left w-full rounded-2xl focus:outline-none focus:ring-2"
+            style={{
+              paddingLeft: 13,
+              paddingTop: 2,
+              paddingBottom: 2,
+              paddingRight: 4,
+              background: "transparent",
+              border: 0,
+              color: C.ink,
+              minWidth: 0,
+            }}
+          >
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="flex items-center gap-2 min-w-0">
+                <Icoon naam="reis" kleur={C.ink} maat={18} />
+                <Eyebrow color={C.ink}>Reisdetails</Eyebrow>
+              </span>
+              <span aria-hidden="true" style={{ color: C.marigold, fontSize: 22, lineHeight: 1 }}>›</span>
             </div>
             <ul className="space-y-2" style={{ color: C.ink, fontSize: 13 }}>
               {trip.travelDistanceM ? <li className="flex gap-2"><span>◷</span><strong>{afstandTekst(trip.travelDistanceM)}</strong></li> : null}
               {trip.travelDurationS ? <li className="flex gap-2"><span>◷</span><strong>{duurTekst(trip.travelDurationS)} rijden</strong></li> : null}
               <li className="flex gap-2"><span>◷</span><strong>{stops} tussenstop{stops === 1 ? "" : "s"}</strong></li>
             </ul>
-          </div>
+            <span className="block mt-2" style={{ color: C.muted, fontSize: 11, fontWeight: 700 }}>
+              Tik om de volledige reis te openen
+            </span>
+          </button>
         </div>
       </section>
     );
@@ -5982,6 +6003,10 @@ function VakantieApp() {
   const [places, setPlaces] = useState([]);
   const [apiKey, setApiKeyState] = useState("");
   const [tab, setTab] = useState("dagen");
+  const gaNaarTab = (volgendeTab) => {
+    setTab(volgendeTab);
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+  };
   const [menuOpen, setMenuOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [avatars, setAvatars] = useState({});
@@ -6432,7 +6457,7 @@ function VakantieApp() {
             selected={selected}
             setSelected={setSelected}
             me={me}
-            onGoTo={setTab}
+            onGoTo={gaNaarTab}
             weer={weer}
           />
         )}
@@ -6495,7 +6520,7 @@ function VakantieApp() {
         )}
 
       </main>
-      <ZwevendeBalk tab={tab} onGaNaar={setTab} />
+      <ZwevendeBalk tab={tab} onGaNaar={gaNaarTab} />
     </div>
     </AvatarsContext.Provider>
     </MapsKeyContext.Provider>
