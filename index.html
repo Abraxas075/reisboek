@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-56-reisdetails" />
+<meta name="reisboek-versie" content="familytrip-57-photoalbum" />
 <title>Family Trip</title>
 <style>
   html, body, #root { width: 100%; max-width: 100%; overflow-x: hidden; }
@@ -4805,6 +4805,7 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
   const [caption, setCaption] = useState("");
   const [link, setLink] = useState("");
   const [busy, setBusy] = useState("");
+  const [albumBusy, setAlbumBusy] = useState("");
   const [open, setOpen] = useState(null);
   const fileRef = useRef(null);
   const albumRef = useRef(null);
@@ -4923,30 +4924,81 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
     if (fileRef.current) fileRef.current.value = "";
   };
 
+  const geldigeDatum = (jaar, maand, dag) => {
+    const y = Number(jaar);
+    const m = Number(maand);
+    const d = Number(dag);
+    if (y < 1900 || y > 2200 || m < 1 || m > 12 || d < 1 || d > 31) return null;
+    const test = new Date(y, m - 1, d, 12, 0, 0);
+    if (test.getFullYear() !== y || test.getMonth() !== m - 1 || test.getDate() !== d) return null;
+    return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  };
+
+  /* Android en Google Foto's geven soms de download-datum door als lastModified.
+     Daarom kijken we ook naar namen zoals IMG_20250801, PXL_20250801 en IMG-20250801-WA0001. */
+  const datumUitBestandsnaam = (naam) => {
+    const schoon = String(naam || "");
+    const patronen = [
+      /(?:^|\D)((?:19|20)\d{2})[-_.]?([01]\d)[-_.]?([0-3]\d)(?:\D|$)/,
+      /(?:^|\D)([0-3]\d)[-_.]([01]\d)[-_.]((?:19|20)\d{2})(?:\D|$)/,
+    ];
+    let m = schoon.match(patronen[0]);
+    if (m) return geldigeDatum(m[1], m[2], m[3]);
+    m = schoon.match(patronen[1]);
+    if (m) return geldigeDatum(m[3], m[2], m[1]);
+    return null;
+  };
+
   const opnameDatum = (file, exif) => {
-    if (exif && exif.datum) return { datum: exif.datum, bron: "exif" };
-    if (file.lastModified) {
+    if (exif && exif.datum) return { datum: exif.datum, bron: "opnamedatum" };
+    const uitNaam = datumUitBestandsnaam(file && file.name);
+    if (uitNaam) return { datum: uitNaam, bron: "bestandsnaam" };
+    if (file && file.lastModified) {
       const d = new Date(file.lastModified);
-      return {
-        datum: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
-        bron: "bestand",
-      };
+      if (!isNaN(d.getTime())) {
+        return {
+          datum: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+          bron: "bestandsdatum",
+        };
+      }
     }
     return { datum: null, bron: null };
   };
 
   const handleAlbum = async (e) => {
-    const files = Array.from(e.target.files || []).slice(0, 80);
-    if (!files.length) return;
+    const gekozen = Array.from((e && e.target && e.target.files) || []);
+    const files = gekozen.slice(0, 80);
+    if (!files.length) {
+      setAlbumBusy("Er zijn geen foto's geselecteerd.");
+      return;
+    }
+    if (!days.length) {
+      setAlbumBusy("Sla eerst de vertrek- en terugreisdatum op. Daarna kan de app foto's over de reisdagen verdelen.");
+      if (albumRef.current) albumRef.current.value = "";
+      return;
+    }
+
+    setAlbumBusy(`${files.length} foto${files.length === 1 ? "" : "'s"} geselecteerd. De datums worden gelezen…`);
     const nieuw = [];
     let buiten = 0;
     let zonderDatum = 0;
     let mislukt = 0;
+    let nietOndersteund = 0;
+    const fouten = [];
     const perDag = {};
+
     for (let n = 0; n < files.length; n++) {
       const file = files[n];
-      setBusy(`Foto ${n + 1} van ${files.length} wordt bekeken\u2026`);
+      setAlbumBusy(`Foto ${n + 1} van ${files.length} wordt bekeken…`);
       try {
+        const type = String(file.type || "").toLowerCase();
+        const naam = String(file.name || "").toLowerCase();
+        const lijktFoto = type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif)$/i.test(naam);
+        if (!lijktFoto) {
+          nietOndersteund++;
+          continue;
+        }
+
         const exif = await leesExif(file);
         const { datum, bron } = opnameDatum(file, exif);
         if (!datum) {
@@ -4957,18 +5009,34 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
           buiten++;
           continue;
         }
-        let beeld = await maakPassend(file);
+
+        let beeld;
+        try {
+          beeld = await maakPassend(file);
+        } catch (err) {
+          mislukt++;
+          const melding = err && err.message ? err.message : "De foto kon niet worden geopend.";
+          if (fouten.length < 2) fouten.push(`${file.name || "Foto"}: ${melding}`);
+          continue;
+        }
+
         const id = uid();
         let ok = await saveKey(`photo:${id}`, beeld);
         if (!ok && OPSLAG.vol) {
-          beeld = await resizeImage(file, 800, 0.6);
-          ok = await saveKey(`photo:${id}`, beeld);
+          try {
+            beeld = await resizeImage(file, 720, 0.55);
+            ok = await saveKey(`photo:${id}`, beeld);
+          } catch (err) {
+            ok = false;
+          }
         }
         if (!ok) {
           mislukt++;
-          if (OPSLAG.vol) break; // verder proberen heeft geen zin
+          if (fouten.length < 2) fouten.push(`${file.name || "Foto"}: opslaan lukte niet.`);
+          if (OPSLAG.vol) break;
           continue;
         }
+
         nieuw.push({
           id,
           date: datum,
@@ -4982,23 +5050,23 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
         });
         perDag[datum] = (perDag[datum] || 0) + 1;
       } catch (err) {
-        /* deze foto slaan we over */
+        mislukt++;
+        if (fouten.length < 2) fouten.push(`${file.name || "Foto"}: ${err && err.message ? err.message : "onbekende fout"}.`);
       }
     }
-    if (nieuw.length) setIndex([...index, ...nieuw]);
-    const dagen = Object.keys(perDag).length;
-    setBusy(
-      (nieuw.length
-        ? `${nieuw.length} foto's verdeeld over ${dagen} ${dagen === 1 ? "dag" : "dagen"}.` +
-          (buiten ? ` ${buiten} vielen buiten je reisdata.` : "") +
-          (zonderDatum ? ` ${zonderDatum} hadden geen datum.` : "")
-        : "Geen foto's toegevoegd.") +
-        (mislukt
-          ? ` ${mislukt} pasten er niet meer bij: de opslag zit vol (${mbTekst(
-              opslagGebruik()
-            )} in gebruik).`
-          : "")
-    );
+
+    if (nieuw.length) await setIndex([...index, ...nieuw]);
+    const aantalDagen = Object.keys(perDag).length;
+    const delen = [];
+    if (nieuw.length) delen.push(`${nieuw.length} foto${nieuw.length === 1 ? "" : "'s"} toegevoegd aan ${aantalDagen} ${aantalDagen === 1 ? "reisdag" : "reisdagen"}.`);
+    else delen.push("Er zijn geen foto's toegevoegd.");
+    if (buiten) delen.push(`${buiten} foto${buiten === 1 ? " viel" : "'s vielen"} buiten de ingestelde reisdata (${days[0]} t/m ${days[days.length - 1]}).`);
+    if (zonderDatum) delen.push(`${zonderDatum} foto${zonderDatum === 1 ? " had" : "'s hadden"} geen leesbare opname- of bestandsdatum.`);
+    if (nietOndersteund) delen.push(`${nietOndersteund} bestand${nietOndersteund === 1 ? " was" : "en waren"} geen ondersteunde foto.`);
+    if (mislukt) delen.push(`${mislukt} foto${mislukt === 1 ? " kon" : "'s konden"} niet worden verwerkt${OPSLAG.vol ? "; de opslag zit vol" : ""}.`);
+    if (gekozen.length > 80) delen.push(`De eerste 80 van ${gekozen.length} geselecteerde foto's zijn verwerkt.`);
+    if (fouten.length) delen.push(fouten.join(" "));
+    setAlbumBusy(delen.join(" "));
     if (albumRef.current) albumRef.current.value = "";
   };
 
@@ -5228,18 +5296,34 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
           en zet hem bij de juiste dag. Selecteer er gerust honderd tegelijk; er worden er maximaal
           tachtig per keer verwerkt.
         </p>
-        <input
-          ref={albumRef}
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={handleAlbum}
-          className="block w-full text-sm mt-3"
-          style={{ color: C.muted }}
-        />
+        <label
+          className="relative overflow-hidden flex items-center justify-center w-full rounded-2xl mt-3 px-4 py-3 cursor-pointer focus-within:ring-2"
+          style={{ background: C.koraal, color: "#FFFFFF", fontWeight: 800, boxShadow: SCHADUW.knop }}
+        >
+          <span>Kies foto's uit je album</span>
+          <input
+            ref={albumRef}
+            type="file"
+            accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif"
+            multiple
+            onClick={(e) => { e.currentTarget.value = ""; }}
+            onChange={handleAlbum}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer" }}
+          />
+        </label>
+        {albumBusy && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="text-sm mt-3 rounded-2xl px-3 py-3"
+            style={{ background: C.boneSoft, color: C.ink, border: `2px solid ${C.line}`, lineHeight: 1.45 }}
+          >
+            {albumBusy}
+          </div>
+        )}
         <p className="text-xs mt-2" style={{ color: C.muted }}>
-          Foto's van buiten je reisdata worden overgeslagen. Staat er een locatie in de foto, dan
-          komt die er als kaartje bij.
+          De app gebruikt eerst de echte opnamedatum, daarna een datum in de bestandsnaam en pas
+          daarna de bestandsdatum. Foto's buiten {days[0] || "de vertrekdatum"} t/m {days[days.length - 1] || "de terugreisdatum"} worden niet toegevoegd.
         </p>
       </Card>
 
