@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
-<meta name="reisboek-versie" content="familytrip-74" />
+<meta name="reisboek-versie" content="familytrip-75" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
 <title>Family Trip</title>
@@ -145,6 +145,7 @@ window.__initOpslag = function () {
   let db = null;
   let auth = null;
   let opslag = null;
+  let authPersistentieGereed = Promise.resolve();
 
   window.FIREBASE_STATUS = window.FIREBASE_STATUS || {};
   window.FIREBASE_STATUS.projectId = fb.projectId || "";
@@ -157,6 +158,17 @@ window.__initOpslag = function () {
       const app = firebase.apps && firebase.apps.length ? firebase.app() : firebase.initializeApp(fb);
       db = app.firestore ? app.firestore() : firebase.firestore();
       if (firebase.auth) auth = app.auth ? app.auth() : firebase.auth();
+      if (auth) {
+        try {
+          const blijf = localStorage.getItem("familytrip-google-blijf") !== "0";
+          const persistentie = blijf
+            ? firebase.auth.Auth.Persistence.LOCAL
+            : firebase.auth.Auth.Persistence.SESSION;
+          authPersistentieGereed = auth.setPersistence(persistentie).catch(() => {});
+        } catch (e) {
+          authPersistentieGereed = Promise.resolve();
+        }
+      }
       if (cfg.opslag && firebase.storage) opslag = app.storage ? app.storage() : firebase.storage();
       window.FIREBASE_STATUS.ok = true;
       window.FIREBASE_STATUS.fase = "verbonden";
@@ -420,27 +432,25 @@ window.__initOpslag = function () {
     beschikbaar: !!auth,
     async inloggenMetGoogle(blijfIngelogd = true) {
       if (!auth) throw new Error("Firebase Authentication is niet verbonden.");
-      try {
-        auth.useDeviceLanguage();
-      } catch (e) {}
-      try {
-        const persistentie = blijfIngelogd
-          ? firebase.auth.Auth.Persistence.LOCAL
-          : firebase.auth.Auth.Persistence.SESSION;
-        await auth.setPersistence(persistentie);
-        localStorage.setItem("familytrip-google-blijf", blijfIngelogd ? "1" : "0");
-      } catch (e) {
-        /* De login kan vaak nog steeds doorgaan met de standaardpersistentie. */
-      }
+      try { auth.useDeviceLanguage(); } catch (e) {}
+      try { localStorage.setItem("familytrip-google-blijf", blijfIngelogd ? "1" : "0"); } catch (e) {}
 
       const provider = new firebase.auth.GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
 
-      /* Popup werkt op GitHub Pages betrouwbaarder dan redirect, vooral in Brave
-         en andere mobiele browsers die externe cookies of opslag beperken. */
+      /* Belangrijk op mobiele browsers: open de Google-popup direct vanuit de tik.
+         Eerst wachten op setPersistence verbreekt de gebruikersactie en Brave/Chrome
+         kan de popup dan stil blokkeren. De persistentie is al bij het laden ingesteld. */
+      let popupBelofte;
       try {
-        sessionStorage.removeItem("familytrip-google-redirect");
-        const res = await auth.signInWithPopup(provider);
+        popupBelofte = auth.signInWithPopup(provider);
+      } catch (e) {
+        popupBelofte = Promise.reject(e);
+      }
+
+      try {
+        const res = await popupBelofte;
+        await authPersistentieGereed.catch(() => {});
         const profiel = googleProfiel(res && res.user);
         if (!profiel || !profiel.email) throw new Error("Google gaf geen geldig account terug.");
         return profiel;
@@ -450,6 +460,7 @@ window.__initOpslag = function () {
         if (magDoorsturen) {
           try {
             sessionStorage.setItem("familytrip-google-redirect", "1");
+            await authPersistentieGereed.catch(() => {});
             await auth.signInWithRedirect(provider);
             return { redirecting: true };
           } catch (redirectFout) {
