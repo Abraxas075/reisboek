@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-57-photoalbum" />
+<meta name="reisboek-versie" content="familytrip-59-wissen" />
 <title>Family Trip</title>
 <style>
   html, body, #root { width: 100%; max-width: 100%; overflow-x: hidden; }
@@ -4025,7 +4025,16 @@ function AgendaRegel({ item, items, setItems, compact, fotos, images }) {
           <Btn tone="ghost" onClick={() => setBewerken(false)}>
             Annuleren
           </Btn>
-          <Btn tone="ghost" onClick={() => setConcept({ ...concept, van: "", naar: "" })}>
+          <Btn
+            tone="danger"
+            onClick={() => {
+              const naam = (item.title || kop || "deze activiteit").trim();
+              const akkoord = window.confirm(`Weet je zeker dat je ${naam} wilt verwijderen?`);
+              if (!akkoord) return;
+              setItems(items.filter((x) => x.id !== item.id));
+              setBewerken(false);
+            }}
+          >
             Wissen
           </Btn>
         </div>
