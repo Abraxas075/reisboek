@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-62" />
+<meta name="reisboek-versie" content="familytrip-64" />
 <title>Family Trip</title>
 <style>
   html, body, #root { width: 100%; max-width: 100%; overflow-x: hidden; }
@@ -3165,6 +3165,8 @@ function KeyCard({ apiKey, setApiKey }) {
 /* ---------- tijdlijn importeren ---------- */
 function TijdlijnImport({ days, onImport }) {
   const [gevonden, setGevonden] = useState(null);
+  const [selectie, setSelectie] = useState([]);
+  const [handmatigOpen, setHandmatigOpen] = useState(false);
   const [melding, setMelding] = useState("");
 
   const lees = (e) => {
@@ -3180,6 +3182,8 @@ function TijdlijnImport({ days, onImport }) {
         const binnen = days.length ? alles.filter((i) => days.includes(i.date)) : alles;
         if (!binnen.length) {
           setGevonden(null);
+          setSelectie([]);
+          setHandmatigOpen(false);
           setMelding(
             alles.length
               ? `Er staan ${alles.length} momenten in het bestand, maar geen enkele valt binnen je reisdata.`
@@ -3188,14 +3192,30 @@ function TijdlijnImport({ days, onImport }) {
           return;
         }
         setGevonden(binnen);
+        setSelectie(binnen.map((_, i) => i));
+        setHandmatigOpen(false);
         setMelding(`${binnen.length} momenten gevonden binnen je reis.`);
       } catch (err) {
         setGevonden(null);
+        setSelectie([]);
+        setHandmatigOpen(false);
         setMelding("Dit is geen geldig JSON-bestand.");
       }
     };
     reader.readAsText(file);
   };
+
+  const wisselMoment = (index) => {
+    setSelectie((huidig) =>
+      huidig.includes(index)
+        ? huidig.filter((n) => n !== index)
+        : [...huidig, index].sort((a, b) => a - b)
+    );
+  };
+
+  const geselecteerdeMomenten = gevonden
+    ? gevonden.filter((_, index) => selectie.includes(index))
+    : [];
 
   return (
     <Card>
@@ -3221,28 +3241,113 @@ function TijdlijnImport({ days, onImport }) {
       )}
       {gevonden && (
         <div className="mt-3">
-          <ul className="text-sm space-y-1">
-            {gevonden.slice(0, 4).map((i, n) => (
-              <li key={n} style={{ color: C.muted }}>
-                <span className="font-mono text-xs">
-                  {fmtShort(i.date)} {i.time}
-                </span>{" "}
-                {i.title}
-              </li>
-            ))}
-            {gevonden.length > 4 && (
-              <li style={{ color: C.muted }}>...en nog {gevonden.length - 4}</li>
-            )}
-          </ul>
+          {!handmatigOpen && (
+            <ul className="text-sm space-y-1">
+              {gevonden.slice(0, 4).map((i, n) => (
+                <li key={n} style={{ color: C.muted }}>
+                  <span className="font-mono text-xs">
+                    {fmtShort(i.date)} {i.time}
+                  </span>{" "}
+                  {i.title}
+                </li>
+              ))}
+              {gevonden.length > 4 && (
+                <li style={{ color: C.muted }}>...en nog {gevonden.length - 4}</li>
+              )}
+            </ul>
+          )}
+
           <Btn
-            className="mt-3"
-            onClick={() => {
-              onImport(gevonden);
+            tone="ghost"
+            className="mt-3 w-full"
+            onClick={() => setHandmatigOpen((open) => !open)}
+          >
+            {handmatigOpen ? "Selectielijst sluiten" : "Handmatig momenten selecteren"}
+          </Btn>
+
+          {handmatigOpen && (
+            <div
+              className="mt-3 rounded-2xl p-3"
+              style={{ background: C.boneSoft, border: `2px solid ${C.line}` }}
+            >
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <p className="text-sm font-mono" style={{ color: C.ink }}>
+                  {selectie.length} van {gevonden.length} geselecteerd
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="text-xs font-mono underline"
+                    style={{ color: C.marigold }}
+                    onClick={() => setSelectie(gevonden.map((_, i) => i))}
+                  >
+                    Alles
+                  </button>
+                  <button
+                    type="button"
+                    className="text-xs font-mono underline"
+                    style={{ color: C.ember }}
+                    onClick={() => setSelectie([])}
+                  >
+                    Niets
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-3 max-h-96 overflow-y-auto space-y-2 ft-scrollbar">
+                {gevonden.map((i, index) => {
+                  const gekozen = selectie.includes(index);
+                  return (
+                    <label
+                      key={`${i.date}-${i.time}-${index}`}
+                      className="flex items-start gap-3 rounded-xl p-3 cursor-pointer"
+                      style={{
+                        background: gekozen ? C.mint : C.bone,
+                        border: `1px solid ${gekozen ? C.munt : C.line}`,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={gekozen}
+                        onChange={() => wisselMoment(index)}
+                        style={{ width: 20, height: 20, marginTop: 2, accentColor: C.koraal, flexShrink: 0 }}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-mono text-xs" style={{ color: C.marigold }}>
+                          {fmtShort(i.date)} · {i.time}
+                        </span>
+                        <span className="block text-sm" style={{ color: C.ink }}>
+                          {i.title}
+                        </span>
+                        {i.place && !alsCoordinaat(i.place) && (
+                          <span className="block text-xs mt-0.5" style={{ color: C.muted }}>
+                            {i.place}
+                          </span>
+                        )}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <Btn
+            className="mt-3 w-full"
+            disabled={!geselecteerdeMomenten.length}
+            onClick={async () => {
+              if (!geselecteerdeMomenten.length) return;
+              await onImport(geselecteerdeMomenten);
+              const aantal = geselecteerdeMomenten.length;
               setGevonden(null);
-              setMelding("Toegevoegd aan de agenda.");
+              setSelectie([]);
+              setHandmatigOpen(false);
+              setMelding(`${aantal} ${aantal === 1 ? "moment" : "momenten"} toegevoegd aan de agenda.`);
             }}
           >
-            Aan de agenda toevoegen
+            {geselecteerdeMomenten.length
+              ? `${geselecteerdeMomenten.length} ${geselecteerdeMomenten.length === 1 ? "moment" : "momenten"} aan agenda toevoegen`
+              : "Selecteer minstens één moment"}
           </Btn>
         </div>
       )}
