@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
 <meta charset="utf-8" />
-<meta name="reisboek-versie" content="familytrip-67" />
+<meta name="reisboek-versie" content="familytrip-68" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
 <title>Family Trip</title>
@@ -6529,7 +6529,7 @@ function FamilieKalenderView({ trips, setTrips, members, me, currentTrip }) {
       id: form.id || uid(),
       title: titel,
       destination: bestemming,
-      extraPeople: form.extraPeople.trim(),
+      extraPeople: losseExtraPersonen(form.extraPeople).join(", "),
       color: Number(form.color) || 0,
       by: me?.name || me?.email || "Familielid",
       updatedAt: new Date().toISOString(),
@@ -6549,10 +6549,24 @@ function FamilieKalenderView({ trips, setTrips, members, me, currentTrip }) {
   };
 
   const persoonBijEmail = (email) => members.find((m) => m.email === email) || { email, name: email };
+  const losseExtraPersonen = (waarde) => {
+    const tekst = String(waarde || "").trim();
+    if (!tekst) return [];
+    const expliciet = tekst
+      .split(/\s*(?:,|;|\n|\||&|\+|\ben\b)\s*/i)
+      .map((naam) => naam.trim())
+      .filter(Boolean);
+    if (expliciet.length > 1) return expliciet;
+    const woorden = tekst.split(/\s+/).map((naam) => naam.trim()).filter(Boolean);
+    const lijktLijstMetVoornamen =
+      woorden.length > 1 &&
+      woorden.length <= 8 &&
+      woorden.every((naam) => /^[A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÖØ-öø-ÿ'’-]*$/.test(naam));
+    return lijktLijstMetVoornamen ? woorden : [tekst];
+  };
   const namenVoor = (trip) => {
     const namen = (trip.participants || []).map((email) => persoonBijEmail(email).name || email);
-    const extra = String(trip.extraPeople || "").split(",").map((x) => x.trim()).filter(Boolean);
-    return [...namen, ...extra];
+    return [...namen, ...losseExtraPersonen(trip.extraPeople)];
   };
 
   return (
@@ -6603,7 +6617,7 @@ function FamilieKalenderView({ trips, setTrips, members, me, currentTrip }) {
                   );
                 })}
               </div>
-              <Field label="Andere deelnemers" placeholder="Opa, oma, vrienden (gescheiden door komma's)" value={form.extraPeople} onChange={(e) => setForm({ ...form, extraPeople: e.target.value })} />
+              <Field label="Andere deelnemers" placeholder="Bijvoorbeeld: Zonna, Marcel, opa" value={form.extraPeople} onChange={(e) => setForm({ ...form, extraPeople: e.target.value })} />
             </div>
 
             <div>
@@ -6702,7 +6716,7 @@ function FamilieKalenderView({ trips, setTrips, members, me, currentTrip }) {
                         const member = persoonBijEmail(email);
                         return <span key={email} className="inline-flex items-center gap-1 rounded-full" style={{ background: C.bone, padding: "4px 8px 4px 4px", border: `1px solid ${C.line}` }}><Avatar member={member} size={25} /><span style={{ color: C.ink, fontSize: 11, fontWeight: 800 }}>{member.name || email}</span></span>;
                       })}
-                      {String(trip.extraPeople || "").split(",").map((naam) => naam.trim()).filter(Boolean).map((naam, i) => <span key={`${naam}-${i}`} className="rounded-full" style={{ background: C.bg, color: C.ink, padding: "6px 9px", fontSize: 11, fontWeight: 800 }}>{naam}</span>)}
+                      {losseExtraPersonen(trip.extraPeople).map((naam, i) => <span key={`${naam}-${i}`} className="rounded-full" style={{ background: C.bg, color: C.ink, padding: "6px 9px", fontSize: 11, fontWeight: 800 }}>{naam}</span>)}
                     </div>
                     {!namen.length && <p className="text-sm mt-2" style={{ color: C.muted }}>Deelnemers nog niet gekozen.</p>}
                   </div>
@@ -6785,10 +6799,7 @@ function FamilieKalenderView({ trips, setTrips, members, me, currentTrip }) {
                           </span>
                         );
                       })}
-                      {String(trip.extraPeople || "")
-                        .split(",")
-                        .map((naam) => naam.trim())
-                        .filter(Boolean)
+                      {losseExtraPersonen(trip.extraPeople)
                         .map((naam, i) => (
                           <span
                             key={`${naam}-${i}`}
