@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-59-wissen" />
+<meta name="reisboek-versie" content="familytrip-60" />
 <title>Family Trip</title>
 <style>
   html, body, #root { width: 100%; max-width: 100%; overflow-x: hidden; }
@@ -64,7 +64,7 @@ setTimeout(function () {
 <script>
 window.FIREBASE_STATUS = { fase: "config laden", ok: false, fout: "" };
 </script>
-<script src="config.js?v=51" onload="window.FIREBASE_STATUS.configBestand=true" onerror="window.FIREBASE_STATUS.configBestand=false; window.__fouten.push('config.js kon niet geladen worden')"></script>
+<script src="config.js?v=60" onload="window.FIREBASE_STATUS.configBestand=true" onerror="window.FIREBASE_STATUS.configBestand=false; window.__fouten.push('config.js kon niet geladen worden')"></script>
 <script>
 /* Instellingen die in de app zelf zijn ingevuld gaan voor op config.js. */
 (function () {
@@ -168,48 +168,173 @@ window.__initOpslag = function () {
     },
   };
 
+  /*
+     Firebase Authentication herstelt een sessie asynchroon. Bij een nieuwe
+     index-versie kan de app eerder om reisgegevens vragen dan Firebase weet
+     wie er is ingelogd. Daarom wachten we kort en bewaren we altijd ook een
+     lokale noodkopie. Zo opent een bestaande reis niet meer als een lege
+     Reis-plannenpagina wanneer Firebase even traag of tijdelijk onbereikbaar is.
+  */
+  const authGereed = (() => {
+    if (!auth) return Promise.resolve(null);
+    if (auth.currentUser) return Promise.resolve(auth.currentUser);
+    return new Promise((resolve) => {
+      let klaar = false;
+      let stop = null;
+      const afronden = (u) => {
+        if (klaar) return;
+        klaar = true;
+        try { if (stop) stop(); } catch (e) {}
+        resolve(u || auth.currentUser || null);
+      };
+      try {
+        stop = auth.onAuthStateChanged((u) => afronden(u), () => afronden(null));
+      } catch (e) {
+        afronden(null);
+      }
+      setTimeout(() => afronden(auth.currentUser || null), 5000);
+    });
+  })();
+
+  async function zorgReislid() {
+    if (!db || !auth) return null;
+    const u = auth.currentUser || await authGereed;
+    if (!u) return null;
+    try {
+      await db.collection("trips").doc(tripId).collection("members").doc(u.uid).set({
+        uid: u.uid,
+        email: u.email || "",
+        name: u.displayName || u.email || "Reisgenoot",
+        updatedAt: Date.now(),
+      }, { merge: true });
+    } catch (e) {
+      /* Oude openbare regels hebben dit document mogelijk niet nodig. */
+    }
+    return u;
+  }
+
+  const gezamenlijkeDoc = (key) =>
+    db.collection("trips").doc(tripId).collection("data").doc(docId(key));
+  const persoonlijkeDoc = (uid, key) =>
+    db.collection("users").doc(uid).collection("trips").doc(tripId).collection("data").doc(docId(key));
+
   window.AppStore = {
     async get(key, shared) {
-      if (!db || !shared) return local.get(key, shared);
-      let snap;
+      if (!shared) return local.get(key, false);
+      if (!db) return local.get(key, true);
+      let cloudFout = null;
+      const u = await zorgReislid();
+
+      /* Eerst de gezamenlijke reis lezen. */
       try {
-        snap = await db.collection("trips").doc(tripId).collection("data").doc(docId(key)).get();
+        const snap = await gezamenlijkeDoc(key).get();
+        if (snap.exists) {
+          const waarde = snap.data().v;
+          await local.set(key, waarde, true).catch(() => {});
+          window.FIREBASE_STATUS.fase = "verbonden";
+          window.FIREBASE_STATUS.fout = "";
+          return { key, value: waarde, shared: true, bron: "gezamenlijk" };
+        }
       } catch (e) {
-        window.FIREBASE_STATUS.fout = (e && e.message) || String(e);
+        cloudFout = e;
+      }
+
+      /* Daarna de persoonlijke kopie van deze gebruiker. */
+      if (u) {
+        try {
+          const snap = await persoonlijkeDoc(u.uid, key).get();
+          if (snap.exists) {
+            const waarde = snap.data().v;
+            await local.set(key, waarde, true).catch(() => {});
+            return { key, value: waarde, shared: true, bron: "persoonlijk" };
+          }
+        } catch (e) {
+          cloudFout = cloudFout || e;
+        }
+      }
+
+      /* Tot slot de lokale noodkopie. */
+      try {
+        const r = await local.get(key, true);
+        if (cloudFout) {
+          window.FIREBASE_STATUS.fout = (cloudFout && cloudFout.message) || String(cloudFout);
+          window.FIREBASE_STATUS.fase = "lokale noodkopie";
+        }
+        return { ...r, bron: "lokaal" };
+      } catch (e) {
+        if (cloudFout) {
+          window.FIREBASE_STATUS.fout = (cloudFout && cloudFout.message) || String(cloudFout);
+          throw cloudFout;
+        }
         throw e;
       }
-      if (!snap.exists) throw new Error("niet gevonden");
-      return { key, value: snap.data().v, shared: true };
     },
+
     async set(key, value, shared) {
-      if (!db || !shared) return local.set(key, value, shared);
+      /* Altijd eerst lokaal opslaan. Dit is de vaste noodkopie tussen versies. */
+      const lokaal = await local.set(key, value, !!shared);
+      if (!db || !shared) return lokaal;
+
+      const u = await zorgReislid();
+      const document = { v: value, key, at: Date.now() };
+      const fouten = [];
       try {
-        await db
-          .collection("trips")
-          .doc(tripId)
-          .collection("data")
-          .doc(docId(key))
-          .set({ v: value, key, at: Date.now() });
+        await gezamenlijkeDoc(key).set(document);
       } catch (e) {
-        window.FIREBASE_STATUS.fout = (e && e.message) || String(e);
-        throw e;
+        fouten.push(e);
       }
-      return { key, value, shared: true };
+      if (u) {
+        try {
+          await persoonlijkeDoc(u.uid, key).set(document);
+        } catch (e) {
+          fouten.push(e);
+        }
+      }
+      if (fouten.length) {
+        window.FIREBASE_STATUS.fout = fouten.map((e) => (e && e.message) || String(e)).join(" | ");
+        window.FIREBASE_STATUS.fase = "lokaal opgeslagen; cloud wacht";
+        return { ...lokaal, cloud: false };
+      }
+      window.FIREBASE_STATUS.fase = "verbonden";
+      window.FIREBASE_STATUS.fout = "";
+      return { key, value, shared: true, cloud: true };
     },
+
     async delete(key, shared) {
-      if (!db || !shared) return local.delete(key, shared);
-      await db.collection("trips").doc(tripId).collection("data").doc(docId(key)).delete();
+      await local.delete(key, !!shared).catch(() => {});
+      if (!db || !shared) return { key, deleted: true, shared: !!shared };
+      const u = await zorgReislid();
+      const taken = [gezamenlijkeDoc(key).delete()];
+      if (u) taken.push(persoonlijkeDoc(u.uid, key).delete());
+      await Promise.allSettled(taken);
       return { key, deleted: true, shared: true };
     },
+
     async list(prefix, shared) {
-      if (!db || !shared) return local.list(prefix, shared);
-      const snap = await db.collection("trips").doc(tripId).collection("data").get();
-      const keys = [];
-      snap.forEach((d) => {
-        const k = d.data().key;
-        if (k && (!prefix || k.startsWith(prefix))) keys.push(k);
-      });
-      return { keys, prefix, shared: true };
+      if (!shared || !db) return local.list(prefix, !!shared);
+      const u = await zorgReislid();
+      const keys = new Set();
+      try {
+        const snap = await db.collection("trips").doc(tripId).collection("data").get();
+        snap.forEach((d) => {
+          const k = d.data().key;
+          if (k && (!prefix || k.startsWith(prefix))) keys.add(k);
+        });
+      } catch (e) {}
+      if (u) {
+        try {
+          const snap = await db.collection("users").doc(u.uid).collection("trips").doc(tripId).collection("data").get();
+          snap.forEach((d) => {
+            const k = d.data().key;
+            if (k && (!prefix || k.startsWith(prefix))) keys.add(k);
+          });
+        } catch (e) {}
+      }
+      try {
+        const l = await local.list(prefix, true);
+        (l.keys || []).forEach((k) => keys.add(k));
+      } catch (e) {}
+      return { keys: Array.from(keys), prefix, shared: true };
     },
   };
 
@@ -6163,7 +6288,17 @@ function VakantieApp() {
 
   const pullAll = async () => {
     setSyncing(true);
-    const core = await loadKey("trip-core", null);
+    let core = await loadKey("trip-core", null);
+    /* Extra vaste herstelkopie, los van de versie van index.html. */
+    if (!core) {
+      try {
+        const herstel = JSON.parse(localStorage.getItem("reisboek-laatste-reis") || "null");
+        if (herstel && herstel.trip) {
+          core = herstel;
+          await saveKey("trip-core", herstel);
+        }
+      } catch (e) {}
+    }
     const [a, n, t, s, pi, pl, mk] = await Promise.all([
       loadKey("agenda", []),
       loadKey("notes", []),
@@ -6173,9 +6308,10 @@ function VakantieApp() {
       loadKey("places", []),
       loadKey("maps-key", ""),
     ]);
-    if (core) {
+    if (core && core.trip) {
       setTrip(core.trip);
       setMembers(core.members || []);
+      try { localStorage.setItem("reisboek-laatste-reis", JSON.stringify(core)); } catch (e) {}
     }
     setAgenda(a);
     setNotes(n);
@@ -6269,9 +6405,15 @@ function VakantieApp() {
       const core = await pullAll();
       if (!stored) {
         setPhase("login");
+        return;
+      }
+      setMe(stored);
+      if (core && core.trip) {
+        setTab("dagen");
+        setPhase("app");
       } else {
-        setMe(stored);
-        setPhase(core ? "app" : "setup");
+        /* Alleen bij een werkelijk nieuwe reis komt Reis plannen in beeld. */
+        setPhase("setup");
       }
     })();
   }, []);
@@ -6287,7 +6429,7 @@ function VakantieApp() {
   const login = async (person, blijfIngelogd, googleFoto) => {
     setMe(person);
     if (blijfIngelogd) await saveKey("me", person, false);
-    const core = await loadKey("trip-core", null);
+    const core = await pullAll();
     const existing = core?.members || [];
     const bestaand = existing.find((m) => m.email === person.email);
     const samen = bestaand ? { ...bestaand, ...person } : person;
@@ -6307,7 +6449,8 @@ function VakantieApp() {
     if (!bestaand?.profileDone) {
       setPhase("profiel");
     } else {
-      setPhase(core ? "app" : "setup");
+      if (core && core.trip) setTab("dagen");
+      setPhase(core && core.trip ? "app" : "setup");
     }
   };
 
@@ -6377,9 +6520,11 @@ function VakantieApp() {
 
   const saveTrip = async (t) => {
     const nextMembers = members.some((m) => m.email === me.email) ? members : [...members, me];
+    const kern = { trip: t, members: nextMembers };
     setTrip(t);
     setMembers(nextMembers);
-    const ok = await saveKey("trip-core", { trip: t, members: nextMembers });
+    try { localStorage.setItem("reisboek-laatste-reis", JSON.stringify(kern)); } catch (e) {}
+    const ok = await saveKey("trip-core", kern);
     setNotice(ok ? "" : "Opslaan lukte niet. Probeer het opnieuw.");
     setEditingTrip(false);
     setPhase("app");
@@ -6460,7 +6605,7 @@ function VakantieApp() {
           <Letters />
           <SetupView
             me={me}
-            initial={editingTrip ? trip : null}
+            initial={trip || null}
             onSave={saveTrip}
             onCancel={editingTrip ? () => setEditingTrip(false) : null}
             apiKey={apiKey}
