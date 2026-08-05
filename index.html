@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
-<meta name="reisboek-versie" content="familytrip-73" />
+<meta name="reisboek-versie" content="familytrip-74" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
 <title>Family Trip</title>
@@ -67,7 +67,7 @@ setTimeout(function () {
 <script>
 window.FIREBASE_STATUS = { fase: "config laden", ok: false, fout: "" };
 </script>
-<script src="config.js?v=73" onload="window.FIREBASE_STATUS.configBestand=true" onerror="window.FIREBASE_STATUS.configBestand=false; window.__fouten.push('config.js kon niet geladen worden')"></script>
+<script src="config.js?v=74" onload="window.FIREBASE_STATUS.configBestand=true" onerror="window.FIREBASE_STATUS.configBestand=false; window.__fouten.push('config.js kon niet geladen worden')"></script>
 <script>
 /* Instellingen die in de app zelf zijn ingevuld gaan voor op config.js. */
 (function () {
@@ -435,23 +435,15 @@ window.__initOpslag = function () {
 
       const provider = new firebase.auth.GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
-      const mobiel = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "") ||
-        (window.matchMedia && window.matchMedia("(max-width: 760px)").matches);
-      if (mobiel) {
-        try {
-          sessionStorage.setItem("familytrip-google-redirect", "1");
-          await auth.signInWithRedirect(provider);
-          return { redirecting: true };
-        } catch (redirectFout) {
-          sessionStorage.removeItem("familytrip-google-redirect");
-          const bericht = authFoutTekst(redirectFout);
-          window.FIREBASE_STATUS.fout = bericht;
-          throw new Error(bericht);
-        }
-      }
+
+      /* Popup werkt op GitHub Pages betrouwbaarder dan redirect, vooral in Brave
+         en andere mobiele browsers die externe cookies of opslag beperken. */
       try {
+        sessionStorage.removeItem("familytrip-google-redirect");
         const res = await auth.signInWithPopup(provider);
-        return googleProfiel(res && res.user);
+        const profiel = googleProfiel(res && res.user);
+        if (!profiel || !profiel.email) throw new Error("Google gaf geen geldig account terug.");
+        return profiel;
       } catch (e) {
         const code = (e && e.code) || "";
         const magDoorsturen = /popup-blocked|operation-not-supported-in-this-environment|cancelled-popup-request/i.test(code);
