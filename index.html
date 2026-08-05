@@ -5,7 +5,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
-<meta name="reisboek-versie" content="familytrip-75" />
+<meta name="reisboek-versie" content="familytrip-76" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
 <title>Family Trip</title>
@@ -4749,7 +4749,37 @@ function NearbyView({ trip, days, selected, setSelected, saved, setSaved, onAddT
   const [mapFor, setMapFor] = useState(null);
   const [added, setAdded] = useState({});
   const [source, setSource] = useState("");
+  const [locatieBezig, setLocatieBezig] = useState(false);
+  const [locatieMelding, setLocatieMelding] = useState("");
   const apiKey = React.useContext(MapsKeyContext);
+
+  const kiesLiveLocatie = () => {
+    if (!navigator.geolocation) {
+      setLocatieMelding("Deze browser kan je live locatie niet bepalen.");
+      return;
+    }
+    setLocatieBezig(true);
+    setLocatieMelding("Je locatie wordt bepaald…");
+    navigator.geolocation.getCurrentPosition(
+      (positie) => {
+        const lat = Number(positie.coords.latitude).toFixed(6);
+        const lng = Number(positie.coords.longitude).toFixed(6);
+        setArea(`${lat},${lng}`);
+        setLocatieBezig(false);
+        setLocatieMelding("Live locatie gekozen. Tik nu op een categorie om in de buurt te zoeken.");
+      },
+      (fout) => {
+        setLocatieBezig(false);
+        const tekst = fout && fout.code === 1
+          ? "Locatietoegang is geweigerd. Sta locatie toe voor deze website en probeer opnieuw."
+          : fout && fout.code === 2
+          ? "Je locatie kon niet worden bepaald. Controleer gps en internet."
+          : "Het bepalen van je locatie duurde te lang. Probeer opnieuw.";
+        setLocatieMelding(tekst);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+    );
+  };
 
   const search = async (cat) => {
     const useCat = cat || category;
@@ -4844,6 +4874,14 @@ function NearbyView({ trip, days, selected, setSelected, saved, setSaved, onAddT
         <Eyebrow>Zoeken rond</Eyebrow>
         <div className="mt-2 space-y-2">
           <Field label="Plaats of adres" value={area} onChange={(e) => setArea(e.target.value)} />
+          <Btn tone="ghost" className="w-full" onClick={kiesLiveLocatie} disabled={locatieBezig}>
+            {locatieBezig ? "Live locatie bepalen…" : "📍 Kies mijn live locatie"}
+          </Btn>
+          {locatieMelding && (
+            <p className="text-xs" style={{ color: /gekozen/i.test(locatieMelding) ? C.munt : C.muted }}>
+              {locatieMelding}
+            </p>
+          )}
           <Field
             label="Extra wens (optioneel)"
             placeholder="Vegetarisch, kindvriendelijk, niet te duur"
