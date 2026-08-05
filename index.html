@@ -2,9 +2,9 @@
 <html lang="nl">
 <head>
 <meta charset="utf-8" />
+<meta name="reisboek-versie" content="familytrip-67" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-65" />
 <title>Family Trip</title>
 <style>
   html, body, #root { width: 100%; max-width: 100%; overflow-x: hidden; }
@@ -6406,7 +6406,7 @@ function ShoppingView({ list, setList, days, selected, setSelected, me }) {
 }
 
 
-/* ---------- gedeelde familiekalender voor toekomstige trips ---------- */
+/* ---------- gedeelde familiekalender voor toekomstige en eerdere trips ---------- */
 const KALENDER_KLEUREN = ["#E98D7E", "#F2A9A5", "#E0B978", "#8CC9A8", "#C9B7DE", "#8FBCDF"];
 const isoVanDatum = (d) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -6423,10 +6423,21 @@ const tripDatumTekst = (start, end) => {
 function FamilieKalenderView({ trips, setTrips, members, me, currentTrip }) {
   const vandaag = localToday();
   const aankomend = useMemo(
-    () => [...(trips || [])].filter((t) => (t.end || t.start || "") >= vandaag).sort((a, b) => (a.start || "").localeCompare(b.start || "")),
+    () => [...(trips || [])]
+      .filter((t) => (t.end || t.start || "") >= vandaag)
+      .sort((a, b) => (a.start || "").localeCompare(b.start || "")),
     [trips, vandaag]
   );
-  const eersteMaand = aankomend[0]?.start ? maandStartIso(asDate(aankomend[0].start)) : maandStartIso();
+  const verleden = useMemo(
+    () => [...(trips || [])]
+      .filter((t) => (t.end || t.start || "") < vandaag)
+      .sort((a, b) => (b.end || b.start || "").localeCompare(a.end || a.start || "")),
+    [trips, vandaag]
+  );
+  const eersteKalenderTrip = aankomend[0] || verleden[0];
+  const eersteMaand = eersteKalenderTrip?.start
+    ? maandStartIso(asDate(eersteKalenderTrip.start))
+    : maandStartIso();
   const [maand, setMaand] = useState(eersteMaand);
   const [formulierOpen, setFormulierOpen] = useState(false);
   const [fout, setFout] = useState("");
@@ -6554,7 +6565,7 @@ function FamilieKalenderView({ trips, setTrips, members, me, currentTrip }) {
               Familiekalender
             </h2>
             <p className="text-sm mt-2" style={{ color: C.muted, lineHeight: 1.5 }}>
-              Alle toekomstige vakanties, weekendjes weg en familie-uitjes op één gedeelde plek.
+              Alle toekomstige én eerdere vakanties, weekendjes weg en familie-uitjes op één gedeelde plek.
             </p>
           </div>
           <Tegel naam="kalender" kleur={C.koraal} maat={48} />
@@ -6707,6 +6718,109 @@ function FamilieKalenderView({ trips, setTrips, members, me, currentTrip }) {
           </div>
         )}
       </div>
+
+      <div>
+        <div className="flex items-end justify-between mb-2 px-1">
+          <div>
+            <Eyebrow color={C.muted}>Samen terugkijken</Eyebrow>
+            <h3 className="font-serif text-xl mt-1">Vakanties uit het verleden</h3>
+          </div>
+          <span className="font-mono text-xs" style={{ color: C.muted }}>
+            {verleden.length} bewaard
+          </span>
+        </div>
+
+        {verleden.length === 0 ? (
+          <Card>
+            <Empty>Nog geen eerdere vakanties toegevoegd.</Empty>
+            <Btn tone="ghost" className="w-full" onClick={nieuw}>Oude vakantie toevoegen</Btn>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {verleden.map((trip) => {
+              const kleur = KALENDER_KLEUREN[trip.color || 0];
+              const namen = namenVoor(trip);
+              return (
+                <Card
+                  key={trip.id}
+                  style={{
+                    borderLeft: `8px solid ${kleur}`,
+                    background: `linear-gradient(135deg, ${C.bone}, ${kleur}10)`,
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div style={{ minWidth: 0 }}>
+                      <Eyebrow color={kleur}>{tripDatumTekst(trip.start, trip.end)}</Eyebrow>
+                      <h4 className="font-serif text-xl mt-1" style={{ overflowWrap: "anywhere" }}>
+                        {trip.title || trip.destination}
+                      </h4>
+                      <p className="text-sm mt-1" style={{ color: C.ink, fontWeight: 800 }}>
+                        📍 {trip.destination}
+                      </p>
+                    </div>
+                    <span
+                      className="rounded-full shrink-0"
+                      style={{ width: 18, height: 18, background: kleur, opacity: 0.78 }}
+                    />
+                  </div>
+
+                  <div
+                    className="mt-3 rounded-2xl p-3"
+                    style={{ background: "rgba(255,255,255,.68)", border: `1px solid ${C.line}` }}
+                  >
+                    <Eyebrow>Wie waren er mee?</Eyebrow>
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      {(trip.participants || []).map((email) => {
+                        const member = persoonBijEmail(email);
+                        return (
+                          <span
+                            key={email}
+                            className="inline-flex items-center gap-1 rounded-full"
+                            style={{ background: C.bone, padding: "4px 8px 4px 4px", border: `1px solid ${C.line}` }}
+                          >
+                            <Avatar member={member} size={25} />
+                            <span style={{ color: C.ink, fontSize: 11, fontWeight: 800 }}>
+                              {member.name || email}
+                            </span>
+                          </span>
+                        );
+                      })}
+                      {String(trip.extraPeople || "")
+                        .split(",")
+                        .map((naam) => naam.trim())
+                        .filter(Boolean)
+                        .map((naam, i) => (
+                          <span
+                            key={`${naam}-${i}`}
+                            className="rounded-full"
+                            style={{ background: C.bg, color: C.ink, padding: "6px 9px", fontSize: 11, fontWeight: 800 }}
+                          >
+                            {naam}
+                          </span>
+                        ))}
+                    </div>
+                    {!namen.length && (
+                      <p className="text-sm mt-2" style={{ color: C.muted }}>
+                        Deelnemers niet vastgelegd.
+                      </p>
+                    )}
+                  </div>
+
+                  {trip.note && (
+                    <p className="text-sm mt-3 whitespace-pre-wrap" style={{ color: C.muted, lineHeight: 1.55 }}>
+                      {trip.note}
+                    </p>
+                  )}
+                  <div className="grid grid-cols-2 gap-2 mt-3">
+                    <Btn tone="ghost" onClick={() => bewerk(trip)}>Aanpassen</Btn>
+                    <Btn tone="danger" onClick={() => verwijder(trip)}>Verwijderen</Btn>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -6815,9 +6929,54 @@ function VakantieApp() {
       loadKey("maps-key", ""),
       loadKey("family-calendar", []),
     ]);
+    let kalenderTrips = Array.isArray(ft) ? ft : [];
     if (core && core.trip) {
+      const bronReis = core.trip;
+      const leden = core.members || [];
+      let kalenderIndex = bronReis.familyCalendarId
+        ? kalenderTrips.findIndex((x) => x.id === bronReis.familyCalendarId)
+        : -1;
+      if (kalenderIndex < 0) {
+        kalenderIndex = kalenderTrips.findIndex(
+          (x) =>
+            x.start === bronReis.start &&
+            x.end === bronReis.end &&
+            (x.destination || "") === (bronReis.destination || bronReis.base || "") &&
+            (x.title || "") === (bronReis.name || bronReis.destination || "")
+        );
+      }
+      const bestaand = kalenderIndex >= 0 ? kalenderTrips[kalenderIndex] : null;
+      const kalenderId = bestaand?.id || bronReis.familyCalendarId || uid();
+      const kalenderItem = {
+        ...(bestaand || {}),
+        id: kalenderId,
+        source: "trip-core",
+        title: bronReis.name || bronReis.destination || "Familietrip",
+        destination: bronReis.destination || bronReis.base || "",
+        start: bronReis.start || localToday(),
+        end: bronReis.end || bronReis.start || localToday(),
+        participants:
+          Array.isArray(bestaand?.participants) && bestaand.participants.length
+            ? bestaand.participants
+            : leden.map((m) => m.email).filter(Boolean),
+        extraPeople: bestaand?.extraPeople || "",
+        note: bestaand?.note || bronReis.summary || "",
+        color: Number.isInteger(bestaand?.color) ? bestaand.color : 0,
+        by: bestaand?.by || leden[0]?.name || leden[0]?.email || "Familielid",
+        createdAt: bestaand?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      kalenderTrips = kalenderIndex >= 0
+        ? kalenderTrips.map((x, i) => (i === kalenderIndex ? kalenderItem : x))
+        : [...kalenderTrips, kalenderItem];
+
+      if (bronReis.familyCalendarId !== kalenderId) {
+        core = { ...core, trip: { ...bronReis, familyCalendarId: kalenderId } };
+        await saveKey("trip-core", core);
+      }
+      await saveKey("family-calendar", kalenderTrips);
       setTrip(core.trip);
-      setMembers(core.members || []);
+      setMembers(leden);
       try { localStorage.setItem("reisboek-laatste-reis", JSON.stringify(core)); } catch (e) {}
     }
     setAgenda(a);
@@ -6826,7 +6985,7 @@ function VakantieApp() {
     setShopping(s);
     setPhotoIndex(pi);
     setPlaces(pl);
-    setFamilyTrips(Array.isArray(ft) ? ft : []);
+    setFamilyTrips(kalenderTrips);
     setApiKeyState(typeof mk === "string" ? mk : "");
     await haalLocaties();
     setSyncing(false);
@@ -7028,12 +7187,52 @@ function VakantieApp() {
 
   const saveTrip = async (t) => {
     const nextMembers = members.some((m) => m.email === me.email) ? members : [...members, me];
-    const kern = { trip: t, members: nextMembers };
-    setTrip(t);
+    const bestaandId = t.familyCalendarId || trip?.familyCalendarId || "";
+    let kalenderIndex = bestaandId ? familyTrips.findIndex((x) => x.id === bestaandId) : -1;
+    if (kalenderIndex < 0 && !bestaandId) {
+      kalenderIndex = familyTrips.findIndex(
+        (x) =>
+          x.start === t.start &&
+          x.end === t.end &&
+          (x.destination || "") === (t.destination || t.base || "") &&
+          (x.title || "") === (t.name || t.destination || "")
+      );
+    }
+    const bestaand = kalenderIndex >= 0 ? familyTrips[kalenderIndex] : null;
+    const kalenderId = bestaand?.id || bestaandId || uid();
+    const opgeslagenReis = { ...t, familyCalendarId: kalenderId };
+    const kalenderItem = {
+      ...(bestaand || {}),
+      id: kalenderId,
+      source: "trip-core",
+      title: t.name || t.destination || "Familietrip",
+      destination: t.destination || t.base || "",
+      start: t.start || localToday(),
+      end: t.end || t.start || localToday(),
+      participants:
+        Array.isArray(bestaand?.participants) && bestaand.participants.length
+          ? bestaand.participants
+          : nextMembers.map((m) => m.email).filter(Boolean),
+      extraPeople: bestaand?.extraPeople || "",
+      note: bestaand?.note || t.summary || "",
+      color: Number.isInteger(bestaand?.color) ? bestaand.color : 0,
+      by: bestaand?.by || me.name || me.email || "Familielid",
+      createdAt: bestaand?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const volgendeKalender = kalenderIndex >= 0
+      ? familyTrips.map((x, i) => (i === kalenderIndex ? kalenderItem : x))
+      : [...familyTrips, kalenderItem];
+    const kern = { trip: opgeslagenReis, members: nextMembers };
+    setTrip(opgeslagenReis);
     setMembers(nextMembers);
+    setFamilyTrips(volgendeKalender);
     try { localStorage.setItem("reisboek-laatste-reis", JSON.stringify(kern)); } catch (e) {}
-    const ok = await saveKey("trip-core", kern);
-    setNotice(ok ? "" : "Opslaan lukte niet. Probeer het opnieuw.");
+    const [ok, kalenderOk] = await Promise.all([
+      saveKey("trip-core", kern),
+      saveKey("family-calendar", volgendeKalender),
+    ]);
+    setNotice(ok && kalenderOk ? "" : "Opslaan lukte niet. Probeer het opnieuw.");
     setEditingTrip(false);
     setPhase("app");
   };
