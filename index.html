@@ -7237,6 +7237,36 @@ function FamilieInstellingenView({ members, setMembers, me, settings, setSetting
     return `${basisUrl}?familie-uitnodiging=${encodeURIComponent(code)}`;
   };
 
+  const uitnodigingsMailLink = (member) => {
+    const link = maakUitnodigingslink(member);
+    const familie = huidig.familyName || "Onze familie";
+    const afzender = me?.name || me?.email || "Een familielid";
+    const onderwerp = `Uitnodiging voor ${familie} in Family Trip`;
+    const regels = [
+      `Hoi ${member.name || ""},`,
+      "",
+      `${afzender} nodigt je uit voor de gedeelde familiemap “${familie}” in Family Trip.`,
+      trip?.name ? `Actieve reis: ${trip.name}.` : "",
+      "",
+      "Open deze persoonlijke uitnodigingslink:",
+      link,
+      "",
+      `Log in met ${member.email || "het uitgenodigde e-mailadres"} om deel te nemen.`,
+    ].filter((regel) => regel !== "");
+    return `mailto:${encodeURIComponent(member.email || "")}?subject=${encodeURIComponent(onderwerp)}&body=${encodeURIComponent(regels.join("\n"))}`;
+  };
+
+  const verstuurPerEmail = (member) => {
+    const href = uitnodigingsMailLink(member);
+    const a = document.createElement("a");
+    a.href = href;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setMelding("Je e-mailapp is geopend. Controleer het bericht en tik daar op Verzenden.");
+  };
+
   const kopieer = async (tekst, succes) => {
     try {
       await navigator.clipboard.writeText(tekst);
@@ -7274,7 +7304,8 @@ function FamilieInstellingenView({ members, setMembers, me, settings, setSetting
     setNaam("");
     setEmail("");
     setRol("lid");
-    setMelding(`${schoonNaam} is toegevoegd als uitnodiging. Deel de uitnodigingslink hieronder.`);
+    setMelding(`${schoonNaam} is toegevoegd. Je e-mailapp wordt geopend; tik daar op Verzenden.`);
+    setTimeout(() => verstuurPerEmail(nieuwLid), 120);
   };
 
   const veranderRol = async (member, nieuweRol) => {
@@ -7399,9 +7430,14 @@ function FamilieInstellingenView({ members, setMembers, me, settings, setSetting
                     </select>
                   </label>
                   {uitgenodigd && (
-                    <Btn tone="ghost" onClick={() => kopieer(maakUitnodigingslink(member), `Uitnodigingslink voor ${member.name || member.email} gekopieerd.`)}>
-                      Uitnodigingslink kopiëren
-                    </Btn>
+                    <div className="grid grid-cols-1 gap-2">
+                      <Btn onClick={() => verstuurPerEmail(member)}>
+                        Uitnodiging per e-mail sturen
+                      </Btn>
+                      <Btn tone="ghost" onClick={() => kopieer(maakUitnodigingslink(member), `Uitnodigingslink voor ${member.name || member.email} gekopieerd.`)}>
+                        Uitnodigingslink kopiëren
+                      </Btn>
+                    </div>
                   )}
                   {kanBeheren && member.email !== me?.email && member.role !== "eigenaar" && (
                     <Btn tone="danger" onClick={() => verwijderLid(member)}>Verwijderen</Btn>
@@ -7416,7 +7452,7 @@ function FamilieInstellingenView({ members, setMembers, me, settings, setSetting
       <Card style={{ border: `2px solid ${C.lucht}` }}>
         <Eyebrow color={C.lucht}>Gezinslid uitnodigen</Eyebrow>
         <p className="text-xs mt-1" style={{ color: C.muted }}>
-          De uitnodiging wordt in de gedeelde familie opgeslagen. Deel daarna de persoonlijke link met het gezinslid.
+          Na toevoegen opent je e-mailapp met een ingevuld bericht en persoonlijke link. Tik in de e-mailapp nog op Verzenden.
         </p>
         <div className="space-y-2 mt-3">
           <Field label="Naam" placeholder="Naam van het gezinslid" value={naam} onChange={(e) => setNaam(e.target.value)} disabled={!kanBeheren} />
@@ -7427,7 +7463,7 @@ function FamilieInstellingenView({ members, setMembers, me, settings, setSetting
               {FAMILIE_ROLLEN.filter((r) => r.id !== "eigenaar" || isEigenaar).map((r) => <option key={r.id} value={r.id}>{r.label} — {r.uitleg}</option>)}
             </select>
           </label>
-          <Btn onClick={uitnodigen} disabled={!kanBeheren}>Gezinslid uitnodigen</Btn>
+          <Btn onClick={uitnodigen} disabled={!kanBeheren}>Uitnodiging per e-mail maken</Btn>
           {!kanBeheren && <p className="text-xs" style={{ color: C.marigold }}>Je rol geeft alleen-lezen toegang tot familiebeheer.</p>}
         </div>
       </Card>
