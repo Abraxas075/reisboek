@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-64" />
+<meta name="reisboek-versie" content="familytrip-65" />
 <title>Family Trip</title>
 <style>
   html, body, #root { width: 100%; max-width: 100%; overflow-x: hidden; }
@@ -1837,16 +1837,34 @@ const vervoerNaam = (soort) => {
 
 function leesTijdlijn(json) {
   const uit = [];
+  const secondenTussen = (start, einde) => {
+    if (!start || !einde) return 0;
+    const a = new Date(start).getTime();
+    const b = new Date(einde).getTime();
+    if (!isFinite(a) || !isFinite(b) || b <= a) return 0;
+    return Math.round((b - a) / 1000);
+  };
+  const eersteTekst = (...waarden) => {
+    for (const v of waarden) {
+      const s = String(v || "").trim();
+      if (s) return s;
+    }
+    return "";
+  };
   const voegToe = (naam, adres, start, extra = {}) => {
     if (!naam || !start) return;
     const d = new Date(start);
     if (isNaN(d.getTime())) return;
+    const { einde = "", benaming = "", duurS = 0, ...rest } = extra || {};
+    const duur = duurS || secondenTussen(start, einde);
     uit.push({
       date: kortDatum(d),
       time: `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
       title: naam,
       place: adres || "",
-      ...extra,
+      ...(benaming ? { benaming } : {}),
+      ...(duur > 0 ? { duurS: duur } : {}),
+      ...rest,
     });
   };
   const uitE7 = (l) =>
@@ -1863,13 +1881,18 @@ function leesTijdlijn(json) {
   objecten.forEach((o) => {
     if (o.placeVisit) {
       const loc = o.placeVisit.location || {};
-      voegToe(loc.name || loc.address || "Bezoek", loc.address, o.placeVisit.duration?.startTimestamp);
+      voegToe(loc.name || loc.address || "Bezoek", loc.address, o.placeVisit.duration?.startTimestamp, {
+        benaming: eersteTekst(loc.name, loc.address),
+        einde: o.placeVisit.duration?.endTimestamp,
+      });
     } else if (o.activitySegment) {
       const a = o.activitySegment;
       voegToe(`Onderweg ${vervoerNaam(a.activityType)}`, "", a.duration?.startTimestamp, {
         soort: "onderweg",
         vanPunt: uitE7(a.startLocation),
         naarPunt: uitE7(a.endLocation),
+        benaming: vervoerNaam(a.activityType),
+        einde: a.duration?.endTimestamp,
       });
     }
   });
@@ -1887,12 +1910,30 @@ function leesTijdlijn(json) {
           : ll && ll.latitude != null
           ? `${ll.latitude},${ll.longitude}`
           : kand.placeId || "";
-      voegToe(kand.semanticType && kand.semanticType !== "UNKNOWN" ? kand.semanticType : "Bezoek", String(plek), start);
+      const benaming = eersteTekst(
+        kand.name,
+        kand.localizedName,
+        kand.displayName,
+        kand.address,
+        kand.formattedAddress,
+        kand.placeName
+      );
+      voegToe(
+        kand.semanticType && kand.semanticType !== "UNKNOWN" ? kand.semanticType : benaming || "Bezoek",
+        String(eersteTekst(kand.address, kand.formattedAddress, plek)),
+        start,
+        {
+          benaming,
+          einde: s.endTime || s.endTimestamp || s.visit?.endTime || s.visit?.endTimestamp,
+        }
+      );
     } else if (s.activity) {
       voegToe(`Onderweg ${vervoerNaam(s.activity.topCandidate?.type)}`, "", start, {
         soort: "onderweg",
         vanPunt: uitGeo(s.activity.start),
         naarPunt: uitGeo(s.activity.end),
+        benaming: vervoerNaam(s.activity.topCandidate?.type),
+        einde: s.endTime || s.endTimestamp || s.activity?.endTime || s.activity?.endTimestamp,
       });
     }
   });
@@ -3319,6 +3360,16 @@ function TijdlijnImport({ days, onImport }) {
                         <span className="block text-sm" style={{ color: C.ink }}>
                           {i.title}
                         </span>
+                        {i.benaming && i.benaming !== i.title && (
+                          <span className="block text-xs mt-0.5" style={{ color: C.ink }}>
+                            Benaming: {i.benaming}
+                          </span>
+                        )}
+                        {i.duurS > 0 && (
+                          <span className="block text-xs mt-0.5" style={{ color: C.marigold }}>
+                            Reisduur: {duurTekst(i.duurS)}
+                          </span>
+                        )}
                         {i.place && !alsCoordinaat(i.place) && (
                           <span className="block text-xs mt-0.5" style={{ color: C.muted }}>
                             {i.place}
@@ -4314,12 +4365,22 @@ function AgendaRegel({ item, items, setItems, compact, fotos, images }) {
               {item.title}
             </span>
           )}
+          {item.benaming && item.benaming !== kop && item.benaming !== item.title && (
+            <span className="block font-mono text-xs mt-1" style={{ color: C.muted }}>
+              Benaming: {item.benaming}
+            </span>
+          )}
           {!heenEnWeer && isOnderweg(item) && (
             <span className="block font-mono text-xs" style={{ color: C.ember }}>
               tik om begin- en eindpunt in te vullen
             </span>
           )}
         </button>
+        {item.duurS > 0 && item.soort !== "wandeling" && (
+          <span className="block font-mono text-xs mt-1" style={{ color: C.muted }}>
+            Reisduur: {duurTekst(item.duurS)}
+          </span>
+        )}
         {item.soort === "wandeling" && (
           <span className="block font-mono text-xs mt-1" style={{ color: C.muted }}>
             {afstandTekst(item.afstandM || 0)} in {duurTekst(item.duurS || 0)}
