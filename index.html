@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
 <meta charset="utf-8" />
-<meta name="reisboek-versie" content="familytrip-70" />
+<meta name="reisboek-versie" content="familytrip-71" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
 <title>Family Trip</title>
@@ -1497,6 +1497,12 @@ const ICOON = {
       <path d="M5 20.5c0-3.6 3.1-5.5 7-5.5s7 1.9 7 5.5" />
     </>
   ),
+  instellingen: (
+    <>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4v-.2a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9A1.7 1.7 0 0 0 21 10h.2v4H21a1.7 1.7 0 0 0-1.6 1Z" />
+    </>
+  ),
   uit: (
     <>
       <path d="M14.5 4.5H6.5v15h8" />
@@ -1549,6 +1555,7 @@ const TABS = [
   { id: "reis", label: "Reis", kleur: "#8DA56B" },
   { id: "agenda", label: "Agenda", kleur: "#F2B84B" },
   { id: "kalender", label: "Familiekalender", kleur: "#E98D7E" },
+  { id: "instellingen", label: "Familiebeheer & instellingen", kleur: "#8FBCDF" },
   { id: "buurt", label: "In de buurt", kleur: "#F2B84B" },
   { id: "fotos", label: "Foto's en video", kleur: "#76A9CF" },
   { id: "notities", label: "Notities", kleur: "#B79BC8" },
@@ -7171,6 +7178,302 @@ function FamilieKalenderView({ trips, setTrips, members, me, currentTrip }) {
   );
 }
 
+/* ---------- familiebeheer en gezamenlijke instellingen ---------- */
+const FAMILIE_ROLLEN = [
+  { id: "eigenaar", label: "Eigenaar", uitleg: "Volledig beheer en eigenaarschap" },
+  { id: "beheerder", label: "Beheerder", uitleg: "Leden, reizen en instellingen beheren" },
+  { id: "lid", label: "Gezinslid", uitleg: "Reizen bekijken en samen aanvullen" },
+  { id: "kind", label: "Kind", uitleg: "Beperkte toegang tot gedeelde inhoud" },
+];
+const standaardFamilieInstellingen = () => ({
+  familyName: "Onze familie",
+  notifications: {
+    tripChanges: true,
+    newPhotos: true,
+    reminders: true,
+    memberActivity: false,
+  },
+  privacy: {
+    access: "members",
+    photoDownload: true,
+    locationVisibility: "manual",
+    approvalRequired: true,
+  },
+});
+
+function FamilieInstellingenView({ members, setMembers, me, settings, setSettings, trip }) {
+  const basis = standaardFamilieInstellingen();
+  const huidig = {
+    ...basis,
+    ...(settings || {}),
+    notifications: { ...basis.notifications, ...((settings && settings.notifications) || {}) },
+    privacy: { ...basis.privacy, ...((settings && settings.privacy) || {}) },
+  };
+  const [naam, setNaam] = useState("");
+  const [email, setEmail] = useState("");
+  const [rol, setRol] = useState("lid");
+  const [melding, setMelding] = useState("");
+  const [familienaam, setFamilienaam] = useState(huidig.familyName || "Onze familie");
+
+  useEffect(() => {
+    setFamilienaam(huidig.familyName || "Onze familie");
+  }, [settings && settings.familyName]);
+
+  const rolVan = (member, index) => member.role || (index === 0 ? "eigenaar" : "lid");
+  const mijnIndex = (members || []).findIndex((m) => m.email === me?.email);
+  const mijnRol = mijnIndex >= 0 ? rolVan(members[mijnIndex], mijnIndex) : "lid";
+  const kanBeheren = mijnRol === "eigenaar" || mijnRol === "beheerder";
+  const isEigenaar = mijnRol === "eigenaar";
+
+  const genormaliseerdeLeden = (members || []).map((m, index) => ({
+    ...m,
+    role: rolVan(m, index),
+    status: m.status || "actief",
+  }));
+
+  const maakUitnodigingslink = (member) => {
+    const code = member.inviteCode || member.email || uid();
+    const basisUrl = `${window.location.origin}${window.location.pathname}`;
+    return `${basisUrl}?familie-uitnodiging=${encodeURIComponent(code)}`;
+  };
+
+  const kopieer = async (tekst, succes) => {
+    try {
+      await navigator.clipboard.writeText(tekst);
+      setMelding(succes);
+    } catch (e) {
+      const invoer = document.createElement("textarea");
+      invoer.value = tekst;
+      document.body.appendChild(invoer);
+      invoer.select();
+      document.execCommand("copy");
+      invoer.remove();
+      setMelding(succes);
+    }
+  };
+
+  const uitnodigen = async () => {
+    const schoonEmail = email.trim().toLowerCase();
+    const schoonNaam = naam.trim();
+    if (!kanBeheren) return setMelding("Alleen een eigenaar of beheerder kan gezinsleden uitnodigen.");
+    if (!schoonNaam) return setMelding("Vul de naam van het gezinslid in.");
+    if (!/^\S+@\S+\.\S+$/.test(schoonEmail)) return setMelding("Vul een geldig e-mailadres in.");
+    if ((members || []).some((m) => String(m.email || "").toLowerCase() === schoonEmail)) {
+      return setMelding("Dit e-mailadres staat al bij de familie.");
+    }
+    const nieuwLid = {
+      name: schoonNaam,
+      email: schoonEmail,
+      role: rol,
+      status: "uitgenodigd",
+      inviteCode: uid(),
+      invitedAt: new Date().toISOString(),
+      invitedBy: me?.email || "",
+    };
+    await setMembers([...genormaliseerdeLeden, nieuwLid]);
+    setNaam("");
+    setEmail("");
+    setRol("lid");
+    setMelding(`${schoonNaam} is toegevoegd als uitnodiging. Deel de uitnodigingslink hieronder.`);
+  };
+
+  const veranderRol = async (member, nieuweRol) => {
+    if (!kanBeheren) return;
+    if (member.email === me?.email && mijnRol === "eigenaar" && nieuweRol !== "eigenaar") {
+      const andereEigenaren = genormaliseerdeLeden.filter((m) => m.email !== member.email && m.role === "eigenaar");
+      if (!andereEigenaren.length) return setMelding("Wijs eerst iemand anders als eigenaar aan.");
+    }
+    if (nieuweRol === "eigenaar" && !isEigenaar) return setMelding("Alleen de eigenaar kan een nieuwe eigenaar aanwijzen.");
+    await setMembers(genormaliseerdeLeden.map((m) => m.email === member.email ? { ...m, role: nieuweRol } : m));
+    setMelding(`Rol van ${member.name || member.email} aangepast.`);
+  };
+
+  const verwijderLid = async (member) => {
+    if (!kanBeheren) return;
+    if (member.email === me?.email) return setMelding("Je kunt jezelf hier niet verwijderen.");
+    if (member.role === "eigenaar") return setMelding("Wijs eerst een andere rol toe voordat je deze eigenaar verwijdert.");
+    if (!window.confirm(`Weet je zeker dat je ${member.name || member.email} wilt verwijderen?`)) return;
+    await setMembers(genormaliseerdeLeden.filter((m) => m.email !== member.email));
+    setMelding(`${member.name || member.email} is verwijderd.`);
+  };
+
+  const updateInstellingen = async (deel, sleutel, waarde) => {
+    const volgende = {
+      ...huidig,
+      [deel]: { ...huidig[deel], [sleutel]: waarde },
+    };
+    await setSettings(volgende);
+    setMelding("Gezamenlijke instellingen opgeslagen.");
+  };
+
+  const bewaarFamilienaam = async () => {
+    const volgendeNaam = familienaam.trim() || "Onze familie";
+    await setSettings({ ...huidig, familyName: volgendeNaam });
+    setFamilienaam(volgendeNaam);
+    setMelding("Familienaam opgeslagen.");
+  };
+
+  const Schakelaar = ({ aan, onChange, label, uitleg }) => (
+    <label className="flex items-center justify-between gap-3 rounded-2xl p-3 cursor-pointer" style={{ background: "#FFFFFF", border: `1px solid ${C.line}` }}>
+      <span className="min-w-0">
+        <span className="block text-sm" style={{ color: C.ink, fontWeight: 800 }}>{label}</span>
+        {uitleg && <span className="block text-xs mt-0.5" style={{ color: C.muted }}>{uitleg}</span>}
+      </span>
+      <input type="checkbox" checked={!!aan} onChange={(e) => onChange(e.target.checked)} style={{ width: 22, height: 22, accentColor: C.koraal, flexShrink: 0 }} />
+    </label>
+  );
+
+  return (
+    <div className="space-y-4">
+      <Card style={{ background: `linear-gradient(145deg, ${C.bone}, ${C.lucht}2A)` }}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <Eyebrow color={C.lucht}>Centraal familieoverzicht</Eyebrow>
+            <h2 className="font-serif mt-1" style={{ color: C.ink, fontSize: 27, lineHeight: 1.1 }}>Familiebeheer & instellingen</h2>
+            <p className="text-sm mt-2" style={{ color: C.muted, lineHeight: 1.5 }}>
+              Beheer gezinsleden, rollen, meldingen en privacy voor de gedeelde familiemap.
+            </p>
+          </div>
+          <Tegel naam="instellingen" kleur={C.lucht} maat={48} />
+        </div>
+        <div className="grid grid-cols-3 gap-2 mt-4">
+          <div className="rounded-2xl p-3 text-center" style={{ background: "rgba(255,255,255,.76)", border: `1px solid ${C.line}` }}>
+            <span className="block font-serif text-xl">{genormaliseerdeLeden.filter((m) => m.status !== "uitgenodigd").length}</span>
+            <span className="font-mono text-xs" style={{ color: C.muted }}>Actief</span>
+          </div>
+          <div className="rounded-2xl p-3 text-center" style={{ background: "rgba(255,255,255,.76)", border: `1px solid ${C.line}` }}>
+            <span className="block font-serif text-xl">{genormaliseerdeLeden.filter((m) => m.status === "uitgenodigd").length}</span>
+            <span className="font-mono text-xs" style={{ color: C.muted }}>Uitgenodigd</span>
+          </div>
+          <div className="rounded-2xl p-3 text-center" style={{ background: "rgba(255,255,255,.76)", border: `1px solid ${C.line}` }}>
+            <span className="block font-serif text-xl">{trip?.name ? 1 : 0}</span>
+            <span className="font-mono text-xs" style={{ color: C.muted }}>Actieve reis</span>
+          </div>
+        </div>
+      </Card>
+
+      <Card>
+        <Eyebrow>Naam van de familie</Eyebrow>
+        <div className="grid grid-cols-1 gap-2 mt-2">
+          <Field value={familienaam} onChange={(e) => setFamilienaam(e.target.value)} placeholder="Bijvoorbeeld: Familie Bakkum" />
+          <Btn onClick={bewaarFamilienaam}>Naam opslaan</Btn>
+        </div>
+      </Card>
+
+      <Card>
+        <div className="flex items-end justify-between gap-2">
+          <div>
+            <Eyebrow color={C.marigold}>Gezinsleden</Eyebrow>
+            <h3 className="font-serif text-xl mt-1">Leden en rollen</h3>
+          </div>
+          <span className="font-mono text-xs" style={{ color: C.muted }}>{genormaliseerdeLeden.length} totaal</span>
+        </div>
+        <div className="space-y-2 mt-3">
+          {genormaliseerdeLeden.map((member, index) => {
+            const uitgenodigd = member.status === "uitgenodigd";
+            return (
+              <div key={member.email || index} className="rounded-2xl p-3" style={{ background: uitgenodigd ? `${C.geel}18` : "#FFFFFF", border: `1.5px solid ${uitgenodigd ? C.geel : C.line}` }}>
+                <div className="flex items-center gap-3">
+                  <Avatar member={member} size={38} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm" style={{ color: C.ink, fontWeight: 900 }}>{member.name || member.email}</span>
+                      <span className="rounded-full font-mono text-[10px]" style={{ padding: "3px 7px", background: uitgenodigd ? `${C.geel}33` : C.mint, color: C.ink }}>
+                        {uitgenodigd ? "UITGENODIGD" : "ACTIEF"}
+                      </span>
+                    </div>
+                    <span className="block text-xs mt-0.5" style={{ color: C.muted, overflowWrap: "anywhere" }}>{member.email}</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-2 mt-3">
+                  <label>
+                    <Eyebrow>Rol</Eyebrow>
+                    <select
+                      value={member.role}
+                      disabled={!kanBeheren || (member.role === "eigenaar" && !isEigenaar)}
+                      onChange={(e) => veranderRol(member, e.target.value)}
+                      className="w-full mt-1 px-3 rounded-2xl text-sm"
+                      style={{ height: 44, background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}
+                    >
+                      {FAMILIE_ROLLEN.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+                    </select>
+                  </label>
+                  {uitgenodigd && (
+                    <Btn tone="ghost" onClick={() => kopieer(maakUitnodigingslink(member), `Uitnodigingslink voor ${member.name || member.email} gekopieerd.`)}>
+                      Uitnodigingslink kopiëren
+                    </Btn>
+                  )}
+                  {kanBeheren && member.email !== me?.email && member.role !== "eigenaar" && (
+                    <Btn tone="danger" onClick={() => verwijderLid(member)}>Verwijderen</Btn>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+
+      <Card style={{ border: `2px solid ${C.lucht}` }}>
+        <Eyebrow color={C.lucht}>Gezinslid uitnodigen</Eyebrow>
+        <p className="text-xs mt-1" style={{ color: C.muted }}>
+          De uitnodiging wordt in de gedeelde familie opgeslagen. Deel daarna de persoonlijke link met het gezinslid.
+        </p>
+        <div className="space-y-2 mt-3">
+          <Field label="Naam" placeholder="Naam van het gezinslid" value={naam} onChange={(e) => setNaam(e.target.value)} disabled={!kanBeheren} />
+          <Field label="E-mailadres" type="email" placeholder="naam@voorbeeld.nl" value={email} onChange={(e) => setEmail(e.target.value)} disabled={!kanBeheren} />
+          <label className="block">
+            <Eyebrow>Rol bij uitnodiging</Eyebrow>
+            <select value={rol} onChange={(e) => setRol(e.target.value)} disabled={!kanBeheren} className="w-full mt-1 px-3 rounded-2xl text-sm" style={{ height: 46, background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}>
+              {FAMILIE_ROLLEN.filter((r) => r.id !== "eigenaar" || isEigenaar).map((r) => <option key={r.id} value={r.id}>{r.label} — {r.uitleg}</option>)}
+            </select>
+          </label>
+          <Btn onClick={uitnodigen} disabled={!kanBeheren}>Gezinslid uitnodigen</Btn>
+          {!kanBeheren && <p className="text-xs" style={{ color: C.marigold }}>Je rol geeft alleen-lezen toegang tot familiebeheer.</p>}
+        </div>
+      </Card>
+
+      <Card>
+        <Eyebrow color={C.marigold}>Gezamenlijke meldingen</Eyebrow>
+        <div className="space-y-2 mt-3">
+          <Schakelaar aan={huidig.notifications.tripChanges} label="Wijzigingen in reizen" uitleg="Melding bij aangepaste data, bestemming of plannen" onChange={(v) => updateInstellingen("notifications", "tripChanges", v)} />
+          <Schakelaar aan={huidig.notifications.newPhotos} label="Nieuwe foto's en video's" uitleg="Melding wanneer iemand herinneringen toevoegt" onChange={(v) => updateInstellingen("notifications", "newPhotos", v)} />
+          <Schakelaar aan={huidig.notifications.reminders} label="Herinneringen voor vertrek" uitleg="Gezamenlijke herinneringen voor aankomende trips" onChange={(v) => updateInstellingen("notifications", "reminders", v)} />
+          <Schakelaar aan={huidig.notifications.memberActivity} label="Activiteit van gezinsleden" uitleg="Melding bij nieuwe leden of aangepaste rollen" onChange={(v) => updateInstellingen("notifications", "memberActivity", v)} />
+        </div>
+      </Card>
+
+      <Card>
+        <Eyebrow color={C.munt}>Privacy van de familiemap</Eyebrow>
+        <div className="space-y-3 mt-3">
+          <label className="block">
+            <Eyebrow>Wie heeft toegang?</Eyebrow>
+            <select value={huidig.privacy.access} onChange={(e) => updateInstellingen("privacy", "access", e.target.value)} className="w-full mt-1 px-3 rounded-2xl text-sm" style={{ height: 46, background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}>
+              <option value="members">Alleen actieve gezinsleden</option>
+              <option value="invite">Gezinsleden en mensen met een uitnodigingslink</option>
+            </select>
+          </label>
+          <label className="block">
+            <Eyebrow>Locatie delen</Eyebrow>
+            <select value={huidig.privacy.locationVisibility} onChange={(e) => updateInstellingen("privacy", "locationVisibility", e.target.value)} className="w-full mt-1 px-3 rounded-2xl text-sm" style={{ height: 46, background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}` }}>
+              <option value="manual">Alleen wanneer iemand het zelf aanzet</option>
+              <option value="family">Zichtbaar voor actieve gezinsleden tijdens de reis</option>
+              <option value="off">Locatie delen volledig uit</option>
+            </select>
+          </label>
+          <Schakelaar aan={huidig.privacy.photoDownload} label="Foto's mogen downloaden" uitleg="Actieve gezinsleden mogen gedeelde foto's bewaren" onChange={(v) => updateInstellingen("privacy", "photoDownload", v)} />
+          <Schakelaar aan={huidig.privacy.approvalRequired} label="Nieuwe leden eerst goedkeuren" uitleg="Een eigenaar of beheerder moet nieuwe toegang bevestigen" onChange={(v) => updateInstellingen("privacy", "approvalRequired", v)} />
+        </div>
+      </Card>
+
+      {melding && (
+        <Card style={{ background: `${C.mint}88`, border: `1px solid ${C.munt}` }}>
+          <p className="text-sm" style={{ color: C.ink, fontWeight: 800 }}>{melding}</p>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 /* ---------- app ---------- */
 function VakantieApp() {
   const [phase, setPhase] = useState("loading"); // loading | login | setup | app
@@ -7185,6 +7488,7 @@ function VakantieApp() {
   const [shopping, setShopping] = useState([]);
   const [places, setPlaces] = useState([]);
   const [familyTrips, setFamilyTrips] = useState([]);
+  const [familySettings, setFamilySettings] = useState(standaardFamilieInstellingen);
   const [apiKey, setApiKeyState] = useState("");
   const [tab, setTab] = useState("dagen");
   const gaNaarTab = (volgendeTab) => {
@@ -7265,7 +7569,7 @@ function VakantieApp() {
         }
       } catch (e) {}
     }
-    const [a, n, t, s, pi, pl, mk, ft] = await Promise.all([
+    const [a, n, t, s, pi, pl, mk, ft, fs] = await Promise.all([
       loadKey("agenda", []),
       loadKey("notes", []),
       loadKey("todos", []),
@@ -7274,6 +7578,7 @@ function VakantieApp() {
       loadKey("places", []),
       loadKey("maps-key", ""),
       loadKey("family-calendar", []),
+      loadKey("family-settings", standaardFamilieInstellingen()),
     ]);
     let kalenderTrips = Array.isArray(ft) ? ft : [];
     if (core && core.trip) {
@@ -7332,6 +7637,7 @@ function VakantieApp() {
     setPhotoIndex(pi);
     setPlaces(pl);
     setFamilyTrips(kalenderTrips);
+    setFamilySettings(fs && typeof fs === "object" ? fs : standaardFamilieInstellingen());
     setApiKeyState(typeof mk === "string" ? mk : "");
     await haalLocaties();
     setSyncing(false);
@@ -7445,7 +7751,9 @@ function VakantieApp() {
     const core = await pullAll();
     const existing = core?.members || [];
     const bestaand = existing.find((m) => m.email === person.email);
-    const samen = bestaand ? { ...bestaand, ...person } : person;
+    const samen = bestaand
+      ? { ...bestaand, ...person, status: "actief", joinedAt: bestaand.joinedAt || new Date().toISOString() }
+      : { ...person, role: existing.length ? "lid" : "eigenaar", status: "actief", joinedAt: new Date().toISOString() };
     const nextMembers = bestaand
       ? existing.map((m) => (m.email === person.email ? samen : m))
       : [...existing, samen];
@@ -7479,8 +7787,8 @@ function VakantieApp() {
     const core = await loadKey("trip-core", null);
     const lijst = core?.members || members;
     const nextMembers = lijst.some((m) => m.email === compleet.email)
-      ? lijst.map((m) => (m.email === compleet.email ? compleet : m))
-      : [...lijst, compleet];
+      ? lijst.map((m) => (m.email === compleet.email ? { ...m, ...compleet, status: "actief" } : m))
+      : [...lijst, { ...compleet, role: lijst.length ? "lid" : "eigenaar", status: "actief" }];
     setMembers(nextMembers);
     if (core) await saveKey("trip-core", { ...core, members: nextMembers });
     setEditingProfile(false);
@@ -7588,6 +7896,22 @@ function VakantieApp() {
     setter(value);
     const ok = await saveKey(key, value);
     if (!ok) setNotice("Opslaan lukte niet. Tik op Vernieuwen en probeer het opnieuw.");
+  };
+
+  const updateFamilyMembers = async (volgendeLeden) => {
+    setMembers(volgendeLeden);
+    const core = await loadKey("trip-core", null);
+    if (core) {
+      const volgendCore = { ...core, members: volgendeLeden };
+      await saveKey("trip-core", volgendCore);
+      try { localStorage.setItem("reisboek-laatste-reis", JSON.stringify(volgendCore)); } catch (e) {}
+    }
+  };
+
+  const updateFamilySettings = async (volgendeInstellingen) => {
+    setFamilySettings(volgendeInstellingen);
+    const ok = await saveKey("family-settings", volgendeInstellingen);
+    if (!ok) setNotice("De familie-instellingen konden niet worden opgeslagen.");
   };
 
   const setApiKey = async (k) => {
@@ -7779,6 +8103,16 @@ function VakantieApp() {
             members={members}
             me={me}
             currentTrip={trip}
+          />
+        )}
+        {tab === "instellingen" && (
+          <FamilieInstellingenView
+            members={members}
+            setMembers={updateFamilyMembers}
+            me={me}
+            settings={familySettings}
+            setSettings={updateFamilySettings}
+            trip={trip}
           />
         )}
         {tab === "buurt" && (
