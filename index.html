@@ -2,7 +2,10 @@
 <html lang="nl">
 <head>
 <meta charset="utf-8" />
-<meta name="reisboek-versie" content="familytrip-71" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<meta name="reisboek-versie" content="familytrip-73" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
 <title>Family Trip</title>
@@ -64,7 +67,7 @@ setTimeout(function () {
 <script>
 window.FIREBASE_STATUS = { fase: "config laden", ok: false, fout: "" };
 </script>
-<script src="config.js?v=62" onload="window.FIREBASE_STATUS.configBestand=true" onerror="window.FIREBASE_STATUS.configBestand=false; window.__fouten.push('config.js kon niet geladen worden')"></script>
+<script src="config.js?v=73" onload="window.FIREBASE_STATUS.configBestand=true" onerror="window.FIREBASE_STATUS.configBestand=false; window.__fouten.push('config.js kon niet geladen worden')"></script>
 <script>
 /* Instellingen die in de app zelf zijn ingevuld gaan voor op config.js. */
 (function () {
@@ -86,6 +89,44 @@ window.FIREBASE_STATUS = { fase: "config laden", ok: false, fout: "" };
   var f = c.firebase || {};
   if (f.projectId && !f.authDomain) f.authDomain = f.projectId + ".firebaseapp.com";
   window.VAKANTIE_CONFIG = c;
+})();
+/* Een uitnodigingslink kan de openbare Firebase-webconfig en reiscode meenemen.
+   Daardoor werkt echte Google-login ook op een nieuw apparaat met alleen index.html. */
+(function () {
+  try {
+    var params = new URLSearchParams(window.location.search || "");
+    var gecodeerd = params.get("familie-config");
+    if (!gecodeerd) return;
+    var basis64 = gecodeerd.replace(/-/g, "+").replace(/_/g, "/");
+    while (basis64.length % 4) basis64 += "=";
+    var binair = atob(basis64);
+    var tekst;
+    if (window.TextDecoder) {
+      var bytes = new Uint8Array(binair.length);
+      for (var i = 0; i < binair.length; i++) bytes[i] = binair.charCodeAt(i);
+      tekst = new TextDecoder("utf-8").decode(bytes);
+    } else {
+      tekst = decodeURIComponent(escape(binair));
+    }
+    var pakket = JSON.parse(tekst);
+    var fb = pakket && pakket.firebase;
+    if (!fb || !fb.projectId || !fb.apiKey) return;
+    if (!fb.authDomain) fb.authDomain = fb.projectId + ".firebaseapp.com";
+    var bestaand = {};
+    try { bestaand = JSON.parse(localStorage.getItem("reisboek-firebase") || "{}"); } catch (e) {}
+    var nieuw = Object.assign({}, bestaand, {
+      firebase: fb,
+      tripId: pakket.tripId || bestaand.tripId || "onze-reis",
+      opslag: typeof pakket.opslag === "boolean" ? pakket.opslag : !!bestaand.opslag
+    });
+    localStorage.setItem("reisboek-firebase", JSON.stringify(nieuw));
+    window.VAKANTIE_CONFIG = window.VAKANTIE_CONFIG || {};
+    window.VAKANTIE_CONFIG.firebase = fb;
+    window.VAKANTIE_CONFIG.tripId = nieuw.tripId;
+    window.VAKANTIE_CONFIG.opslag = nieuw.opslag;
+  } catch (e) {
+    window.__fouten.push("Uitnodigingsconfig kon niet worden gelezen: " + ((e && e.message) || e));
+  }
 })();
 </script>
 <script>
@@ -338,24 +379,121 @@ window.__initOpslag = function () {
     },
   };
 
-  /* Echt inloggen met je Google-account */
+  /* Echte Google-login via Firebase Authentication. */
+  const googleProfiel = (u) =>
+    u && u.email
+      ? {
+          uid: u.uid || "",
+          email: String(u.email).toLowerCase(),
+          name: u.displayName || u.email,
+          foto: u.photoURL || "",
+          provider: "google.com",
+        }
+      : null;
+
+  const authFoutTekst = (e) => {
+    const code = (e && e.code) || "";
+    const ruweTekst = (e && e.message) || "Inloggen met Google lukte niet.";
+    const samen = `${code} ${ruweTekst}`;
+    if (/unauthorized-domain/i.test(samen)) {
+      return `Dit webadres is nog niet toegestaan in Firebase Authentication. Voeg ${window.location.hostname} toe bij Authentication > Settings > Authorized domains.`;
+    }
+    if (/operation-not-allowed|configuration-not-found/i.test(samen)) {
+      return "Google-login staat nog niet goed aan. Open Firebase Authentication > Sign-in method, zet Google aan en kies een support-e-mailadres.";
+    }
+    if (/invalid-api-key|app-not-authorized|invalid-app-credential/i.test(samen)) {
+      return "De Firebase-webconfig hoort niet bij deze website. Kopieer in Firebase Projectinstellingen opnieuw het volledige web-appconfiguratieblok.";
+    }
+    if (/popup-closed-by-user/i.test(samen)) {
+      return "Het Google-inlogvenster is gesloten voordat het aanmelden klaar was.";
+    }
+    if (/network-request-failed/i.test(samen)) {
+      return "Google-login kon geen verbinding maken. Controleer internet en probeer opnieuw.";
+    }
+    if (/web-storage-unsupported/i.test(samen)) {
+      return "De browser blokkeert de veilige inlogsessie. Sta cookies en websiteopslag toe voor deze site.";
+    }
+    return ruweTekst.replace(/^Firebase:\s*/i, "");
+  };
+
   window.AppAuth = {
     beschikbaar: !!auth,
-    async inloggenMetGoogle() {
+    async inloggenMetGoogle(blijfIngelogd = true) {
       if (!auth) throw new Error("Firebase Authentication is niet verbonden.");
+      try {
+        auth.useDeviceLanguage();
+      } catch (e) {}
+      try {
+        const persistentie = blijfIngelogd
+          ? firebase.auth.Auth.Persistence.LOCAL
+          : firebase.auth.Auth.Persistence.SESSION;
+        await auth.setPersistence(persistentie);
+        localStorage.setItem("familytrip-google-blijf", blijfIngelogd ? "1" : "0");
+      } catch (e) {
+        /* De login kan vaak nog steeds doorgaan met de standaardpersistentie. */
+      }
+
       const provider = new firebase.auth.GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      const mobiel = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "") ||
+        (window.matchMedia && window.matchMedia("(max-width: 760px)").matches);
+      if (mobiel) {
+        try {
+          sessionStorage.setItem("familytrip-google-redirect", "1");
+          await auth.signInWithRedirect(provider);
+          return { redirecting: true };
+        } catch (redirectFout) {
+          sessionStorage.removeItem("familytrip-google-redirect");
+          const bericht = authFoutTekst(redirectFout);
+          window.FIREBASE_STATUS.fout = bericht;
+          throw new Error(bericht);
+        }
+      }
       try {
         const res = await auth.signInWithPopup(provider);
-        const u = res.user;
-        return { email: u.email, name: u.displayName || u.email, foto: u.photoURL || "" };
+        return googleProfiel(res && res.user);
       } catch (e) {
         const code = (e && e.code) || "";
-        let bericht = (e && e.message) || "Inloggen met Google lukte niet.";
-        if (/unauthorized-domain/i.test(code + " " + bericht)) {
-          bericht = "Dit GitHub Pages-adres staat nog niet bij Firebase Authentication > Settings > Authorized domains. Voeg abraxas075.github.io toe.";
+        const magDoorsturen = /popup-blocked|operation-not-supported-in-this-environment|cancelled-popup-request/i.test(code);
+        if (magDoorsturen) {
+          try {
+            sessionStorage.setItem("familytrip-google-redirect", "1");
+            await auth.signInWithRedirect(provider);
+            return { redirecting: true };
+          } catch (redirectFout) {
+            sessionStorage.removeItem("familytrip-google-redirect");
+            const bericht = authFoutTekst(redirectFout);
+            window.FIREBASE_STATUS.fout = bericht;
+            throw new Error(bericht);
+          }
         }
+        const bericht = authFoutTekst(e);
         window.FIREBASE_STATUS.fout = bericht;
         throw new Error(bericht);
+      }
+    },
+    async herstelGoogleLogin() {
+      if (!auth) return null;
+      try {
+        const resultaat = await auth.getRedirectResult();
+        if (resultaat && resultaat.user) {
+          sessionStorage.removeItem("familytrip-google-redirect");
+          return googleProfiel(resultaat.user);
+        }
+      } catch (e) {
+        sessionStorage.removeItem("familytrip-google-redirect");
+        const bericht = authFoutTekst(e);
+        window.FIREBASE_STATUS.fout = bericht;
+        throw new Error(bericht);
+      }
+      const u = auth.currentUser || await authGereed;
+      return googleProfiel(u);
+    },
+    blijfIngelogd() {
+      try {
+        return localStorage.getItem("familytrip-google-blijf") !== "0";
+      } catch (e) {
+        return true;
       }
     },
     async uitloggen() {
@@ -366,10 +504,13 @@ window.__initOpslag = function () {
           /* was al uitgelogd */
         }
       }
+      try {
+        localStorage.removeItem("familytrip-google-blijf");
+        sessionStorage.removeItem("familytrip-google-redirect");
+      } catch (e) {}
     },
     huidige() {
-      const u = auth && auth.currentUser;
-      return u ? { email: u.email, name: u.displayName || u.email, foto: u.photoURL || "" } : null;
+      return googleProfiel(auth && auth.currentUser);
     },
   };
 
@@ -2886,24 +3027,31 @@ const DayStrip = ({ days, selected, onSelect, counts = {} }) => {
 
 /* ---------- login ---------- */
 function LoginView({ onLogin }) {
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [password, setPassword] = useState("");
-  const [blijf, setBlijf] = useState(true);
+  const [blijf, setBlijf] = useState(() => {
+    try { return localStorage.getItem("familytrip-google-blijf") !== "0"; } catch (e) { return true; }
+  });
   const [error, setError] = useState("");
   const [bezig, setBezig] = useState(false);
+  const [toonFirebase, setToonFirebase] = useState(false);
   const metGoogle = typeof window !== "undefined" && window.AppAuth && window.AppAuth.beschikbaar;
   const googleAanmelden = async () => {
-    setError(""); setBezig(true);
-    try { const p = await window.AppAuth.inloggenMetGoogle(); onLogin({ email: p.email, name: p.name }, blijf, p.foto); }
-    catch (e) { setError((e && e.message) || "Inloggen met Google lukte niet."); }
-    setBezig(false);
-  };
-  const submit = () => {
-    const mail = email.trim().toLowerCase();
-    if (!name.trim()) return setError("Vul je naam in.");
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return setError("Vul een geldig e-mailadres in.");
-    onLogin({ email: mail, name: name.trim() }, blijf);
+    if (!metGoogle) {
+      setToonFirebase(true);
+      setError(`Google-login heeft eerst een Firebase-webconfig nodig voor ${window.location.hostname}. Vul die hieronder eenmalig in.`);
+      setTimeout(() => document.getElementById("firebase-login-instellen")?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+      return;
+    }
+    setError("");
+    setBezig(true);
+    try {
+      const p = await window.AppAuth.inloggenMetGoogle(blijf);
+      if (p && p.redirecting) return;
+      if (!p || !p.email) throw new Error("Google gaf geen geldig account terug.");
+      await onLogin({ uid: p.uid, email: p.email, name: p.name, provider: "google.com" }, blijf, p.foto);
+    } catch (e) {
+      setError((e && e.message) || "Inloggen met Google lukte niet.");
+      setBezig(false);
+    }
   };
   return (
     <div className="min-h-screen" style={{ background: C.bg }}>
@@ -2912,19 +3060,59 @@ function LoginView({ onLogin }) {
         <div className="flex justify-center" style={{ padding: "24px 16px 8px", background: C.bone }}><Logo size={132} /></div>
         <div style={{ height: 176, overflow: "hidden" }}><LoginIllustratie /></div>
         <main style={{ padding: "12px 18px 28px" }}>
-          <button type="button" onClick={metGoogle ? googleAanmelden : undefined} disabled={!metGoogle || bezig} className="w-full flex items-center justify-center gap-3 rounded-2xl" style={{ height: 46, background: "#FFFFFF", color: C.ink, border: `2px solid ${C.line}`, fontWeight: 800, opacity: metGoogle ? 1 : .58 }}>
-            <span style={{ fontSize: 20, fontWeight: 900, color: "#4285F4" }}>G</span>{bezig ? "Bezig…" : "Inloggen met Google"}
-          </button>
-          {!metGoogle && <p className="text-xs text-center mt-1" style={{ color: C.muted }}>Google-login wordt actief zodra Firebase verbonden is.</p>}
-          <div className="flex items-center gap-3 my-3"><span style={{ height: 1, flex: 1, background: C.line }} /><span className="text-sm" style={{ color: C.muted }}>of</span><span style={{ height: 1, flex: 1, background: C.line }} /></div>
-          <div className="space-y-3">
-            <Field label="Je naam" placeholder="Naam" value={name} onChange={(e) => { setName(e.target.value); setError(""); }} />
-            <Field label="Je e-mail" type="email" inputMode="email" placeholder="naam@email.com" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }} />
-            <Field label="Wachtwoord" type="password" placeholder="Wachtwoord" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} />
-            {error && <p className="text-sm" style={{ color: C.marigold }}>{error}</p>}
-            <label className="flex items-center gap-3 py-1"><input type="checkbox" checked={blijf} onChange={(e) => setBlijf(e.target.checked)} style={{ width: 20, height: 20, accentColor: C.koraal }} /><span className="text-sm" style={{ color: C.ink }}>Ingelogd blijven op dit apparaat</span></label>
-            <button type="button" onClick={submit} className="w-full rounded-2xl" style={{ height: 48, background: C.ink, color: "#FFFFFF", border: 0, fontWeight: 900, letterSpacing: "1.4px", boxShadow: "0 6px 15px rgba(34,64,107,.20)" }}>DOORGAAN</button>
+          <div className="text-center mb-4">
+            <Eyebrow color={C.marigold}>Veilig aanmelden</Eyebrow>
+            <h1 className="font-serif text-2xl mt-1">Log in met je Google-account</h1>
+            <p className="text-sm mt-2" style={{ color: C.muted, lineHeight: 1.5 }}>
+              Je naam, e-mailadres en profielfoto komen rechtstreeks van Google. Er is geen handmatige of nep-login meer.
+            </p>
           </div>
+
+          <button
+            type="button"
+            onClick={googleAanmelden}
+            disabled={bezig}
+            className="w-full flex items-center justify-center gap-3 rounded-2xl"
+            style={{ height: 50, background: "#FFFFFF", color: "#202124", border: "1px solid #DADCE0", fontWeight: 800, opacity: bezig ? .65 : 1, boxShadow: "0 3px 10px rgba(34,64,107,.10)" }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="#4285F4" d="M21.35 12.25c0-.73-.06-1.43-.19-2.1H12v3.98h5.24a4.48 4.48 0 0 1-1.94 2.94v2.58h3.14c1.84-1.69 2.91-4.19 2.91-7.4Z"/>
+              <path fill="#34A853" d="M12 21.75c2.63 0 4.83-.87 6.44-2.36l-3.14-2.58c-.87.58-1.98.93-3.3.93-2.54 0-4.69-1.71-5.46-4.01H3.3v2.66A9.75 9.75 0 0 0 12 21.75Z"/>
+              <path fill="#FBBC05" d="M6.54 13.73A5.86 5.86 0 0 1 6.23 12c0-.6.1-1.18.31-1.73V7.61H3.3A9.74 9.74 0 0 0 2.25 12c0 1.57.38 3.05 1.05 4.39l3.24-2.66Z"/>
+              <path fill="#EA4335" d="M12 6.26c1.43 0 2.71.49 3.72 1.45l2.79-2.79C16.83 3.35 14.63 2.25 12 2.25A9.75 9.75 0 0 0 3.3 7.61l3.24 2.66c.77-2.3 2.92-4.01 5.46-4.01Z"/>
+            </svg>
+            {bezig ? "Google wordt geopend…" : metGoogle ? "Doorgaan met Google" : "Google-login instellen"}
+          </button>
+
+          {error && (
+            <p className="text-sm mt-3 rounded-2xl p-3" style={{ color: C.marigold, background: "#FFF6EC", border: `1px solid ${C.koraal}` }}>
+              {error}
+            </p>
+          )}
+
+          <label className="flex items-center gap-3 py-3 cursor-pointer">
+            <input type="checkbox" checked={blijf} onChange={(e) => setBlijf(e.target.checked)} style={{ width: 20, height: 20, accentColor: C.koraal }} />
+            <span className="text-sm" style={{ color: C.ink }}>Ingelogd blijven op dit apparaat</span>
+          </label>
+
+          {!metGoogle && (
+            <div className="mt-3" id="firebase-login-instellen">
+              <p className="text-sm text-center mb-3" style={{ color: C.marigold, fontWeight: 800 }}>
+                Google-login is nog niet gekoppeld aan deze website.
+              </p>
+              {!toonFirebase ? (
+                <Btn tone="ghost" className="w-full" onClick={() => setToonFirebase(true)}>
+                  Firebase-instellingen openen
+                </Btn>
+              ) : (
+                <FirebaseKaart />
+              )}
+            </div>
+          )}
+
+          <p className="text-xs text-center mt-4" style={{ color: C.muted, lineHeight: 1.5 }}>
+            Family Trip ontvangt nooit je Google-wachtwoord.
+          </p>
         </main>
       </div>
     </div>
@@ -3865,10 +4053,12 @@ function FirebaseKaart() {
           </div>
           <ol className="text-sm mt-2 space-y-1" style={{ color: C.muted }}>
             <li>1. Maak op console.firebase.google.com een project.</li>
-            <li>2. Zet Firestore Database aan (productiemodus, locatie in Europa).</li>
-            <li>3. Bij Regels: allow read, write: if true; en publiceren.</li>
-            <li>4. Projectinstellingen, onderaan bij Jouw apps, kies het web-icoon.</li>
-            <li>5. Kopieer het blok met apiKey en projectId en plak het hieronder.</li>
+            <li>2. Open Authentication &gt; Sign-in method, zet Google aan en sla op.</li>
+            <li>3. Open Authentication &gt; Settings &gt; Authorized domains en voeg dit webadres toe.</li>
+            <li>4. Zet Firestore Database aan (productiemodus, locatie in Europa).</li>
+            <li>5. Gebruik bij Firestore-regels minimaal: allow read, write: if request.auth != null;</li>
+            <li>6. Projectinstellingen, onderaan bij Jouw apps, kies het web-icoon.</li>
+            <li>7. Kopieer het blok met apiKey, authDomain en projectId en plak het hieronder.</li>
           </ol>
           <p
             className="text-sm mt-2 p-2 rounded-2xl"
@@ -7234,7 +7424,28 @@ function FamilieInstellingenView({ members, setMembers, me, settings, setSetting
   const maakUitnodigingslink = (member) => {
     const code = member.inviteCode || member.email || uid();
     const basisUrl = `${window.location.origin}${window.location.pathname}`;
-    return `${basisUrl}?familie-uitnodiging=${encodeURIComponent(code)}`;
+    const params = new URLSearchParams();
+    params.set("familie-uitnodiging", code);
+    try {
+      const cfg = window.VAKANTIE_CONFIG || {};
+      const firebaseConfig = { ...(cfg.firebase || {}) };
+      if (firebaseConfig.projectId && firebaseConfig.apiKey) {
+        if (!firebaseConfig.authDomain) firebaseConfig.authDomain = `${firebaseConfig.projectId}.firebaseapp.com`;
+        const pakket = JSON.stringify({
+          firebase: firebaseConfig,
+          tripId: cfg.tripId || "onze-reis",
+          opslag: !!cfg.opslag,
+        });
+        const bytes = new TextEncoder().encode(pakket);
+        let binair = "";
+        bytes.forEach((byte) => { binair += String.fromCharCode(byte); });
+        const veilig = btoa(binair).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+        params.set("familie-config", veilig);
+      }
+    } catch (e) {
+      /* De uitnodiging blijft ook zonder meegestuurde config bruikbaar als config.js al online staat. */
+    }
+    return `${basisUrl}?${params.toString()}`;
   };
 
   const uitnodigingsMailLink = (member) => {
@@ -7753,23 +7964,27 @@ function VakantieApp() {
     }
   };
 
-  /* first load */
+  /* first load: alleen een werkelijk door Google geverifieerd account mag verder. */
   useEffect(() => {
     (async () => {
-      const stored = await loadKey("me", null, false);
-      const core = await pullAll();
-      if (!stored) {
-        setPhase("login");
-        return;
+      try {
+        if (window.AppAuth && window.AppAuth.beschikbaar) {
+          const google = await window.AppAuth.herstelGoogleLogin();
+          if (google && google.email) {
+            await login(
+              { uid: google.uid, email: google.email, name: google.name, provider: "google.com" },
+              window.AppAuth.blijfIngelogd(),
+              google.foto
+            );
+            return;
+          }
+        }
+      } catch (e) {
+        setNotice((e && e.message) || "De Google-inlogsessie kon niet worden hersteld.");
       }
-      setMe(stored);
-      if (core && core.trip) {
-        setTab("dagen");
-        setPhase("app");
-      } else {
-        /* Alleen bij een werkelijk nieuwe reis komt Reis plannen in beeld. */
-        setPhase("setup");
-      }
+      try { await AppStore.delete("me", false); } catch (e) {}
+      setMe(null);
+      setPhase("login");
     })();
   }, []);
 
@@ -7782,8 +7997,13 @@ function VakantieApp() {
   }, [days]);
 
   const login = async (person, blijfIngelogd, googleFoto) => {
+    if (!person || !person.email || person.provider !== "google.com") {
+      setPhase("login");
+      throw new Error("Meld je aan met een geldig Google-account.");
+    }
     setMe(person);
     if (blijfIngelogd) await saveKey("me", person, false);
+    else await AppStore.delete("me", false).catch(() => {});
     const core = await pullAll();
     const existing = core?.members || [];
     const bestaand = existing.find((m) => m.email === person.email);
