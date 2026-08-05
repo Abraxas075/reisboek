@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
 <meta charset="utf-8" />
-<meta name="reisboek-versie" content="familytrip-68" />
+<meta name="reisboek-versie" content="familytrip-70" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
 <title>Family Trip</title>
@@ -4893,8 +4893,181 @@ function ZwevendeBalk({ tab, onGaNaar }) {
   );
 }
 
+/* ---------- hoogtepunten tijdlijn ---------- */
+function HoogtepuntenTijdlijn({ trip, days, agenda, photoIndex, images, members, onGoTo }) {
+  const hoogtepunten = useMemo(() => {
+    return (days || [])
+      .map((iso, index) => {
+        const plannen = (agenda || [])
+          .filter((i) => i.date === iso)
+          .sort((a, b) => (a.heleDag ? "00" : a.time || "99").localeCompare(b.heleDag ? "00" : b.time || "99"));
+        const fotos = (photoIndex || []).filter((p) => p.date === iso);
+        if (!plannen.length && !fotos.length) return null;
+        const hoofdFoto = fotos.find((p) => images[p.id]) || fotos[0] || null;
+        const eerstePlan = plannen.find((i) => (i.title || "").trim()) || null;
+        const eerstePlek = plannen.find((i) => (i.place || "").trim()) || null;
+        const quoteBron = String((hoofdFoto && hoofdFoto.caption) || (eerstePlan && eerstePlan.title) || "").trim();
+        const quote = quoteBron || `Dag ${index + 1} in ${trip.name || trip.destination || "de reis"}`;
+        const plek = String((eerstePlek && eerstePlek.place) || trip.base || trip.destination || "").trim();
+        return {
+          iso,
+          dag: index + 1,
+          fotos,
+          plannen,
+          hoofdFoto,
+          quote,
+          plek,
+          tilt: index % 2 === 0 ? -2.2 : 2.1,
+        };
+      })
+      .filter(Boolean);
+  }, [days, agenda, photoIndex, images, trip]);
+
+  if (!hoogtepunten.length) {
+    return (
+      <Card>
+        <Eyebrow color={C.marigold}>Hoogtepunten</Eyebrow>
+        <Empty>Voeg agenda-items of foto's toe en hier verschijnt vanzelf een tijdlijn van jullie reis.</Empty>
+      </Card>
+    );
+  }
+
+  return (
+    <Card style={{ background: `linear-gradient(180deg, #FFFFFF, ${C.bone})` }}>
+      <Eyebrow color={C.marigold}>Chronologische tijdlijn</Eyebrow>
+      <h3 className="font-serif text-xl mt-1">Hoogtepunten van de reis</h3>
+      <p className="text-sm mt-2" style={{ color: C.muted, lineHeight: 1.5 }}>
+        Scroll letterlijk langs de mooiste momenten, met foto, kort verhaal en wie erbij waren.
+      </p>
+
+      <div className="mt-4 space-y-4 relative">
+        {hoogtepunten.map((moment, index) => (
+          <div key={moment.iso} className="relative" style={{ paddingLeft: 28 }}>
+            {index < hoogtepunten.length - 1 && (
+              <span
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  left: 12,
+                  top: 22,
+                  bottom: -24,
+                  width: 2,
+                  background: `linear-gradient(180deg, ${C.koraal}, ${C.line})`,
+                  borderRadius: 999,
+                }}
+              />
+            )}
+            <span
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                left: 5,
+                top: 10,
+                width: 16,
+                height: 16,
+                borderRadius: 999,
+                background: C.koraal,
+                boxShadow: `0 0 0 4px ${C.bone}, 0 3px 10px rgba(34,64,107,.18)`,
+              }}
+            />
+
+            <div
+              className="rounded-[22px] p-3"
+              style={{
+                background: moment.fotos.length ? `${C.perzik}2A` : "rgba(255,255,255,.88)",
+                border: `1.5px solid ${C.line}`,
+                boxShadow: SCHADUW.kaart,
+              }}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <Eyebrow color={C.marigold}>Dag {String(moment.dag).padStart(2, "0")} · {fmtLong(moment.iso)}</Eyebrow>
+                  <p className="text-xs mt-1" style={{ color: C.muted }}>
+                    {moment.fotos.length} foto{moment.fotos.length === 1 ? "" : "'s"} · {moment.plannen.length} moment{moment.plannen.length === 1 ? "" : "en"}
+                  </p>
+                </div>
+                {moment.plek ? (
+                  <span className="font-mono text-[10px] text-right" style={{ color: C.muted, maxWidth: 120 }}>
+                    {moment.plek}
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="mt-3 flex gap-3 items-start">
+                <button
+                  type="button"
+                  onClick={() => onGoTo(moment.fotos.length ? "fotos" : "agenda")}
+                  className="shrink-0 rounded-[8px]"
+                  style={{
+                    background: "#FFFFFF",
+                    padding: "8px 8px 18px",
+                    transform: `rotate(${moment.tilt}deg)`,
+                    boxShadow: "0 8px 18px rgba(34,64,107,.18)",
+                    width: 118,
+                  }}
+                  aria-label="Open dit hoogtepunt"
+                >
+                  <div
+                    className="rounded-[6px] overflow-hidden"
+                    style={{ height: 94, background: C.boneSoft, border: `1px solid ${C.line}` }}
+                  >
+                    {moment.hoofdFoto && images[moment.hoofdFoto.id] ? (
+                      <img src={images[moment.hoofdFoto.id]} alt={moment.quote} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center" style={{ background: `${C.lucht}22` }}>
+                        <Icoon naam="fotos" kleur={C.lucht} maat={28} />
+                      </div>
+                    )}
+                  </div>
+                </button>
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-base leading-relaxed" style={{ color: C.ink, fontStyle: "italic" }}>
+                    “{moment.quote}”
+                  </p>
+                  {moment.plannen[0] && (
+                    <p className="text-xs mt-2" style={{ color: C.muted, lineHeight: 1.5 }}>
+                      {moment.plannen[0].time ? `${moment.plannen[0].time} · ` : ""}{nlOnderweg(moment.plannen[0].title || "")}
+                    </p>
+                  )}
+                  <div className="mt-3">
+                    <Eyebrow>Wie was erbij</Eyebrow>
+                    <div className="flex items-center mt-2">
+                      {(members || []).slice(0, 6).map((member, avatarIndex) => (
+                        <span key={member.email || member.name || avatarIndex} style={{ marginLeft: avatarIndex === 0 ? 0 : -8 }}>
+                          <Avatar member={member} size={28} />
+                        </span>
+                      ))}
+                      {(members || []).length > 6 && (
+                        <span
+                          className="inline-flex items-center justify-center rounded-full font-mono text-xs"
+                          style={{
+                            width: 28,
+                            height: 28,
+                            marginLeft: -8,
+                            background: C.bg,
+                            color: C.ink,
+                            border: `1px solid ${C.deep}`,
+                          }}
+                        >
+                          +{members.length - 6}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 /* ---------- hoofdscherm: dagen naast elkaar ---------- */
-function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, todos, photoIndex, images, loadImages, selected, setSelected, me, onGoTo, weer }) {
+function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, todos, photoIndex, images, loadImages, selected, setSelected, me, onGoTo, weer, members }) {
+
   const [addOpen, setAddOpen] = useState(null);
   const dagScroller = useRef(null);
   const scrollTimer = useRef(null);
@@ -5094,6 +5267,16 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
       <p className="text-center" style={{ color: C.muted, fontSize: 11, fontWeight: 700, marginTop: 2 }}>
         Veeg naar links of rechts voor een andere dag
       </p>
+
+      <HoogtepuntenTijdlijn
+        trip={trip}
+        days={days}
+        agenda={agenda}
+        photoIndex={photoIndex}
+        images={images}
+        members={members}
+        onGoTo={onGoTo}
+      />
     </div>
   );
 }
@@ -6419,6 +6602,43 @@ const tripDatumTekst = (start, end) => {
   if (!end || end === start) return begin;
   return `${begin} – ${asDate(end).toLocaleDateString("nl-NL", opties)}`;
 };
+const splitExtraDeelnemersTekst = (waarde) => {
+  const tekst = String(waarde || "").trim();
+  if (!tekst) return [];
+  const expliciet = tekst
+    .split(/\s*(?:,|;|\n|\||&|\+|\ben\b)\s*/i)
+    .map((naam) => naam.trim())
+    .filter(Boolean);
+  if (expliciet.length > 1) return expliciet;
+  const woorden = tekst.split(/\s+/).map((naam) => naam.trim()).filter(Boolean);
+  const lijktLijstMetVoornamen =
+    woorden.length > 1 &&
+    woorden.length <= 8 &&
+    woorden.every((naam) => /^[A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÖØ-öø-ÿ'’-]*$/.test(naam));
+  return lijktLijstMetVoornamen ? woorden : [tekst];
+};
+const normaliseerExtraDeelnemers = (waarde) => {
+  if (Array.isArray(waarde)) {
+    return waarde
+      .map((item, i) => {
+        if (!item) return null;
+        if (typeof item === "string") {
+          const naam = item.trim();
+          return naam ? { id: `extra-${i}-${naam}`, name: naam, color: i % KALENDER_KLEUREN.length } : null;
+        }
+        const naam = String(item.name || item.naam || "").trim();
+        if (!naam) return null;
+        const kleur = Number.isFinite(Number(item.color)) ? Number(item.color) : i % KALENDER_KLEUREN.length;
+        return { id: item.id || `extra-${i}-${naam}`, name: naam, color: kleur };
+      })
+      .filter(Boolean);
+  }
+  return splitExtraDeelnemersTekst(waarde).map((naam, i) => ({
+    id: `extra-${i}-${naam}`,
+    name: naam,
+    color: i % KALENDER_KLEUREN.length,
+  }));
+};
 
 function FamilieKalenderView({ trips, setTrips, members, me, currentTrip }) {
   const vandaag = localToday();
@@ -6441,6 +6661,8 @@ function FamilieKalenderView({ trips, setTrips, members, me, currentTrip }) {
   const [maand, setMaand] = useState(eersteMaand);
   const [formulierOpen, setFormulierOpen] = useState(false);
   const [fout, setFout] = useState("");
+  const [nieuwExtraNaam, setNieuwExtraNaam] = useState("");
+  const [nieuwExtraKleur, setNieuwExtraKleur] = useState(0);
   const leegFormulier = () => ({
     id: "",
     title: "",
@@ -6448,6 +6670,7 @@ function FamilieKalenderView({ trips, setTrips, members, me, currentTrip }) {
     start: vandaag,
     end: vandaag,
     participants: me?.email ? [me.email] : [],
+    extraParticipants: [],
     extraPeople: "",
     note: "",
     color: 0,
@@ -6474,6 +6697,8 @@ function FamilieKalenderView({ trips, setTrips, members, me, currentTrip }) {
 
   const nieuw = () => {
     setForm(leegFormulier());
+    setNieuwExtraNaam("");
+    setNieuwExtraKleur(0);
     setFout("");
     setFormulierOpen(true);
   };
@@ -6498,10 +6723,15 @@ function FamilieKalenderView({ trips, setTrips, members, me, currentTrip }) {
       start: trip.start || vandaag,
       end: trip.end || trip.start || vandaag,
       participants: Array.isArray(trip.participants) ? trip.participants : [],
+      extraParticipants: normaliseerExtraDeelnemers(
+        Array.isArray(trip.extraParticipants) && trip.extraParticipants.length ? trip.extraParticipants : trip.extraPeople
+      ),
       extraPeople: trip.extraPeople || "",
       note: trip.note || "",
       color: Number.isInteger(trip.color) ? trip.color : 0,
     });
+    setNieuwExtraNaam("");
+    setNieuwExtraKleur(0);
     setMaand(maandStartIso(asDate(trip.start || vandaag)));
     setFout("");
     setFormulierOpen(true);
@@ -6516,20 +6746,56 @@ function FamilieKalenderView({ trips, setTrips, members, me, currentTrip }) {
         : [...v.participants, email],
     }));
   };
+  const voegExtraPersoonToe = () => {
+    const naam = nieuwExtraNaam.trim();
+    if (!naam) {
+      setFout("Vul eerst een naam in voor de extra deelnemer.");
+      return;
+    }
+    setForm((v) => ({
+      ...v,
+      extraParticipants: [
+        ...(Array.isArray(v.extraParticipants) ? v.extraParticipants : []),
+        { id: uid(), name: naam, color: nieuwExtraKleur },
+      ],
+    }));
+    setNieuwExtraNaam("");
+    setNieuwExtraKleur((nieuwExtraKleur + 1) % KALENDER_KLEUREN.length);
+    setFout("");
+  };
+  const verwijderExtraPersoon = (id) => {
+    setForm((v) => ({
+      ...v,
+      extraParticipants: (v.extraParticipants || []).filter((p) => p.id !== id),
+    }));
+  };
+  const zetExtraPersoonKleur = (id, kleur) => {
+    setForm((v) => ({
+      ...v,
+      extraParticipants: (v.extraParticipants || []).map((p) => (p.id === id ? { ...p, color: kleur } : p)),
+    }));
+  };
+  const extraDeelnemersFormulier = normaliseerExtraDeelnemers(form.extraParticipants || form.extraPeople);
 
   const bewaar = () => {
     const bestemming = form.destination.trim();
     const titel = form.title.trim() || bestemming;
+    const extraDeelnemers = normaliseerExtraDeelnemers(form.extraParticipants || form.extraPeople).map((p, i) => ({
+      id: p.id || uid(),
+      name: p.name,
+      color: Number.isFinite(Number(p.color)) ? Number(p.color) : i % KALENDER_KLEUREN.length,
+    }));
     if (!bestemming) return setFout("Vul een bestemming in.");
     if (!form.start || !form.end) return setFout("Vul een vertrek- en terugdatum in.");
     if (form.end < form.start) return setFout("De terugdatum ligt voor de vertrekdatum.");
-    if (!form.participants.length && !form.extraPeople.trim()) return setFout("Kies minimaal één deelnemer.");
+    if (!form.participants.length && !extraDeelnemers.length) return setFout("Kies minimaal één deelnemer.");
     const item = {
       ...form,
       id: form.id || uid(),
       title: titel,
       destination: bestemming,
-      extraPeople: losseExtraPersonen(form.extraPeople).join(", "),
+      extraParticipants: extraDeelnemers,
+      extraPeople: extraDeelnemers.map((p) => p.name).join(", "),
       color: Number(form.color) || 0,
       by: me?.name || me?.email || "Familielid",
       updatedAt: new Date().toISOString(),
@@ -6538,6 +6804,8 @@ function FamilieKalenderView({ trips, setTrips, members, me, currentTrip }) {
     const volgende = form.id ? trips.map((t) => (t.id === form.id ? item : t)) : [...trips, item];
     setTrips(volgende);
     setMaand(maandStartIso(asDate(item.start)));
+    setNieuwExtraNaam("");
+    setNieuwExtraKleur(0);
     setFormulierOpen(false);
     setFout("");
   };
@@ -6549,24 +6817,13 @@ function FamilieKalenderView({ trips, setTrips, members, me, currentTrip }) {
   };
 
   const persoonBijEmail = (email) => members.find((m) => m.email === email) || { email, name: email };
-  const losseExtraPersonen = (waarde) => {
-    const tekst = String(waarde || "").trim();
-    if (!tekst) return [];
-    const expliciet = tekst
-      .split(/\s*(?:,|;|\n|\||&|\+|\ben\b)\s*/i)
-      .map((naam) => naam.trim())
-      .filter(Boolean);
-    if (expliciet.length > 1) return expliciet;
-    const woorden = tekst.split(/\s+/).map((naam) => naam.trim()).filter(Boolean);
-    const lijktLijstMetVoornamen =
-      woorden.length > 1 &&
-      woorden.length <= 8 &&
-      woorden.every((naam) => /^[A-ZÀ-ÖØ-Þ][A-Za-zÀ-ÖØ-öø-ÿ'’-]*$/.test(naam));
-    return lijktLijstMetVoornamen ? woorden : [tekst];
-  };
+  const extraDeelnemersVoorTrip = (trip) =>
+    normaliseerExtraDeelnemers(
+      Array.isArray(trip.extraParticipants) && trip.extraParticipants.length ? trip.extraParticipants : trip.extraPeople
+    );
   const namenVoor = (trip) => {
     const namen = (trip.participants || []).map((email) => persoonBijEmail(email).name || email);
-    return [...namen, ...losseExtraPersonen(trip.extraPeople)];
+    return [...namen, ...extraDeelnemersVoorTrip(trip).map((p) => p.name)];
   };
 
   return (
@@ -6617,7 +6874,74 @@ function FamilieKalenderView({ trips, setTrips, members, me, currentTrip }) {
                   );
                 })}
               </div>
-              <Field label="Andere deelnemers" placeholder="Bijvoorbeeld: Zonna, Marcel, opa" value={form.extraPeople} onChange={(e) => setForm({ ...form, extraPeople: e.target.value })} />
+              <div className="mt-3 rounded-2xl p-3" style={{ background: "rgba(255,255,255,.72)", border: `1px solid ${C.line}` }}>
+                <Eyebrow>Andere deelnemers</Eyebrow>
+                <p className="text-xs mt-1" style={{ color: C.muted }}>
+                  Voeg iedere persoon los toe en kies direct een eigen kleur.
+                </p>
+                <div className="mt-2 grid grid-cols-1 gap-2">
+                  <Field
+                    label="Naam toevoegen"
+                    placeholder="Bijvoorbeeld: Zonna"
+                    value={nieuwExtraNaam}
+                    onChange={(e) => setNieuwExtraNaam(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        voegExtraPersoonToe();
+                      }
+                    }}
+                  />
+                  <div>
+                    <Eyebrow>Kleur voor deze persoon</Eyebrow>
+                    <div className="flex gap-2 mt-2 flex-wrap">
+                      {KALENDER_KLEUREN.map((kleur, i) => (
+                        <button
+                          key={`nieuw-extra-kleur-${kleur}`}
+                          type="button"
+                          onClick={() => setNieuwExtraKleur(i)}
+                          aria-label={`Kleur voor extra deelnemer ${i + 1}`}
+                          className="rounded-full"
+                          style={{ width: 32, height: 32, background: kleur, border: nieuwExtraKleur === i ? `4px solid ${C.ink}` : "4px solid #FFFFFF", boxShadow: "0 2px 7px rgba(34,64,107,.15)" }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <Btn tone="ghost" onClick={voegExtraPersoonToe}>+ Deelnemer toevoegen</Btn>
+                </div>
+                {!!extraDeelnemersFormulier.length && (
+                  <div className="space-y-2 mt-3">
+                    {extraDeelnemersFormulier.map((persoon, index) => {
+                      const kleur = KALENDER_KLEUREN[persoon.color || 0] || KALENDER_KLEUREN[index % KALENDER_KLEUREN.length];
+                      return (
+                        <div key={persoon.id || `${persoon.name}-${index}`} className="rounded-2xl p-3" style={{ background: `${kleur}20`, border: `1px solid ${kleur}` }}>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="inline-flex items-center gap-2 rounded-full" style={{ background: "rgba(255,255,255,.9)", padding: "6px 10px", color: C.ink, fontSize: 12, fontWeight: 800 }}>
+                              <span className="rounded-full" style={{ width: 12, height: 12, background: kleur, display: "inline-block" }} />
+                              {persoon.name}
+                            </span>
+                            <button type="button" onClick={() => verwijderExtraPersoon(persoon.id)} className="font-mono text-xs underline" style={{ color: C.marigold }}>
+                              Verwijderen
+                            </button>
+                          </div>
+                          <div className="flex gap-2 mt-2 flex-wrap">
+                            {KALENDER_KLEUREN.map((swatch, kleurIndex) => (
+                              <button
+                                key={`${persoon.id || persoon.name}-kleur-${kleurIndex}`}
+                                type="button"
+                                onClick={() => zetExtraPersoonKleur(persoon.id, kleurIndex)}
+                                aria-label={`Kleur ${kleurIndex + 1} voor ${persoon.name}`}
+                                className="rounded-full"
+                                style={{ width: 24, height: 24, background: swatch, border: (persoon.color || 0) === kleurIndex ? `3px solid ${C.ink}` : "3px solid #FFFFFF" }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div>
@@ -6716,7 +7040,15 @@ function FamilieKalenderView({ trips, setTrips, members, me, currentTrip }) {
                         const member = persoonBijEmail(email);
                         return <span key={email} className="inline-flex items-center gap-1 rounded-full" style={{ background: C.bone, padding: "4px 8px 4px 4px", border: `1px solid ${C.line}` }}><Avatar member={member} size={25} /><span style={{ color: C.ink, fontSize: 11, fontWeight: 800 }}>{member.name || email}</span></span>;
                       })}
-                      {losseExtraPersonen(trip.extraPeople).map((naam, i) => <span key={`${naam}-${i}`} className="rounded-full" style={{ background: C.bg, color: C.ink, padding: "6px 9px", fontSize: 11, fontWeight: 800 }}>{naam}</span>)}
+                      {extraDeelnemersVoorTrip(trip).map((persoon, i) => {
+                        const kleur = KALENDER_KLEUREN[persoon.color || 0] || KALENDER_KLEUREN[i % KALENDER_KLEUREN.length];
+                        return (
+                          <span key={persoon.id || `${persoon.name}-${i}`} className="inline-flex items-center gap-1 rounded-full" style={{ background: `${kleur}22`, color: C.ink, padding: "6px 9px", fontSize: 11, fontWeight: 800, border: `1px solid ${kleur}` }}>
+                            <span className="rounded-full" style={{ width: 10, height: 10, background: kleur, display: "inline-block" }} />
+                            {persoon.name}
+                          </span>
+                        );
+                      })}
                     </div>
                     {!namen.length && <p className="text-sm mt-2" style={{ color: C.muted }}>Deelnemers nog niet gekozen.</p>}
                   </div>
@@ -6799,16 +7131,19 @@ function FamilieKalenderView({ trips, setTrips, members, me, currentTrip }) {
                           </span>
                         );
                       })}
-                      {losseExtraPersonen(trip.extraPeople)
-                        .map((naam, i) => (
+                      {extraDeelnemersVoorTrip(trip).map((persoon, i) => {
+                        const kleur = KALENDER_KLEUREN[persoon.color || 0] || KALENDER_KLEUREN[i % KALENDER_KLEUREN.length];
+                        return (
                           <span
-                            key={`${naam}-${i}`}
-                            className="rounded-full"
-                            style={{ background: C.bg, color: C.ink, padding: "6px 9px", fontSize: 11, fontWeight: 800 }}
+                            key={persoon.id || `${persoon.name}-${i}`}
+                            className="inline-flex items-center gap-1 rounded-full"
+                            style={{ background: `${kleur}22`, color: C.ink, padding: "6px 9px", fontSize: 11, fontWeight: 800, border: `1px solid ${kleur}` }}
                           >
-                            {naam}
+                            <span className="rounded-full" style={{ width: 10, height: 10, background: kleur, display: "inline-block" }} />
+                            {persoon.name}
                           </span>
-                        ))}
+                        );
+                      })}
                     </div>
                     {!namen.length && (
                       <p className="text-sm mt-2" style={{ color: C.muted }}>
@@ -7415,6 +7750,7 @@ function VakantieApp() {
             me={me}
             onGoTo={gaNaarTab}
             weer={weer}
+            members={members}
           />
         )}
         {tab === "reis" && (
