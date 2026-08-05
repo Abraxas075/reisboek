@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#F8C9A4" />
-<meta name="reisboek-versie" content="familytrip-61" />
+<meta name="reisboek-versie" content="familytrip-62" />
 <title>Family Trip</title>
 <style>
   html, body, #root { width: 100%; max-width: 100%; overflow-x: hidden; }
@@ -64,7 +64,7 @@ setTimeout(function () {
 <script>
 window.FIREBASE_STATUS = { fase: "config laden", ok: false, fout: "" };
 </script>
-<script src="config.js?v=61" onload="window.FIREBASE_STATUS.configBestand=true" onerror="window.FIREBASE_STATUS.configBestand=false; window.__fouten.push('config.js kon niet geladen worden')"></script>
+<script src="config.js?v=62" onload="window.FIREBASE_STATUS.configBestand=true" onerror="window.FIREBASE_STATUS.configBestand=false; window.__fouten.push('config.js kon niet geladen worden')"></script>
 <script>
 /* Instellingen die in de app zelf zijn ingevuld gaan voor op config.js. */
 (function () {
@@ -4951,6 +4951,7 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
   const [open, setOpen] = useState(null);
   const fileRef = useRef(null);
   const albumRef = useRef(null);
+  const oneDriveRef = useRef(null);
 
   const [videos, setVideos] = useState({});
 
@@ -5117,6 +5118,8 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
     if (!days.length) {
       setAlbumBusy("Sla eerst de vertrek- en terugreisdatum op. Daarna kan de app foto's over de reisdagen verdelen.");
       if (albumRef.current) albumRef.current.value = "";
+      if (oneDriveRef.current) oneDriveRef.current.value = "";
+      if (e && e.target) e.target.value = "";
       return;
     }
 
@@ -5210,6 +5213,8 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
     if (fouten.length) delen.push(fouten.join(" "));
     setAlbumBusy(delen.join(" "));
     if (albumRef.current) albumRef.current.value = "";
+    if (oneDriveRef.current) oneDriveRef.current.value = "";
+    if (e && e.target) e.target.value = "";
   };
 
   const voegLinkToe = () => {
@@ -5453,6 +5458,26 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer" }}
           />
         </label>
+
+        <label
+          className="relative overflow-hidden flex items-center justify-center w-full rounded-2xl mt-2 px-4 py-3 cursor-pointer focus-within:ring-2"
+          style={{ background: "#FFFFFF", color: C.ink, fontWeight: 800, border: `2px solid ${C.line}` }}
+        >
+          <span>☁️ Kies via Bestanden / OneDrive</span>
+          <input
+            ref={oneDriveRef}
+            type="file"
+            multiple
+            onClick={(e) => { e.currentTarget.value = ""; }}
+            onChange={handleAlbum}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer" }}
+          />
+        </label>
+        <p className="text-xs mt-2" style={{ color: C.muted, lineHeight: 1.45 }}>
+          Android toont OneDrive niet altijd bij <strong>Cloudmedia</strong>. Gebruik daarom deze knop.
+          Open in <strong>Bestanden</strong> het menu linksboven en kies <strong>OneDrive</strong>. Staat OneDrive daar niet,
+          download de foto's dan eerst in de OneDrive-app naar dit apparaat.
+        </p>
         {albumBusy && (
           <div
             role="status"
