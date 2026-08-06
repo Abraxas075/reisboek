@@ -1410,24 +1410,55 @@ const THEMA_TYPES = {
     day: ["#E0B134", "#E8D8B7", "#7EA6B9", "#9EAA70", "#F0D28B", "#D9D8B8"],
     tints: ["#FBF1D8", "#F8F1E5", "#E8F1F6", "#EEF2E1", "#FBF1D9", "#F2F2E3"],
   },
+  scrapbook: {
+    label: "Optie F – Reisdagboek scrapbook",
+    short: "F Dagboek",
+    C: {
+      bg: "#F7EFE1",
+      head: "#F7EFE1",
+      bone: "#FFFFFF",
+      boneSoft: "rgba(255,255,255,0.85)",
+      ink: "#16305B",
+      muted: "#6E7F94",
+      marigold: "#F2735A",
+      mint: "#BFE4DC",
+      ember: "#F2735A",
+      line: "#E7DFC9",
+      perzik: "#F8F2E6",
+      roze: "#E8A9A0",
+      koraal: "#2F9C90",
+      lucht: "#4C7FB0",
+      munt: "#1F7A70",
+      geel: "#F3B94A",
+      lila: "#9DB3D6",
+    },
+    day: ["#F2735A", "#F3B94A", "#2F9C90", "#4C7FB0", "#E8A9A0", "#9DB3D6"],
+    tints: ["#FCE3DC", "#FCF0D9", "#DCEEEA", "#E1EAF4", "#F9E6E2", "#E7ECF6"],
+  },
 };
-let C = THEMA_TYPES.warm.C;
-let DAGKLEUREN = THEMA_TYPES.warm.day.map((rand, i) => ({ rand, tint: THEMA_TYPES.warm.tints[i], schaduw: "rgba(34,64,107,0.12)" }));
+const hexRGB = (hex) => {
+  const h = hex.replace("#", "");
+  const v = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  const num = parseInt(v, 16);
+  return `${(num >> 16) & 255},${(num >> 8) & 255},${num & 255}`;
+};
+
+let C = THEMA_TYPES.scrapbook.C;
+let DAGKLEUREN = THEMA_TYPES.scrapbook.day.map((rand, i) => ({ rand, tint: THEMA_TYPES.scrapbook.tints[i], schaduw: "rgba(34,64,107,0.12)" }));
+const SCHADUW = {
+  kaart: "0 8px 22px rgba(34,64,107,0.10)",
+  knop: `0 6px 16px rgba(${hexRGB(THEMA_TYPES.scrapbook.C.koraal)},0.32)`,
+  kop: "0 4px 18px rgba(34,64,107,0.14)",
+};
 const zetThema = (id) => {
-  const t = THEMA_TYPES[id] || THEMA_TYPES.warm;
+  const t = THEMA_TYPES[id] || THEMA_TYPES.scrapbook;
   C = t.C;
   DAGKLEUREN = t.day.map((rand, i) => ({ rand, tint: t.tints[i], schaduw: "rgba(34,64,107,0.12)" }));
+  SCHADUW.knop = `0 6px 16px rgba(${hexRGB(t.C.koraal)},0.32)`;
 };
 const dagKleur = (i) => DAGKLEUREN[((i % DAGKLEUREN.length) + DAGKLEUREN.length) % DAGKLEUREN.length];
 
-const SCHADUW = {
-  kaart: "0 8px 22px rgba(34,64,107,0.10)",
-  knop: "0 6px 16px rgba(233,141,126,0.30)",
-  kop: "0 4px 18px rgba(34,64,107,0.14)",
-};
-
-const FONT_KOP =
-  "'Baloo 2','Nunito','Quicksand',ui-rounded,'Segoe UI Rounded','Hiragino Maru Gothic ProN',system-ui,sans-serif";
+const FONT_KOP = "'Lora','Georgia','Times New Roman',serif";
 const FONT_TEKST = "'Nunito','Quicksand',ui-rounded,system-ui,sans-serif";
 const VERLOOP = `linear-gradient(180deg, #F8C9A4 0%, #FFF4E8 34%, #FFF4E8 100%)`;
 
@@ -1437,7 +1468,7 @@ function Letters() {
     const link = document.createElement("link");
     link.rel = "stylesheet";
     link.href =
-      "https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700&display=swap";
+      "https://fonts.googleapis.com/css2?family=Lora:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap";
     document.head.appendChild(link);
     const stijl = document.createElement("style");
     stijl.textContent = `
@@ -1446,7 +1477,7 @@ function Letters() {
       body, input, select, textarea, button, a { font-family: ${FONT_TEKST}; }
       body { min-height: 100vh; color: ${C.ink}; background: ${C.bg}; }
       button, input, select, textarea { -webkit-tap-highlight-color: transparent; }
-      .font-serif { font-family: ${FONT_KOP}; font-weight: 800; letter-spacing: 0.1px; }
+      .font-serif { font-family: ${FONT_KOP}; font-weight: 700; letter-spacing: 0.1px; }
       .font-mono { font-family: ${FONT_TEKST}; font-weight: 700; }
       .hide-scrollbar { scrollbar-width: none; }
       .hide-scrollbar::-webkit-scrollbar { display: none; }
@@ -1492,8 +1523,8 @@ function Logo({ size = 132, tekst = true }) {
       </g>
       {!iconOnly && (
         <g transform="translate(56,0)">
-          <text x="0" y="26" fill={C.ink} style={{ fontFamily: FONT_KOP, fontWeight: 800, fontSize: 27 }}>FAMILY</text>
-          <text x="0" y="50" fill={C.koraal} style={{ fontFamily: FONT_KOP, fontWeight: 800, fontSize: 27 }}>TRIP</text>
+          <text x="0" y="26" fill={C.ink} style={{ fontFamily: FONT_KOP, fontWeight: 700, fontSize: 27 }}>FAMILY</text>
+          <text x="0" y="50" fill={C.koraal} style={{ fontFamily: FONT_KOP, fontWeight: 700, fontSize: 27 }}>TRIP</text>
         </g>
       )}
     </svg>
@@ -1551,12 +1582,12 @@ function SchermKop({ onBack, onMenu, onRefresh, compact = false }) {
   return (
     <header className="sticky top-0 z-40" style={{ background: C.head, borderBottom: `1px solid ${C.line}` }}>
       <div className="max-w-lg mx-auto px-4 flex items-center justify-between" style={{ height: compact ? 70 : 78, maxWidth: 430 }}>
-        <button type="button" onClick={onBack || onMenu} aria-label={onBack ? "Terug" : "Menu"} className="flex items-center justify-center" style={{ width: 40, height: 40, color: C.marigold, background: "transparent", border: 0 }}>
-          {onBack ? <span style={{ fontSize: 27, lineHeight: 1 }}>←</span> : <Icoon naam="menu" kleur={C.marigold} maat={24} dikte={2.1} />}
+        <button type="button" onClick={onBack || onMenu} aria-label={onBack ? "Terug" : "Menu"} className="flex items-center justify-center" style={{ width: 40, height: 40, color: C.ink, background: "transparent", border: 0 }}>
+          {onBack ? <span style={{ fontSize: 27, lineHeight: 1 }}>←</span> : <Icoon naam="menu" kleur={C.ink} maat={24} dikte={2.1} />}
         </button>
         <Logo size={132} />
         <button type="button" onClick={onRefresh} aria-label={onRefresh ? "Vernieuwen" : ""} className="flex items-center justify-center" style={{ width: 40, height: 40, visibility: onRefresh ? "visible" : "hidden", background: "transparent", border: 0 }}>
-          <Icoon naam="vernieuw" kleur={C.marigold} maat={24} dikte={2.1} />
+          <Icoon naam="vernieuw" kleur={C.koraal} maat={24} dikte={2.1} />
         </button>
       </div>
     </header>
@@ -3124,10 +3155,10 @@ function LoginView({ onLogin }) {
 
 /* ---------- thema kiezen ---------- */
 function ThemePicker({ themeId, setThemeId }) {
-  const huidig = THEMA_TYPES[themeId] || THEMA_TYPES.warm;
+  const huidig = THEMA_TYPES[themeId] || THEMA_TYPES.scrapbook;
   return (
     <details className="mt-4 rounded-[24px]" style={{ background: C.bone, border: `2px solid ${C.line}`, boxShadow: SCHADUW.kaart, padding: 14 }}>
-      <summary style={{ color: C.ink, fontFamily: FONT_KOP, fontWeight: 800, fontSize: 18, cursor: "pointer" }}>Kies je appstijl</summary>
+      <summary style={{ color: C.ink, fontFamily: FONT_KOP, fontWeight: 700, fontSize: 18, cursor: "pointer" }}>Kies je appstijl</summary>
       <div className="flex items-start justify-between gap-3 mt-3">
         <div>
           <Eyebrow color={C.marigold}>Weergave</Eyebrow>
@@ -3173,7 +3204,7 @@ function ThemePicker({ themeId, setThemeId }) {
                   ))}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div style={{ color: kleuren.ink, fontFamily: FONT_KOP, fontWeight: 800, fontSize: 16 }}>
+                  <div style={{ color: kleuren.ink, fontFamily: FONT_KOP, fontWeight: 700, fontSize: 16 }}>
                     {thema.label}
                   </div>
                   <div className="text-xs mt-0.5" style={{ color: kleuren.muted }}>
@@ -3182,6 +3213,7 @@ function ThemePicker({ themeId, setThemeId }) {
                     {id === "lavender" && "Lavendel, perzik en zachte zonsondergang"}
                     {id === "mintcoral" && "Tropisch mintgroen met warme koraalaccenten"}
                     {id === "olive" && "Goud, olijfgroen en mediterrane crèmetinten"}
+                    {id === "scrapbook" && "Crème dagboekpapier met marineblauw, teal, koraal en geel"}
                   </div>
                 </div>
                 <span
@@ -7796,7 +7828,7 @@ function VakantieApp() {
   const [weer, setWeer] = useState({});
   const [weerFout, setWeerFout] = useState("");
   const [themeId, setThemeId] = useState(() => {
-    try { return localStorage.getItem("familytrip-theme") || "warm"; } catch (e) { return "warm"; }
+    try { return localStorage.getItem("familytrip-theme") || "scrapbook"; } catch (e) { return "scrapbook"; }
   });
   zetThema(themeId);
   useEffect(() => {
