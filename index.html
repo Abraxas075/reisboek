@@ -5351,6 +5351,7 @@ function HoogtepuntenTijdlijn({ trip, days, agenda, photoIndex, images, members,
 function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, todos, photoIndex, images, loadImages, selected, setSelected, me, onGoTo, weer, members }) {
 
   const [addOpen, setAddOpen] = useState(null);
+  const [tijdlijnOpen, setTijdlijnOpen] = useState(false);
   const dagScroller = useRef(null);
   const scrollTimer = useRef(null);
 
@@ -5550,15 +5551,62 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
         Veeg naar links of rechts voor een andere dag
       </p>
 
-      <HoogtepuntenTijdlijn
-        trip={trip}
-        days={days}
-        agenda={agenda}
-        photoIndex={photoIndex}
-        images={images}
-        members={members}
-        onGoTo={onGoTo}
-      />
+      <button
+        type="button"
+        onClick={() => setTijdlijnOpen(true)}
+        aria-label="Hoogtepunten van de reis"
+        className="rounded-full flex items-center justify-center"
+        style={{
+          position: "fixed",
+          right: 18,
+          bottom: 96,
+          width: 54,
+          height: 54,
+          zIndex: 40,
+          background: C.koraal,
+          border: 0,
+          fontSize: 22,
+          boxShadow: SCHADUW.knop,
+        }}
+      >
+        ✨
+      </button>
+
+      {tijdlijnOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(27,52,87,0.75)" }}
+          role="dialog"
+          aria-label="Hoogtepunten van de reis"
+          onClick={() => setTijdlijnOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 430, maxHeight: "80vh", overflowY: "auto" }}
+          >
+            <div className="flex justify-end mb-2">
+              <button
+                type="button"
+                onClick={() => setTijdlijnOpen(false)}
+                aria-label="Sluiten"
+                className="rounded-full flex items-center justify-center"
+                style={{ width: 36, height: 36, background: C.bone, border: 0, color: C.ink, fontSize: 22, lineHeight: 1 }}
+              >
+                ×
+              </button>
+            </div>
+            <HoogtepuntenTijdlijn
+              trip={trip}
+              days={days}
+              agenda={agenda}
+              photoIndex={photoIndex}
+              images={images}
+              members={members}
+              onGoTo={onGoTo}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
