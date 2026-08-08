@@ -1583,9 +1583,9 @@ function SchermKop({ onBack, onMenu, onRefresh, compact = false }) {
     <header className="sticky top-0 z-40" style={{ background: C.head, borderBottom: `1px solid ${C.line}` }}>
       <div className="max-w-lg mx-auto px-4 flex items-center justify-between" style={{ height: compact ? 70 : 78, maxWidth: 430 }}>
         <button type="button" onClick={onBack || onMenu} aria-label={onBack ? "Terug" : "Menu"} className="flex items-center justify-center" style={{ width: 40, height: 40, color: C.ink, background: "transparent", border: 0 }}>
-          {onBack ? <span style={{ fontSize: 27, lineHeight: 1 }}>←</span> : <Icoon naam="menu" kleur={C.ink} maat={24} dikte={2.1} />}
+          {onBack ? <span style={{ fontSize: 27, lineHeight: 1 }}>←</span> : <HamburgerIcoon />}
         </button>
-        <Logo size={132} />
+        <img src="assets/logo-wordmark.png" alt="Family Trip" style={{ height: 34, width: "auto", objectFit: "contain" }} />
         <button type="button" onClick={onRefresh} aria-label={onRefresh ? "Vernieuwen" : ""} className="flex items-center justify-center" style={{ width: 40, height: 40, visibility: onRefresh ? "visible" : "hidden", background: "transparent", border: 0 }}>
           <Icoon naam="vernieuw" kleur={C.koraal} maat={24} dikte={2.1} />
         </button>
@@ -1713,6 +1713,18 @@ const Icoon = ({ naam, kleur = C.ink, maat = 22, dikte = 2 }) => (
   >
     {ICOON[naam]}
   </svg>
+);
+
+/* Hart/pin-icoon boven drie streepjes, als hamburgermenu-knop. */
+const HamburgerIcoon = () => (
+  <span className="flex flex-col items-center" style={{ gap: 3 }}>
+    <img src="assets/icon-heart-pin.png" alt="" style={{ width: 18, height: 18, objectFit: "contain" }} />
+    <span className="flex flex-col" style={{ gap: 2 }}>
+      <span style={{ width: 15, height: 2, borderRadius: 1, background: C.ink }} />
+      <span style={{ width: 15, height: 2, borderRadius: 1, background: C.ink }} />
+      <span style={{ width: 15, height: 2, borderRadius: 1, background: C.ink }} />
+    </span>
+  </span>
 );
 
 /* Wit tegeltje met het pictogram in de eigen kleur. */
@@ -3091,7 +3103,7 @@ function LoginView({ onLogin }) {
     <div className="min-h-screen" style={{ background: C.bg }}>
       <Letters />
       <div className="mx-auto min-h-screen" style={{ maxWidth: 430, background: C.bone }}>
-        <div className="flex justify-center" style={{ padding: "24px 16px 8px", background: C.bone }}><Logo size={132} /></div>
+        <div className="flex justify-center" style={{ padding: "24px 16px 8px", background: C.bone }}><img src="assets/logo-full.png" alt="Family Trip" style={{ width: 180, height: "auto", objectFit: "contain" }} /></div>
         <div style={{ height: 176, overflow: "hidden" }}><LoginIllustratie /></div>
         <main style={{ padding: "12px 18px 28px" }}>
           <div className="text-center mb-4">
@@ -8349,11 +8361,11 @@ function VakantieApp() {
         <div className="max-w-lg mx-auto px-4 flex items-center justify-between" style={{ height: 78, maxWidth: 430 }}>
           <div className="relative">
             <button type="button" onClick={() => setMenuOpen(!menuOpen)} aria-label="Menu" className="rounded-full flex items-center justify-center focus:outline-none focus:ring-2" style={{ width: 42, height: 42 }}>
-              <Icoon naam="menu" kleur={C.marigold} maat={25} dikte={2.2} />
+              <HamburgerIcoon />
             </button>
             {menuOpen && (
               <div className="absolute left-0 top-full mt-3 rounded-[24px] overflow-hidden z-50" style={{ background: C.bone, width: 320, maxWidth: "calc(100vw - 32px)", border: `2px solid ${C.line}`, boxShadow: "0 14px 30px rgba(34,64,107,.18)" }}>
-                <div className="flex justify-center px-4 py-4" style={{ background: C.head }}><Logo size={130} /></div>
+                <div className="flex justify-center px-4 py-4" style={{ background: C.head }}><img src="assets/logo-wordmark.png" alt="Family Trip" style={{ height: 34, width: "auto", objectFit: "contain" }} /></div>
                 {TABS.map((t) => (
                   <button key={t.id} type="button" onClick={() => { setTab(t.id); setMenuOpen(false); }} className="flex items-center gap-3 w-full text-left px-4 py-3 focus:outline-none focus:ring-2" style={{ background: tab === t.id ? t.kleur + "18" : "transparent", borderBottom: `1px solid ${C.line}` }}>
                     <Tegel naam={t.id} kleur={t.kleur} maat={34} />
@@ -8370,7 +8382,7 @@ function VakantieApp() {
               </div>
             )}
           </div>
-          <Logo size={132} />
+          <img src="assets/logo-wordmark.png" alt="Family Trip" style={{ height: 34, width: "auto", objectFit: "contain" }} />
           <button type="button" onClick={pullAll} disabled={syncing} aria-label="Vernieuwen" className="rounded-full flex items-center justify-center focus:outline-none focus:ring-2 disabled:opacity-50" style={{ width: 42, height: 42 }}>
             <Icoon naam="vernieuw" kleur={C.marigold} maat={25} dikte={2.2} />
           </button>
