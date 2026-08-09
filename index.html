@@ -3756,8 +3756,6 @@ function TripView({
         </ul>
       </Card>
 
-      <FirebaseKaart />
-
       <Card style={{ border: `3px solid ${C.lucht}` }}>
         <Eyebrow color={C.ink}>Waar is iedereen</Eyebrow>
         <label className="flex items-start gap-3 mt-2 cursor-pointer">
@@ -4075,28 +4073,11 @@ function FirebaseKaart() {
     setTimeout(() => window.location.reload(), 900);
   };
 
-  const uitzetten = () => {
-    localStorage.removeItem("reisboek-firebase");
-    setMelding("Uitgezet. De app wordt opnieuw geladen\u2026");
-    setTimeout(() => window.location.reload(), 900);
-  };
-
   return (
     <Card style={{ border: `3px solid ${gedeeld ? C.munt : C.ember}` }}>
-      <div className="flex items-baseline justify-between">
-        <Eyebrow color={gedeeld ? C.munt : C.ember}>
-          Gedeelde opslag {gedeeld ? "staat aan" : "staat uit"}
-        </Eyebrow>
-        {gedeeld && (
-          <button
-            onClick={uitzetten}
-            className="font-mono text-xs underline"
-            style={{ color: C.muted }}
-          >
-            uitzetten
-          </button>
-        )}
-      </div>
+      <Eyebrow color={gedeeld ? C.munt : C.ember}>
+        Gedeelde opslag {gedeeld ? "staat aan" : "staat uit"}
+      </Eyebrow>
 
       {gedeeld ? (
         <p className="text-sm mt-2" style={{ color: C.ink }}>
