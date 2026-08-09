@@ -1578,19 +1578,23 @@ function DecorThumb({ variant = 0 }) {
   );
 }
 
-/* Speels mapje ter vervanging van de gebeurtenissenlijst, tot je 'm openklikt. */
-function MapIllustratie() {
+/* Speels handgetekend routekaartje ter vervanging van de gebeurtenissenlijst, tot je 'm openklikt. */
+function ReisRouteIllustratie() {
   return (
     <svg viewBox="0 0 160 96" width="100%" height="100%" aria-hidden="true">
-      <rect x="10" y="26" width="70" height="16" rx="6" fill={C.geel} />
-      <rect x="6" y="34" width="148" height="56" rx="12" fill="#FFFFFF" stroke={C.line} strokeWidth="2" />
-      <rect x="6" y="34" width="148" height="14" rx="7" fill={C.perzik} />
-      <circle cx="118" cy="66" r="12" fill={C.koraal} />
-      <path d="M113 66l3.5 3.5L124 62" stroke="#FFFFFF" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-      <circle cx="34" cy="66" r="9" fill={C.munt} />
-      <circle cx="34" cy="66" r="3" fill="#FFFFFF" />
-      <path d="M50 70h48" stroke={C.line} strokeWidth="2" strokeLinecap="round" />
-      <path d="M50 78h34" stroke={C.line} strokeWidth="2" strokeLinecap="round" />
+      <rect width="160" height="96" rx="12" fill={C.perzik} />
+      <path d="M0 66 Q34 46 66 62 T136 54 T160 60 V96 H0Z" fill={C.munt} opacity="0.45" />
+      <path
+        d="M14 78c14-28 40-42 66-40 24 2 46-8 66-24"
+        fill="none"
+        stroke={C.koraal}
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeDasharray="1 7"
+      />
+      <circle cx="14" cy="78" r="4.5" fill={C.ink} />
+      <path d="M146 6c-5.2 0-9.5 4.2-9.5 9.5 0 6.4 9.5 14.7 9.5 14.7s9.5-8.3 9.5-14.7C155.5 10.2 151.2 6 146 6Z" fill={C.koraal} />
+      <circle cx="146" cy="15.5" r="4" fill="#FFFFFF" />
     </svg>
   );
 }
@@ -1613,6 +1617,12 @@ function SchermKop({ onBack, onMenu, onRefresh, compact = false }) {
 
 /* ---------- pictogrammen: ronde lijnen, kleur per onderdeel ---------- */
 const ICOON = {
+  memories: (
+    <>
+      <path d="M12 3.5c.7 3.9 2.4 5.6 6.3 6.3-3.9.7-5.6 2.4-6.3 6.3-.7-3.9-2.4-5.6-6.3-6.3 3.9-.7 5.6-2.4 6.3-6.3z" />
+      <path d="M18.5 15.5c.3 1.6.9 2.2 2.5 2.5-1.6.3-2.2.9-2.5 2.5-.3-1.6-.9-2.2-2.5-2.5 1.6-.3 2.2-.9 2.5-2.5z" />
+    </>
+  ),
   dagen: (
     <>
       <rect x="3" y="5.5" width="18" height="15.5" rx="4.5" />
@@ -5157,16 +5167,24 @@ const SNELKNOPPEN = [
   { id: "fotos", label: "Foto's", kleur: "#8FBCDF" },
   { id: "reis", label: "Reis", kleur: "#E98D7E" },
   { id: "buurt", label: "In de buurt", kleur: "#8CC9A8" },
+  { id: "memories", label: "Memories" },
 ];
 
-function ZwevendeBalk({ tab, onGaNaar }) {
+function ZwevendeBalk({ tab, onGaNaar, onMemories }) {
+  const KLEUR = { dagen: C.koraal, fotos: C.lucht, reis: C.munt, buurt: C.geel, memories: C.roze };
   return (
     <nav className="fixed z-50" style={{ left: 0, right: 0, bottom: 0, background: C.bone, borderTop: `1px solid ${C.line}`, padding: "9px 0 calc(8px + env(safe-area-inset-bottom, 0px))", boxShadow: "0 -6px 20px rgba(34,64,107,.08)" }}>
       <div className="mx-auto flex justify-around" style={{ maxWidth: 430, padding: "0 12px" }}>
         {SNELKNOPPEN.map((k) => {
           const actief = tab === k.id;
-          const kleur = k.id === "dagen" ? C.koraal : k.id === "fotos" ? C.lucht : k.id === "reis" ? C.munt : C.geel;
-          return <button key={k.id} type="button" onClick={() => { document.documentElement.scrollLeft = 0; document.body.scrollLeft = 0; onGaNaar(k.id); }} className="flex flex-col items-center gap-1" style={{ width: 78, background: "transparent", border: 0 }}><span className="inline-flex items-center justify-center rounded-full" style={{ width: 44, height: 44, background: kleur, border: `2px solid ${kleur}`, boxShadow: actief ? `0 5px 13px ${kleur}66` : "0 3px 8px rgba(34,64,107,.12)", transform: actief ? "translateY(-2px)" : "none" }}><Icoon naam={k.id} kleur="#FFFFFF" maat={23} /></span><span style={{ color: actief ? kleur : C.ink, fontWeight: 800, fontSize: 10.5 }}>{k.label}</span></button>;
+          const kleur = KLEUR[k.id];
+          const klik = () => {
+            if (k.id === "memories") return onMemories();
+            document.documentElement.scrollLeft = 0;
+            document.body.scrollLeft = 0;
+            onGaNaar(k.id);
+          };
+          return <button key={k.id} type="button" onClick={klik} className="flex flex-col items-center gap-1" style={{ width: 78, background: "transparent", border: 0 }}><span className="inline-flex items-center justify-center rounded-full" style={{ width: 44, height: 44, background: kleur, border: `2px solid ${kleur}`, boxShadow: actief ? `0 5px 13px ${kleur}66` : "0 3px 8px rgba(34,64,107,.12)", transform: actief ? "translateY(-2px)" : "none" }}><Icoon naam={k.id} kleur="#FFFFFF" maat={23} /></span><span style={{ color: actief ? kleur : C.ink, fontWeight: 800, fontSize: 10.5 }}>{k.label}</span></button>;
         })}
       </div>
     </nav>
@@ -5350,7 +5368,6 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
 
   const [addOpen, setAddOpen] = useState(null);
   const [gebeurtenissenOpen, setGebeurtenissenOpen] = useState(null);
-  const [tijdlijnOpen, setTijdlijnOpen] = useState(false);
   const dagScroller = useRef(null);
   const scrollTimer = useRef(null);
 
@@ -5472,7 +5489,7 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
               className="w-full text-left rounded-2xl overflow-hidden mt-2"
               style={{ background: "#FFFFFF", border: `2px solid ${C.line}`, padding: 0, boxShadow: SCHADUW.kaart }}
             >
-              <div style={{ height: 62 }}><MapIllustratie /></div>
+              <div style={{ height: 62 }}><ReisRouteIllustratie /></div>
               <div className="flex items-center justify-between" style={{ padding: "8px 12px" }}>
                 <span style={{ color: C.ink, fontWeight: 700, fontSize: 12.5 }}>
                   {plannen.length ? `${plannen.length} gebeurtenis${plannen.length === 1 ? "" : "sen"}` : "Nog niets gepland"}
@@ -5581,63 +5598,6 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
       <p className="text-center" style={{ color: C.muted, fontSize: 11, fontWeight: 700, marginTop: 2 }}>
         Veeg naar links of rechts voor een andere dag
       </p>
-
-      <button
-        type="button"
-        onClick={() => setTijdlijnOpen(true)}
-        aria-label="Hoogtepunten van de reis"
-        className="rounded-full flex items-center justify-center"
-        style={{
-          position: "fixed",
-          right: 18,
-          bottom: 96,
-          width: 54,
-          height: 54,
-          zIndex: 40,
-          background: C.koraal,
-          border: 0,
-          fontSize: 22,
-          boxShadow: SCHADUW.knop,
-        }}
-      >
-        ✨
-      </button>
-
-      {tijdlijnOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(27,52,87,0.75)" }}
-          role="dialog"
-          aria-label="Hoogtepunten van de reis"
-          onClick={() => setTijdlijnOpen(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{ width: "100%", maxWidth: 430, maxHeight: "80vh", overflowY: "auto" }}
-          >
-            <div className="flex justify-end mb-2">
-              <button
-                type="button"
-                onClick={() => setTijdlijnOpen(false)}
-                aria-label="Sluiten"
-                className="rounded-full flex items-center justify-center"
-                style={{ width: 36, height: 36, background: C.bone, border: 0, color: C.ink, fontSize: 22, lineHeight: 1 }}
-              >
-                ×
-              </button>
-            </div>
-            <HoogtepuntenTijdlijn
-              trip={trip}
-              days={days}
-              agenda={agenda}
-              photoIndex={photoIndex}
-              images={images}
-              members={members}
-              onGoTo={onGoTo}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -7907,6 +7867,7 @@ function VakantieApp() {
     window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
   };
   const [menuOpen, setMenuOpen] = useState(false);
+  const [memoriesOpen, setMemoriesOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState(false);
   const [avatars, setAvatars] = useState({});
   const [selected, setSelected] = useState(localToday());
@@ -8575,7 +8536,44 @@ function VakantieApp() {
         )}
 
       </main>
-      <ZwevendeBalk tab={tab} onGaNaar={gaNaarTab} />
+
+      {memoriesOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(27,52,87,0.75)" }}
+          role="dialog"
+          aria-label="Hoogtepunten van de reis"
+          onClick={() => setMemoriesOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 430, maxHeight: "80vh", overflowY: "auto" }}
+          >
+            <div className="flex justify-end mb-2">
+              <button
+                type="button"
+                onClick={() => setMemoriesOpen(false)}
+                aria-label="Sluiten"
+                className="rounded-full flex items-center justify-center"
+                style={{ width: 36, height: 36, background: C.bone, border: 0, color: C.ink, fontSize: 22, lineHeight: 1 }}
+              >
+                ×
+              </button>
+            </div>
+            <HoogtepuntenTijdlijn
+              trip={trip}
+              days={days}
+              agenda={agenda}
+              photoIndex={photoIndex}
+              images={images}
+              members={members}
+              onGoTo={gaNaarTab}
+            />
+          </div>
+        </div>
+      )}
+
+      <ZwevendeBalk tab={tab} onGaNaar={gaNaarTab} onMemories={() => setMemoriesOpen(true)} />
     </div>
     </AvatarsContext.Provider>
     </MapsKeyContext.Provider>
