@@ -1606,7 +1606,7 @@ function SchermKop({ onBack, onMenu, onRefresh, compact = false }) {
         <button type="button" onClick={onBack || onMenu} aria-label={onBack ? "Terug" : "Menu"} className="flex items-center justify-center" style={{ width: 40, height: 40, color: C.ink, background: "transparent", border: 0 }}>
           {onBack ? <span style={{ fontSize: 27, lineHeight: 1 }}>←</span> : <HamburgerIcoon />}
         </button>
-        <img src="assets/logo-wordmark.png" alt="Family Trip" style={{ height: 34, width: "auto", objectFit: "contain" }} />
+        <img src="assets/logo-wordmark.png" alt="Family Trip" style={{ height: 60, width: "auto", objectFit: "contain" }} />
         <button type="button" onClick={onRefresh} aria-label={onRefresh ? "Vernieuwen" : ""} className="flex items-center justify-center" style={{ width: 40, height: 40, visibility: onRefresh ? "visible" : "hidden", background: "transparent", border: 0 }}>
           <Icoon naam="vernieuw" kleur={C.koraal} maat={24} dikte={2.1} />
         </button>
@@ -8416,7 +8416,7 @@ function VakantieApp() {
             </button>
             {menuOpen && (
               <div className="absolute left-0 top-full mt-3 rounded-[24px] overflow-hidden z-50" style={{ background: C.bone, width: 320, maxWidth: "calc(100vw - 32px)", border: `2px solid ${C.line}`, boxShadow: "0 14px 30px rgba(34,64,107,.18)" }}>
-                <div className="flex justify-center px-4 py-4" style={{ background: C.head }}><img src="assets/logo-wordmark.png" alt="Family Trip" style={{ height: 34, width: "auto", objectFit: "contain" }} /></div>
+                <div className="flex justify-center px-4 py-4" style={{ background: C.head }}><img src="assets/logo-wordmark.png" alt="Family Trip" style={{ height: 60, width: "auto", objectFit: "contain" }} /></div>
                 {TABS.map((t) => (
                   <button key={t.id} type="button" onClick={() => { setTab(t.id); setMenuOpen(false); }} className="flex items-center gap-3 w-full text-left px-4 py-3 focus:outline-none focus:ring-2" style={{ background: tab === t.id ? t.kleur + "18" : "transparent", borderBottom: `1px solid ${C.line}` }}>
                     <Tegel naam={t.id} kleur={t.kleur} maat={34} />
@@ -8433,7 +8433,7 @@ function VakantieApp() {
               </div>
             )}
           </div>
-          <img src="assets/logo-wordmark.png" alt="Family Trip" style={{ height: 34, width: "auto", objectFit: "contain" }} />
+          <img src="assets/logo-wordmark.png" alt="Family Trip" style={{ height: 60, width: "auto", objectFit: "contain" }} />
           <button type="button" onClick={pullAll} disabled={syncing} aria-label="Vernieuwen" className="rounded-full flex items-center justify-center focus:outline-none focus:ring-2 disabled:opacity-50" style={{ width: 42, height: 42 }}>
             <Icoon naam="vernieuw" kleur={C.marigold} maat={25} dikte={2.2} />
           </button>
