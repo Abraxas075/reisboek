@@ -65,16 +65,17 @@ plekken in de buurt.
    https://console.cloud.google.com/
 2. Koppel een factureringsaccount. Dat moet, ook al blijft een app als deze
    binnen het gratis maandtegoed.
-3. Zet deze drie API's aan via
+3. Zet deze vier API's aan via
    https://console.cloud.google.com/google/maps-apis/api-list
    - **Maps Static API** - de kaartafbeeldingen
    - **Maps Embed API** - de interactieve kaart
    - **Places API (New)** - zoeken en adres-suggesties
+   - **Street View Static API** - de streetview-plaatjes bij plekken
 4. Maak een key aan: https://console.cloud.google.com/apis/credentials
 5. **Beperk de key meteen.** Open hem en stel in:
    - *Application restrictions* -> **Websites** -> toevoegen:
      `https://JOUWNAAM.github.io/*`
-   - *API restrictions* -> **Restrict key** -> alleen die drie API's
+   - *API restrictions* -> **Restrict key** -> alleen die vier API's
 6. Open je app -> menu -> **Reis** -> *Google Maps API-key* -> plakken ->
    **Key opslaan**. Met **Key testen** zie je meteen wat Google ervan vindt.
 7. Zet een budgetwaarschuwing op een laag bedrag:
