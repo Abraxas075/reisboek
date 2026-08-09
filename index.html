@@ -5385,6 +5385,7 @@ function HoogtepuntenTijdlijn({ trip, days, agenda, photoIndex, images, members,
 /* ---------- hoofdscherm: dagen naast elkaar ---------- */
 function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, todos, photoIndex, images, loadImages, selected, setSelected, me, onGoTo, weer, members }) {
 
+  const mapsKey = React.useContext(MapsKeyContext);
   const [addOpen, setAddOpen] = useState(null);
   const [gebeurtenissenOpen, setGebeurtenissenOpen] = useState(null);
   const dagScroller = useRef(null);
@@ -5436,6 +5437,23 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
     const kiekjes = photoIndex.filter((p) => p.date === iso);
     const stops = (trip.stops || []).filter((s) => s.place).length;
     const open = addOpen === iso;
+
+    /* Echte afgelegde route van deze dag, uit de onderweg-momenten (bv. via Google-tijdlijn). */
+    const routePunten = dunUit(
+      plannen
+        .filter(isOnderweg)
+        .flatMap((item) => [item.vanPunt, item.naarPunt])
+        .map(alsCoordinaat)
+        .filter(Boolean)
+        .map((c) => {
+          const [lat, lng] = c.split(",").map(Number);
+          return { lat, lng };
+        })
+    );
+    const routeUrl =
+      mapsKey && routePunten.length >= 2
+        ? routeStatic(codeerPad(routePunten), mapsKey, { breedte: 320, hoogte: 62 })
+        : null;
 
     return (
       <section
@@ -5508,7 +5526,9 @@ function DayBoardView({ trip, days, agenda, setAgenda, shopping, setShopping, to
               className="w-full text-left rounded-2xl overflow-hidden mt-2"
               style={{ background: "#FFFFFF", border: `2px solid ${C.line}`, padding: 0, boxShadow: SCHADUW.kaart }}
             >
-              <div style={{ height: 62 }}><ReisRouteIllustratie /></div>
+              <div style={{ height: 62 }}>
+                {routeUrl ? <img src={routeUrl} alt="Afgelegde route" className="w-full h-full object-cover" /> : <ReisRouteIllustratie />}
+              </div>
               <div className="flex items-center justify-between" style={{ padding: "8px 12px" }}>
                 <span style={{ color: C.ink, fontWeight: 700, fontSize: 12.5 }}>
                   {plannen.length ? `${plannen.length} gebeurtenis${plannen.length === 1 ? "" : "sen"}` : "Nog niets gepland"}
