@@ -1905,6 +1905,17 @@ const mapsStatic = (q, key, opties = {}) => {
   );
 };
 
+/* Street View-plaatje voor een adres of lat,lng - de Street View Static API doet zelf de geocoding. */
+const streetViewStatic = (q, key, opties = {}) => {
+  const breedte = opties.breedte || 640;
+  const hoogte = opties.hoogte || 320;
+  const fov = opties.fov || 80;
+  return (
+    `https://maps.googleapis.com/maps/api/streetview?size=${breedte}x${hoogte}` +
+    `&location=${encodeURIComponent(q)}&fov=${fov}&key=${encodeURIComponent(key)}`
+  );
+};
+
 /* Afstand tussen twee punten in meters (formule van Haversine). */
 const afstandMeter = (a, b) => {
   const R = 6371000;
@@ -2860,8 +2871,8 @@ const PlaatsBeeld = ({ place, hoogte = 92 }) => {
       {beeld ? (
         <a href={mapsLink(zoek)} target="_blank" rel="noopener noreferrer" className="block mt-1">
           <img
-            src={mapsStatic(zoek, key, { breedte: 320, hoogte: 110, zoom: coord ? 15 : 14, schaal: 2 })}
-            alt={coord ? "Plek op de kaart" : place}
+            src={streetViewStatic(zoek, key, { breedte: 320, hoogte: 110 })}
+            alt={coord ? "Streetview van deze plek" : place}
             onError={() => setStuk(true)}
             loading="lazy"
             className="w-full rounded-2xl object-cover"
@@ -4649,7 +4660,7 @@ function AgendaRegel({ item, items, setItems, compact, fotos, images }) {
             Bij aankomst: {naarRegel}
           </span>
         )}
-        {compact ? null : item.soort === "wandeling" ? null : item.naarInfo && fotos && fotos.length > 0 ? (
+        {item.soort === "wandeling" ? null : item.naarInfo && fotos && fotos.length > 0 ? (
           <div className="flex gap-2 mt-1">
             {fotos.slice(0, 3).map((p) =>
               images[p.id] ? (
