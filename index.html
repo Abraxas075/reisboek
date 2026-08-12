@@ -1731,6 +1731,13 @@ const ICOON = {
       <path d="M4 20v-4h4" />
     </>
   ),
+  gids: (
+    <>
+      <path d="M6 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1" />
+      <path d="M9 3h6v4H9z" />
+      <path d="M9 10h6M9 14h6" />
+    </>
+  ),
 };
 
 const Icoon = ({ naam, kleur = C.ink, maat = 22, dikte = 2 }) => (
@@ -1783,6 +1790,7 @@ const TABS = [
   { id: "todo", label: "To-do", kleur: "#8DA56B" },
   { id: "lijst", label: "Boodschappen", kleur: "#8DA56B" },
   { id: "wandeling", label: "Mijn wandelingen", kleur: "#76A9CF" },
+  { id: "gids", label: "Handleiding", kleur: "#D4A574" },
 ];
 
 /* ---------- storage helpers ---------- */
@@ -6688,6 +6696,72 @@ function PhotosView({ index, setIndex, images, loadImages, days, selected, setSe
   );
 }
 
+/* ---------- guide / handleiding ---------- */
+function GuideView() {
+  const screens = [
+    { id: "login", icon: "👤", title: "Inloggen", beschrijving: "Meld jezelf aan met je Gmail-adres en naam. Vink 'Ingelogd blijven' aan om de volgende keer meteen binnen te zijn." },
+    { id: "profiel", icon: "📸", title: "Mijn profiel", beschrijving: "Voeg een foto van jezelf toe, je naam, telefoonnummer en een regel over jezelf. Je kunt dit later aanpassen via het menu." },
+    { id: "reis", icon: "🗺️", title: "Reis plannen", beschrijving: "Geef je reis een naam, voeg bestemming, verblijfadres en data toe. Maak ook een apart blok voor je heenreis." },
+    { id: "dagen", icon: "📅", title: "Dagen (hoofdscherm)", beschrijving: "Scroll door alle vakantiedagen van links naar rechts. Per dag zie je gebeurtenissen, foto's, boodschappen en meer." },
+    { id: "agenda", icon: "📝", title: "Agenda", beschrijving: "Voeg taken, activiteiten en hoogtepunten toe per dag. Met tijdstippen en notities." },
+    { id: "buurt", icon: "🧭", title: "In de buurt", beschrijving: "Zoek plekken in de buurt van je verblijf. Bekijk foto's, Street View en kaarten. Voeg interessante plekken toe aan je agenda." },
+    { id: "fotos", icon: "🖼️", title: "Foto's", beschrijving: "Alle foto's van je reis op één plek, geordend per dag. Deel foto's, kijk terug en herleef de mooie momenten." },
+    { id: "wandeling", icon: "🚶", title: "Mijn wandelingen", beschrijving: "Volg je route met GPS during je wandeling. Zet je scherm aan, de app volgt je route en laat alles later terug zien." },
+    { id: "notities", icon: "📋", title: "Notities", beschrijving: "Bewaar belangrijke informatie zoals codes, adressen, nummers en andere losse ideeën." },
+    { id: "todo", icon: "✅", title: "To-do", beschrijving: "Een gezamenlijke takenlijst voor de hele groep. Zet af wat je hebt gedaan en zie wie wat doet." },
+    { id: "lijst", icon: "🛒", title: "Boodschappen", beschrijving: "Een gedeelde boodschappenlijst per dag. Zet af wat je hebt gekocht." },
+    { id: "kalender", icon: "📆", title: "Familiekalender", beschrijving: "Bekijk al je reizen in één overzicht. Plan meerdere trips en houd alles bij." },
+    { id: "instellingen", icon: "⚙️", title: "Familie & instellingen", beschrijving: "Beheer familieleden, wijzig thema's, stel Google Maps API in en meer." },
+  ];
+
+  return (
+    <div className="space-y-3">
+      <Card>
+        <Eyebrow color={C.marigold}>Alle schermen</Eyebrow>
+        <p className="text-sm mt-2" style={{ color: C.muted }}>
+          Hier zie je een overzicht van alles wat je kunt doen in de app.
+        </p>
+      </Card>
+
+      <div className="grid gap-3">
+        {screens.map((screen) => (
+          <div
+            key={screen.id}
+            className="rounded-2xl p-4 transition-all"
+            style={{
+              background: C.bone,
+              border: `2px solid ${C.line}`,
+            }}
+          >
+            <div className="flex items-start gap-3">
+              <div style={{ fontSize: 32 }}>{screen.icon}</div>
+              <div className="flex-1">
+                <h3 className="font-bold text-base" style={{ color: C.ink }}>
+                  {screen.title}
+                </h3>
+                <p className="text-sm mt-1 leading-relaxed" style={{ color: C.muted }}>
+                  {screen.beschrijving}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Card>
+        <Eyebrow color={C.marigold}>Tips</Eyebrow>
+        <ul className="text-sm mt-2 space-y-2" style={{ color: C.muted }}>
+          <li>• Gebruik het hamburger menu (☰) linksboven om tussen schermen te schakelen</li>
+          <li>• Tik op je naam in de header om je profiel aan te passen</li>
+          <li>• De app werkt ook offline - wijzigingen worden later gesynchroniseerd</li>
+          <li>• Alles wat je toevoegt, delen alle familieleden die ook ingelogd zijn</li>
+          <li>• Op je telefoon kun je de app toevoegen aan je startscherm</li>
+        </ul>
+      </Card>
+    </div>
+  );
+}
+
 /* ---------- notes ---------- */
 function NotesView({ notes, setNotes, me }) {
   const [draft, setDraft] = useState({ title: "", body: "" });
@@ -8551,6 +8625,7 @@ function VakantieApp() {
         {tab === "lijst" && (
           <ShoppingView list={shopping} setList={persist("shopping", setShopping)} days={days} selected={selected} setSelected={setSelected} me={me} />
         )}
+        {tab === "gids" && <GuideView />}
 
       </main>
 
